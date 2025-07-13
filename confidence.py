@@ -12,13 +12,19 @@ class Confidence:
         self.beta = beta
         self.empirical_proba = n_set / n
 
-        self.lower_proba = self.empirical_proba - self._get_epsilon()
-        self.upper_proba = self.empirical_proba + self._get_epsilon()
+        self.lower_proba = self.empirical_proba - self._get_lower_epsilon()
+        self.upper_proba = self.empirical_proba + self._get_upper_epsilon()
 
-    def _get_epsilon(self) -> float:
+    def _get_lower_epsilon(self) -> float:
+        pass
+
+    def _get_upper_epsilon(self) -> float:
         pass
 
 class DuchiConfidence(Confidence):
+    def __init__(self, beta: float, n_set: int, n: int):
+        super().__init__(beta=beta, n_set=n_set, n=n)
+
     def _get_epsilon(self):
         #See Proposition 2 in Duchi, 2025 (https://arxiv.org/pdf/2503.00220)
 
@@ -26,12 +32,24 @@ class DuchiConfidence(Confidence):
         second_term = (4/3 * math.log(1/self.beta) / self.n) ** 2 + 2 * (1 - self.empirical_proba) * self.empirical_proba * math.log(1/self.beta) / self.n
         return first_term + second_term ** 0.5
 
+    def _get_lower_epsilon(self):
+        return self._get_epsilon()
+
+    def _get_upper_epsilon(self):
+        return self._get_epsilon()
+
 class HoeffdingConfidence(Confidence):
     def __init__(self, beta: float, n_set: int, n: int):
         super().__init__(beta=beta, n_set=n_set, n=n)
 
     def _get_epsilon(self):
         return (math.log(2/self.beta) / (2 * self.n)) ** 0.5
+
+    def _get_lower_epsilon(self):
+        return self._get_epsilon()
+
+    def _get_upper_epsilon(self):
+        return self._get_epsilon()
 
 class ClopperPearsonConfidence(Confidence):
     def __init__(self, beta: float, n_set: int, n: int):
@@ -51,3 +69,9 @@ class ClopperPearsonConfidence(Confidence):
 
     def _get_epsilon(self):
         return self.empirical_proba - self._find_p()
+
+    def _get_lower_epsilon(self):
+        return self._get_epsilon()
+
+    def _get_upper_epsilon(self):
+        return self._get_epsilon()

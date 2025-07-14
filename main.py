@@ -16,10 +16,10 @@ if __name__ == '__main__':
 
     # Parameters
     beta = 1e-5
-    nums_samples = [50, 100, 150, 200, 300, 500, 1000]
+    nums_samples = [10, 50, 100, 500, 1000, 5000]
 
     # Experiment 1: Figure 5 in Badings et al., 2025 (https://dl.acm.org/doi/pdf/10.1613/jair.1.14253)
-    region = HyperRectangle(lower=torch.tensor([-3.5]), upper=torch.tensor([3.5]))
+    region = HyperRectangle(lower=torch.tensor([-1.0]), upper=torch.tensor([1.0]))
     support = HyperRectangle(lower=torch.tensor([-4.0]), upper=torch.tensor([4.0]))
     distribution = Uniform(support=support)
 

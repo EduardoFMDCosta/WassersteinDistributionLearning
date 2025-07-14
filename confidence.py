@@ -1,6 +1,5 @@
 import math
-from scipy.special import comb
-from scipy.optimize import brentq
+from scipy.stats import beta
 
 class Confidence:
     def __init__(self, beta: float, n_set: int, n: int):
@@ -55,32 +54,14 @@ class ClopperPearsonConfidence(Confidence):
     def __init__(self, beta: float, n_set: int, n: int):
         super().__init__(beta=beta, n_set=n_set, n=n)
 
-    def _binomial_tail_prob(self, p):
-        return sum(comb(self.n, i) * (p ** i) * ((1 - p) ** (self.n - i)) for i in range(self.n_set, self.n + 1))
-
-    def _binomial_head_prob(self, p):
-        return sum(comb(self.n, i) * (p ** i) * ((1 - p) ** (self.n - i)) for i in range(0, self.n_set + 1))
-
-    def _find_p(self, is_lower, tol=1e-8) -> float:
-        target = self.beta / 2
-
-        def root_func(p):
-            if is_lower:
-                return self._binomial_tail_prob(p) - target
-            else:
-                return self._binomial_head_prob(p) - target
-
-        p_sol = brentq(root_func, 1e-10, 1 - 1e-10, xtol=tol)
-        return p_sol
-
     def _get_lower_proba(self):
         if self.n_set == 0:
             return 0.0
         else:
-            return self._find_p(is_lower=True, tol=1e-8)
+            return beta.ppf(self.beta / 2, self.n_set, self.n - self.n_set + 1)
 
     def _get_upper_proba(self):
         if self.n_set == self.n:
             return 1.0
         else:
-            return self._find_p(is_lower=False, tol=1e-8)
+            return beta.ppf(1 - self.beta / 2, self.n_set + 1, self.n - self.n_set)

@@ -12,13 +12,13 @@ class Confidence:
         self.beta = beta
         self.empirical_proba = n_set / n
 
-        self.lower_proba = self.empirical_proba - self._get_lower_epsilon()
-        self.upper_proba = self.empirical_proba + self._get_upper_epsilon()
+        self.lower_proba = self._get_lower_proba()
+        self.upper_proba = self._get_upper_proba()
 
-    def _get_lower_epsilon(self) -> float:
+    def _get_lower_proba(self) -> float:
         pass
 
-    def _get_upper_epsilon(self) -> float:
+    def _get_upper_proba(self) -> float:
         pass
 
 class DuchiConfidence(Confidence):
@@ -32,11 +32,11 @@ class DuchiConfidence(Confidence):
         second_term = (4/3 * math.log(1/self.beta) / self.n) ** 2 + 2 * (1 - self.empirical_proba) * self.empirical_proba * math.log(1/self.beta) / self.n
         return first_term + second_term ** 0.5
 
-    def _get_lower_epsilon(self):
-        return self._get_epsilon()
+    def _get_lower_proba(self):
+        return max(self.empirical_proba - self._get_epsilon(), 0.0)
 
-    def _get_upper_epsilon(self):
-        return self._get_epsilon()
+    def _get_upper_proba(self):
+        return min(self.empirical_proba + self._get_epsilon(), 1.0)
 
 class HoeffdingConfidence(Confidence):
     def __init__(self, beta: float, n_set: int, n: int):
@@ -45,11 +45,11 @@ class HoeffdingConfidence(Confidence):
     def _get_epsilon(self):
         return (math.log(2/self.beta) / (2 * self.n)) ** 0.5
 
-    def _get_lower_epsilon(self):
-        return self._get_epsilon()
+    def _get_lower_proba(self):
+        return max(self.empirical_proba - self._get_epsilon(), 0.0)
 
-    def _get_upper_epsilon(self):
-        return self._get_epsilon()
+    def _get_upper_proba(self):
+        return min(self.empirical_proba + self._get_epsilon(), 1.0)
 
 class ClopperPearsonConfidence(Confidence):
     def __init__(self, beta: float, n_set: int, n: int):
@@ -58,20 +58,29 @@ class ClopperPearsonConfidence(Confidence):
     def _binomial_tail_prob(self, p):
         return sum(comb(self.n, i) * (p ** i) * ((1 - p) ** (self.n - i)) for i in range(self.n_set, self.n + 1))
 
-    def _find_p(self, tol=1e-8):
+    def _binomial_head_prob(self, p):
+        return sum(comb(self.n, i) * (p ** i) * ((1 - p) ** (self.n - i)) for i in range(0, self.n_set + 1))
+
+    def _find_p(self, is_lower, tol=1e-8) -> float:
         target = self.beta / 2
 
         def root_func(p):
-            return self._binomial_tail_prob(p) - target
+            if is_lower:
+                return self._binomial_tail_prob(p) - target
+            else:
+                return self._binomial_head_prob(p) - target
 
         p_sol = brentq(root_func, 1e-10, 1 - 1e-10, xtol=tol)
         return p_sol
 
-    def _get_epsilon(self):
-        return self.empirical_proba - self._find_p()
+    def _get_lower_proba(self):
+        if self.n_set == 0:
+            return 0.0
+        else:
+            return self._find_p(is_lower=True, tol=1e-8)
 
-    def _get_lower_epsilon(self):
-        return self._get_epsilon()
-
-    def _get_upper_epsilon(self):
-        return self._get_epsilon()
+    def _get_upper_proba(self):
+        if self.n_set == self.n:
+            return 1.0
+        else:
+            return self._find_p(is_lower=False, tol=1e-8)

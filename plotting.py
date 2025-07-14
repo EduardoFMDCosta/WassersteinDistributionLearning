@@ -44,6 +44,8 @@ def plot_confidence(nums_samples:list,
     plt.grid(True)
 
     #plt.gca().xaxis.set_major_formatter(StrMethodFormatter('{x:.0f}'))
+    plt.xscale('log')
+    plt.xticks(nums_samples, labels=[str(val) for val in nums_samples])
 
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin

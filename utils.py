@@ -24,30 +24,17 @@ def in_set(samples: torch.Tensor,
 
     return inside
 
+def generate_grid(samples, num_points_per_dim):
+    d = samples.shape[1]
+    mins, _ = samples.min(dim=0)
+    maxs, _ = samples.max(dim=0)
 
+    # Create linspace for each dimension
+    grids_1d = [torch.linspace(mins[i], maxs[i], num_points_per_dim) for i in range(d)]
 
-def subdivide_hyperrectangle(region: HyperRectangle, n: int) -> HyperRectangle:
+    # Create meshgrid
+    mesh = torch.meshgrid(*grids_1d, indexing='ij')  # use 'ij' for matrix-style indexing
 
-    lower = region.lower.squeeze(0)  # (d,)
-    upper = region.upper.squeeze(0)  # (d,)
-    d = lower.shape[0]
-
-    # Compute split points (n+1 edges) per dimension
-    edges = [torch.linspace(lower[i], upper[i], n + 1) for i in range(d)]
-
-    # Compute all index combinations (n^d)
-    idx_combinations = list(itertools.product(range(n), repeat=d))
-
-    # Initialize lower and upper bounds for each subregion
-    lowers = []
-    uppers = []
-    for idx in idx_combinations:
-        sub_lower = torch.tensor([edges[dim][i] for dim, i in enumerate(idx)])
-        sub_upper = torch.tensor([edges[dim][i + 1] for dim, i in enumerate(idx)])
-        lowers.append(sub_lower)
-        uppers.append(sub_upper)
-
-    lowers = torch.stack(lowers, dim=0)  # shape (n^d, d)
-    uppers = torch.stack(uppers, dim=0)  # shape (n^d, d)
-
-    return HyperRectangle(lowers, uppers)
+    # Flatten the meshgrid to (M, d)
+    grid = torch.stack([m.reshape(-1) for m in mesh], dim=-1)  # shape (M, d)
+    return grid

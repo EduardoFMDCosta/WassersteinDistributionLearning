@@ -2,7 +2,7 @@ import torch
 from cluster import k_means_cluster, cluster_regions
 from confidence import ClopperPearsonConfidence
 from optimization import solve_transport_lp, o_maximization, max_min_lp
-from plotting import plot_samples
+from plotting.plot import plot_samples
 from sets import HyperRectangle
 from utils import subdivide_hyperrectangle, in_set
 

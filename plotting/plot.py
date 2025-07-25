@@ -1,9 +1,11 @@
 import torch
 import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.ticker import StrMethodFormatter
 from matplotlib.patches import Rectangle
+
 from sets import HyperRectangle
+from confidence import Confidence
+from plotting.utils_plot import get_bounds_from_confidence_list
 
 colors = [
         "lightcoral",
@@ -22,26 +24,27 @@ plt.rcParams.update({
 @torch.no_grad()
 def plot_confidence(nums_samples:list,
                     empirical: list,
-                             hoeff_lower: list,
-                             hoeff_upper: list,
-                             duchi_lower: list,
-                             duchi_upper: list,
-                             pearson_lower: list,
-                             pearson_upper: list,
-                    actual_value: torch.Tensor=None):
+                    hoeff_list: list[Confidence],
+                    duchi_list: list[Confidence],
+                    pearson_list: list[Confidence],
+                    actual_prob: torch.Tensor = None):
 
     sns.set_style("darkgrid")
 
+    # Get lists
+    hoeff_lower, hoeff_upper = get_bounds_from_confidence_list(hoeff_list)
+    duchi_lower, duchi_upper = get_bounds_from_confidence_list(duchi_list)
+    pearson_lower, pearson_upper = get_bounds_from_confidence_list(pearson_list)
+
+    # Plot
     plt.fill_between(nums_samples, hoeff_lower, hoeff_upper, color="deepskyblue", label = r'Hoeffding', alpha=0.2)
-
     plt.fill_between(nums_samples, duchi_lower, duchi_upper, color="lightcoral", label=r'Duchi', alpha=0.2)
-
     plt.fill_between(nums_samples, pearson_lower, pearson_upper, color="olive", label=r'Clopper-Pearson', alpha=0.2)
 
     plt.plot(nums_samples, empirical, label=r'Empirical probability', linestyle='-', marker='o', color='mediumseagreen')
 
-    if actual_value is not None:
-        plt.axhline(y=actual_value.item(), color='black', linestyle='--', linewidth=1)
+    if actual_prob is not None:
+        plt.axhline(y=actual_prob.item(), color='black', linestyle='--', linewidth=1)
 
     plt.xlabel("Number of samples")
     plt.ylabel("Probability")

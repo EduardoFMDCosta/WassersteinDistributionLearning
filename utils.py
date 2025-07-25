@@ -24,6 +24,8 @@ def in_set(samples: torch.Tensor,
 
     return inside
 
+
+
 def subdivide_hyperrectangle(region: HyperRectangle, n: int) -> HyperRectangle:
 
     lower = region.lower.squeeze(0)  # (d,)

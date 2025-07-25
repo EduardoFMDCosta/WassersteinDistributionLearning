@@ -1,12 +1,9 @@
 import torch
-
+from sets import HyperRectangle
+from distributions import Uniform
+from plotting.plot import plot_samples
 from bound import bound_wasserstein_alternative, bound_wasserstein
 from cluster import k_means_cluster, cluster_regions
-from confidence import ClopperPearsonConfidence
-from distributions import Uniform, Gaussian
-from optimization import solve_transport_lp
-from plotting import plot_confidence, plot_samples
-from sets import HyperRectangle
 from utils import in_set, subdivide_hyperrectangle
 
 if __name__ == '__main__':

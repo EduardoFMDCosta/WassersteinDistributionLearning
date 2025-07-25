@@ -79,27 +79,3 @@ def max_min_lp(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tenso
     w_opt = torch.tensor(res.x, dtype=torch.float32)
     min_cost = -res.fun
     return min_cost
-
-
-def solve_transport_lp(d, p_lower, p_upper, P_R):
-
-    M = d.shape[0]
-    Pi = cp.Variable((M, M), nonneg=True)
-
-    # Objective
-    objective = cp.Maximize(cp.sum(cp.multiply(d, Pi)))
-
-    # Row sum constraints: for each m, the sum over columns in [p_lower, p_upper]
-    row_sums = cp.sum(Pi, axis=1)
-    constraints = [row_sums >= p_lower,
-                   row_sums <= p_upper]
-
-    # Column sum constraints: for each l, the sum over rows equals P_R
-    col_sums = cp.sum(Pi, axis=0)
-    constraints += [col_sums == P_R]
-
-    # Solve the LP
-    prob = cp.Problem(objective, constraints)
-    prob.solve()
-
-    return Pi.value, prob.value

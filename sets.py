@@ -26,11 +26,11 @@ class HyperRectangle:
         lower, upper = x - eps, x + eps
         return HyperRectangle(lower, upper)
 
-    def distance_matrix(self, shell, p=2):
+    def distance_matrix(self, support_assumption, p=2):
         n, d = self.lower.shape
 
-        lower_full_partition = torch.cat([self.lower, shell.lower.unsqueeze(0)], dim=0)
-        upper_full_partition = torch.cat([self.upper, shell.upper.unsqueeze(0)], dim=0)
+        lower_full_partition = torch.cat([self.lower, support_assumption.lower.unsqueeze(0)], dim=0)
+        upper_full_partition = torch.cat([self.upper, support_assumption.upper.unsqueeze(0)], dim=0)
 
         lower_i = lower_full_partition[:, None, :]
         upper_i = upper_full_partition[:, None, :]
@@ -43,10 +43,10 @@ class HyperRectangle:
 
         return torch.maximum(d1, d2)
 
-    def distance_centers(self, shell, p=2):
+    def distance_centers(self, support_assumption, p=2):
 
         centers = self.center
-        center_complement = shell.center.unsqueeze(dim=0)
+        center_complement = support_assumption.center.unsqueeze(dim=0)
 
         locations = torch.cat([centers, center_complement], dim=0)
 

@@ -64,7 +64,7 @@ def plot_confidence(nums_samples:list,
 @torch.no_grad()
 def plot_samples(samples: torch.Tensor,
                  regions: HyperRectangle,
-                 shell: HyperRectangle):
+                 support_assumption: HyperRectangle):
 
     if samples.shape[-1] == 2:
 
@@ -73,8 +73,8 @@ def plot_samples(samples: torch.Tensor,
         plt.scatter(samples[:, 0], samples[:, 1], s=0.01, alpha=0.5, color="deepskyblue")
 
         # Plot shell
-        lower = shell.lower.numpy()
-        upper = shell.upper.numpy()
+        lower = support_assumption.lower.numpy()
+        upper = support_assumption.upper.numpy()
         width = upper[0] - lower[0]
         height = upper[1] - lower[1]
         rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')

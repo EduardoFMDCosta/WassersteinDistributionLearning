@@ -15,13 +15,15 @@ if __name__ == '__main__':
     empirical = []
 
     # Parameters
-    beta = 1e-5
-    nums_samples = [10, 50, 100, 500, 1000, 5000]
+    beta = 1e-4
+    nums_samples = [10, 50, 100, 500, 1000, 5000, 10000]
 
     # Experiment 1: Figure 5 in Badings et al., 2025 (https://dl.acm.org/doi/pdf/10.1613/jair.1.14253)
     region = HyperRectangle(lower=torch.tensor([-1.0]), upper=torch.tensor([1.0]))
     support = HyperRectangle(lower=torch.tensor([-4.0]), upper=torch.tensor([4.0]))
     distribution = Uniform(support=support)
+
+    actual_value = region.width / support.width
 
     for num_samples in nums_samples:
         samples = distribution(num_samples=num_samples)
@@ -43,4 +45,11 @@ if __name__ == '__main__':
         pearson_lower.append(pearson_confidence.lower_proba)
         pearson_upper.append(pearson_confidence.upper_proba)
 
-    plot_confidence(nums_samples, empirical, hoeff_lower, hoeff_upper, duchi_lower, duchi_upper, pearson_lower, pearson_upper)
+    hoeff_lower = [t.item() for t in hoeff_lower]
+    hoeff_upper = [t.item() for t in hoeff_upper]
+    duchi_lower = [t.item() for t in duchi_lower]
+    duchi_upper = [t.item() for t in duchi_upper]
+    pearson_lower = [t.item() for t in pearson_lower]
+    pearson_upper = [t.item() for t in pearson_upper]
+
+    plot_confidence(nums_samples, empirical, hoeff_lower, hoeff_upper, duchi_lower, duchi_upper, pearson_lower, pearson_upper, actual_value)

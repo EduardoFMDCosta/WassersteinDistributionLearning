@@ -1,6 +1,6 @@
 import torch
 
-from bound import compute_radius
+from bound import data_driven_radius, fournier_radius
 from sets import HyperRectangle, Partition
 from distributions import Uniform
 from plotting.plot import plot_samples
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     N = 2000
     beta = 1e-4
 
-    support_assumption = HyperRectangle(lower=torch.tensor([0.0, 0.0]), upper=torch.tensor([0.5, 0.5]))
+    support_assumption = HyperRectangle(lower=torch.tensor([-0.5, -0.5]), upper=torch.tensor([0.5, 0.5]))
 
     # (Unknown) Generating probability
     support = HyperRectangle(lower=torch.tensor([0.1, 0.1]), upper=torch.tensor([0.15, 0.15]))
@@ -27,8 +27,8 @@ if __name__ == '__main__':
     # Plot samples and clusterized distribution
     plot_samples(samples=samples, regions=partition.regions, support_assumption=support_assumption)
 
-    bound = compute_radius(samples=samples, partition=partition, beta=beta)
-    print(f"Bound Triangle Inequality: {bound}")
+    data_driven_bound = data_driven_radius(samples=samples, partition=partition, beta=beta)
+    print(f"Ours: {data_driven_bound}")
 
-    partial_bound_fournier = 1.42 / (N ** 0.25)
-    print(f"Partial bound Fournier: {partial_bound_fournier}")
+    fournier_bound = fournier_radius(samples=samples, partition=partition, beta=beta)
+    print(f"Fournier: {fournier_bound}")

@@ -1,7 +1,9 @@
 import torch
-import cvxpy as cp
 import numpy as np
+import cvxpy as cp
 from scipy.optimize import minimize
+from cvxpylayers.torch import CvxpyLayer
+
 
 def o_maximization(cost: torch.Tensor,
                    lower: torch.Tensor,
@@ -23,7 +25,65 @@ def o_maximization(cost: torch.Tensor,
     result = torch.einsum('i,i->', cost, p)
     return result
 
-def solve_lp(d, w, p):
+# ============================================================
+#                      CVXPyLayers-based
+# ============================================================
+
+def lp_layer(d: torch.Tensor, p: torch.Tensor, n: int):
+
+    w = cp.Parameter(n)
+    Pi = cp.Variable((n, n))       # Transport plan
+
+    objective = cp.Minimize(cp.sum(cp.multiply(d, Pi)))
+    constraints = [
+        cp.sum(Pi, axis=1) == w, # Row marginals
+        cp.sum(Pi, axis=0) == p, # Column marginals
+        Pi >= 0
+    ]
+
+    problem = cp.Problem(objective, constraints)
+    layer = CvxpyLayer(problem, parameters=[w], variables=[Pi])
+    return layer
+
+def max_min_lp(cost: torch.Tensor,
+               lower: torch.Tensor,
+               upper: torch.Tensor,
+               empirical_marginal: torch.Tensor,
+               num_steps=100,
+               lr=1e-2):
+
+    n = cost.shape[0]
+    layer = lp_layer(d=cost, p=empirical_marginal, n=n)
+
+    # Initialize w as a learnable parameter, normalized within [a, b] and sum=1
+    w = torch.nn.Parameter(torch.randn(n), requires_grad=True)
+    optimizer = torch.optim.Adam([w], lr=lr)
+
+    for step in range(num_steps):
+
+        with torch.no_grad():
+            w.data = torch.clamp(w.data, lower, upper)
+            w.data /= w.data.sum()
+
+        # Solve inner LP
+        Pi_star, = layer(w)
+
+        # Compute objective
+        wasserstein_squared = torch.sum(cost * Pi_star)
+        loss = -wasserstein_squared  # max-min → maximize -min
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    return wasserstein_squared.item()
+
+
+# ============================================================
+#           CVXPy-based (to be eventually removed)
+# ============================================================
+
+def solve_lp_cvx(d, w, p):
     """
     min_{Pi} sum d_{ij} Pi_{ij}
     s.t. sum_j Pi_{ij} = w_i
@@ -44,7 +104,7 @@ def solve_lp(d, w, p):
         raise ValueError(f"Inner LP did not solve properly: {prob.status}")
     return prob.value
 
-def max_min_lp(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tensor):
+def max_min_lp_cvx(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tensor):
     """
     Outer maximization over w in [a, b], sum w = 1
     Inner minimization over Pi as LP
@@ -58,7 +118,7 @@ def max_min_lp(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tenso
     def objective(w_np):
         w = np.clip(w_np, a_np, b_np)
         w = w / w.sum()  # enforce sum w = 1
-        return solve_lp(d_np, w, p_np)
+        return solve_lp_cvx(d_np, w, p_np)
 
     def neg_objective(w_np):
         return -objective(w_np)

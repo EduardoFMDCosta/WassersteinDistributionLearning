@@ -24,7 +24,7 @@ def in_set(samples: torch.Tensor,
 
     return inside
 
-def generate_grid(samples, num_points_per_dim):
+def generate_grid(samples: torch.Tensor, num_points_per_dim: int):
     d = samples.shape[1]
     mins, _ = samples.min(dim=0)
     maxs, _ = samples.max(dim=0)

@@ -23,9 +23,9 @@ def o_maximization(cost: torch.Tensor,
     result = torch.einsum('i,i->', cost, p)
     return result
 
-def solve_inner_lp(d, w, p):
+def solve_lp(d, w, p):
     """
-    Solves min_{Pi} sum d_{ij} Pi_{ij}
+    min_{Pi} sum d_{ij} Pi_{ij}
     s.t. sum_j Pi_{ij} = w_i
          sum_i Pi_{ij} = p_j
          Pi >= 0
@@ -42,7 +42,7 @@ def solve_inner_lp(d, w, p):
     prob.solve(solver=cp.SCS)
     if prob.status not in ["optimal", "optimal_inaccurate"]:
         raise ValueError(f"Inner LP did not solve properly: {prob.status}")
-    return prob.value  # this is the minimum cost for given w
+    return prob.value
 
 def max_min_lp(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tensor):
     """
@@ -58,7 +58,7 @@ def max_min_lp(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tenso
     def objective(w_np):
         w = np.clip(w_np, a_np, b_np)
         w = w / w.sum()  # enforce sum w = 1
-        return solve_inner_lp(d_np, w, p_np)
+        return solve_lp(d_np, w, p_np)
 
     def neg_objective(w_np):
         return -objective(w_np)

@@ -9,7 +9,7 @@ from utils import generate_grid
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    M = 10
+    M = 100
     N = 2000
     beta = 1e-4
 

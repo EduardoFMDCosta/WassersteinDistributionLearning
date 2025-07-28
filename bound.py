@@ -28,13 +28,15 @@ def data_driven_radius(samples: torch.Tensor,
                        beta: float):
 
     num_samples = samples.shape[0]
+    num_clusters = partition.regions.lower.shape[0]
 
     n_set = in_set(samples=samples, regions=partition.regions, include_complement=False)
     empirical = n_set / num_samples
 
     assert torch.allclose(empirical.sum(), torch.tensor(1.0), atol=1e-8), "Empirical distribution should sum to 1.0"
 
-    pearson_confidence = ClopperPearsonConfidence(beta=beta, n_set=n_set, n=num_samples)
+    adjusted_beta = beta / num_clusters
+    pearson_confidence = ClopperPearsonConfidence(beta=adjusted_beta, n_set=n_set, n=num_samples)
 
     moment_bound = bound_moment(partition=partition, confidence=pearson_confidence)
     discrete_bound = bound_discrete(partition=partition, confidence=pearson_confidence, empirical=empirical)

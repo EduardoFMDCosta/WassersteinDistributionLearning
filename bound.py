@@ -51,9 +51,32 @@ def fournier_radius(samples: torch.Tensor,
     log_inv_beta = math.log(1 / beta)
     tau = (2 * support_diameter ** 4 * log_inv_beta / num_samples) ** 0.25
 
-    # See Table 2 in Fournier, 2023 (https://www.esaim-ps.org/articles/ps/pdf/2023/01/ps220050.pdf
-    if support_diameter == 1.0 and samples.shape[-1] == 2: # TODO: Create a separate file with the bounds from the paper case by case
-        moment_bound = 1.42 / (num_samples ** 0.25)
+    # See Table 2 in Fournier, 2023 (https://www.esaim-ps.org/articles/ps/pdf/2023/01/ps220050.pdf)
+    dim = samples.shape[-1]
+    if support_diameter == 1.0:
+        if dim == 1:
+            moment_bound = 1.05 / (num_samples ** (1 / 4))
+        elif dim == 2:
+            moment_bound = 1.42 / (num_samples ** (1 / 4))
+        elif dim == 3:
+            moment_bound = 2.20 / (num_samples ** (1 / 4))
+        elif dim == 4:
+            moment_bound = math.sqrt(0.73 * math.log(num_samples) + 1.26) / (num_samples ** (1 / 4))
+        elif dim == 5:
+            moment_bound = 2.75 / (num_samples ** (1 / 5))
+        elif dim == 6:
+            moment_bound = 2.20 / (num_samples ** (1 / 6))
+        elif dim == 7:
+            moment_bound = 2.01 / (num_samples ** (1 / 7))
+        elif dim == 8:
+            moment_bound = 1.92 / (num_samples ** (1 / 8))
+        elif dim == 9:
+            moment_bound = 1.87 / (num_samples ** (1 / 9))
+        else:
+            raise NotImplementedError
+
+        moment_bound = moment_bound * math.sqrt(dim) # Adjustment for 2-Wasserstein
+
     else:
         raise NotImplementedError
 

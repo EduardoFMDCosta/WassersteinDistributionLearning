@@ -1,9 +1,7 @@
 import torch
-from sets import HyperRectangle
-import itertools
 
-def in_set(samples: torch.Tensor,
-           regions: HyperRectangle,
+def in_set(samples,
+           regions,
            include_complement: bool=False):
 
     samples_expanded = samples.unsqueeze(0)
@@ -24,7 +22,7 @@ def in_set(samples: torch.Tensor,
 
     return inside
 
-def generate_grid(samples: torch.Tensor, num_points_per_dim: int):
+def generate_grid_from_samples(samples, num_points_per_dim: int):
     d = samples.shape[1]
     mins, _ = samples.min(dim=0)
     maxs, _ = samples.max(dim=0)
@@ -37,4 +35,12 @@ def generate_grid(samples: torch.Tensor, num_points_per_dim: int):
 
     # Flatten the meshgrid to (M, d)
     grid = torch.stack([m.reshape(-1) for m in mesh], dim=-1)  # shape (M, d)
+    return grid
+
+def generate_grid_from_locs(locs: torch.Tensor):
+    n, d = locs.shape
+    unique_vals = [torch.unique(locs[:, i]) for i in range(d)]
+    mesh = torch.meshgrid(*unique_vals, indexing="ij")
+    grid = torch.stack([m.flatten() for m in mesh], dim=-1)
+
     return grid

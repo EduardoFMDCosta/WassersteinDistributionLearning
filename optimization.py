@@ -86,6 +86,10 @@ def max_min_lp(cost: torch.Tensor,
             break
         prev_obj = current_obj
 
+        # Print every 100 steps
+        if step % 1 == 20 or step == num_steps - 1:
+            print(f"Step {step}: objective = {current_obj:.8f}")
+
     return wasserstein_squared.item()
 
 

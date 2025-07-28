@@ -50,7 +50,8 @@ def max_min_lp(cost: torch.Tensor,
                upper: torch.Tensor,
                empirical_marginal: torch.Tensor,
                num_steps=100,
-               lr=1e-2):
+               lr=1e-2,
+               tol=1e-8):
 
     n = cost.shape[0]
     layer = lp_layer(d=cost, p=empirical_marginal, n=n)
@@ -58,6 +59,8 @@ def max_min_lp(cost: torch.Tensor,
     # Initialize w as a learnable parameter, normalized within [a, b] and sum=1
     w = torch.nn.Parameter(torch.randn(n), requires_grad=True)
     optimizer = torch.optim.Adam([w], lr=lr)
+
+    prev_obj = None
 
     for step in range(num_steps):
 
@@ -75,6 +78,13 @@ def max_min_lp(cost: torch.Tensor,
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        # Early stopping condition
+        current_obj = wasserstein_squared.item()
+        if prev_obj is not None and abs(current_obj - prev_obj) < tol:
+            print(f"Early stopping at step {step} with change {abs(current_obj - prev_obj):.2e}")
+            break
+        prev_obj = current_obj
 
     return wasserstein_squared.item()
 

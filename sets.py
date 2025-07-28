@@ -1,4 +1,6 @@
 import torch
+from utils import in_set, generate_grid_from_locs
+
 
 class HyperRectangle:
     def __init__(self, lower, upper):
@@ -97,3 +99,30 @@ class Partition:
 
         squared_distance = torch.cdist(self.locs, self.locs, p=2) ** 2
         return squared_distance
+
+    def refine(self,
+               samples: torch.Tensor,
+               prob_thr: float = 0.01,
+               diam_thr: float = 0.1):
+
+        locs = self.locs
+        regions = self.regions
+
+        # Compute empirical prob in each region
+        num_samples = samples.shape[0]
+        n_set = in_set(samples=samples, regions=regions, include_complement=False)
+        empirical = n_set / num_samples
+
+        # Compute regions diameter
+        diameters = torch.max(torch.abs(regions.upper - regions.lower), dim=1).values
+
+        # Include new points in regions with high prob or high diameter
+        mask = empirical.max() > prob_thr or diameters.max() > diam_thr
+        to_upper = locs[mask] + (regions.upper[mask] - locs[mask]) / 2
+        to_lower = locs[mask] + (regions.lower[mask] - locs[mask]) / 2
+
+        locs = torch.cat([to_lower.squeeze(dim=0), to_upper.squeeze(dim=0)], dim=0)
+        grid = generate_grid_from_locs(locs)
+        partition = Partition(locs=grid, support=self.support)
+
+        return partition

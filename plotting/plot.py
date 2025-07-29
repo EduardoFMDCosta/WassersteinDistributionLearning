@@ -70,7 +70,7 @@ def plot_samples(samples: torch.Tensor,
 
         # Plot samples
         plt.figure(figsize=(6, 6))
-        plt.scatter(samples[:, 0], samples[:, 1], s=0.01, alpha=0.5, color="deepskyblue")
+        plt.scatter(samples[:, 0], samples[:, 1], s=0.05, alpha=1.0, color="deepskyblue")
 
         # Plot shell
         lower = support_assumption.lower.numpy()

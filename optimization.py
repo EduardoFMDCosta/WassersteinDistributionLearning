@@ -35,9 +35,21 @@ def max_min_lp(cost: torch.Tensor,
                tol=1e-8):
 
     if method == 'cvx_layers':
-        return max_min_lp_cvxlayers(cost, lower, upper, empirical_marginal)
+        return max_min_lp_cvxlayers(cost=cost,
+                                    lower=lower,
+                                    upper=upper,
+                                    empirical_marginal=empirical_marginal,
+                                    num_steps=num_steps,
+                                    lr=lr,
+                                    tol=tol)
     elif method == 'cvxpy':
-        return max_min_lp_cvx(cost, lower, upper, empirical_marginal)
+        return max_min_lp_cvx(cost=cost,
+                              lower=lower,
+                              upper=upper,
+                              empirical_marginal=empirical_marginal,
+                              num_steps=num_steps,
+                              lr=lr,
+                              tol=tol)
     else:
         raise ValueError('Unknown optimization method')
 

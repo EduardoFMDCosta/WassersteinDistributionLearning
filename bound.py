@@ -15,17 +15,19 @@ def bound_moment(partition: Partition,
 
 def bound_discrete(partition: Partition,
                    confidence: Confidence,
-                   empirical: torch.Tensor):
+                   empirical: torch.Tensor,
+                   method: str):
 
     cost = partition.distance_locs()
-    bound = max_min_lp(cost, confidence.lower_proba, confidence.upper_proba, empirical) ** 0.5
+    bound = max_min_lp(cost=cost, lower=confidence.lower_proba, upper=confidence.upper_proba, empirical_marginal=empirical, method=method) ** 0.5
 
     return bound
 
 
 def data_driven_radius(samples: torch.Tensor,
                        partition: Partition,
-                       beta: float):
+                       beta: float,
+                       method: str):
 
     num_samples = samples.shape[0]
     num_clusters = partition.regions.lower.shape[0]
@@ -39,7 +41,7 @@ def data_driven_radius(samples: torch.Tensor,
     pearson_confidence = ClopperPearsonConfidence(beta=adjusted_beta, n_set=n_set, n=num_samples)
 
     moment_bound = bound_moment(partition=partition, confidence=pearson_confidence)
-    discrete_bound = bound_discrete(partition=partition, confidence=pearson_confidence, empirical=empirical)
+    discrete_bound = bound_discrete(partition=partition, confidence=pearson_confidence, empirical=empirical, method=method)
 
     return moment_bound + discrete_bound
 

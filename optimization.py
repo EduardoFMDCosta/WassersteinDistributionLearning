@@ -25,6 +25,22 @@ def o_maximization(cost: torch.Tensor,
     result = torch.einsum('i,i->', cost, p)
     return result
 
+def max_min_lp(cost: torch.Tensor,
+               lower: torch.Tensor,
+               upper: torch.Tensor,
+               empirical_marginal: torch.Tensor,
+               method: str,
+               num_steps=100,
+               lr=1e-2,
+               tol=1e-8):
+
+    if method == 'cvx_layers':
+        return max_min_lp_cvxlayers(cost, lower, upper, empirical_marginal)
+    elif method == 'cvxpy':
+        return max_min_lp_cvx(cost, lower, upper, empirical_marginal)
+    else:
+        raise ValueError('Unknown optimization method')
+
 # ============================================================
 #                      CVXPyLayers-based
 # ============================================================
@@ -45,13 +61,13 @@ def lp_layer(d: torch.Tensor, p: torch.Tensor, n: int):
     layer = CvxpyLayer(problem, parameters=[w], variables=[Pi])
     return layer
 
-def max_min_lp(cost: torch.Tensor,
-               lower: torch.Tensor,
-               upper: torch.Tensor,
-               empirical_marginal: torch.Tensor,
-               num_steps=100,
-               lr=1e-2,
-               tol=1e-8):
+def max_min_lp_cvxlayers(cost: torch.Tensor,
+                         lower: torch.Tensor,
+                         upper: torch.Tensor,
+                         empirical_marginal: torch.Tensor,
+                         num_steps=100,
+                         lr=1e-2,
+                         tol=1e-8):
 
     n = cost.shape[0]
     layer = lp_layer(d=cost, p=empirical_marginal, n=n)
@@ -118,16 +134,18 @@ def solve_lp_cvx(d, w, p):
         raise ValueError(f"Inner LP did not solve properly: {prob.status}")
     return prob.value
 
-def max_min_lp_cvx(d: torch.Tensor, a: torch.Tensor, b: torch.Tensor, p: torch.Tensor):
-    """
-    Outer maximization over w in [a, b], sum w = 1
-    Inner minimization over Pi as LP
-    """
-    n = d.shape[0]
-    d_np = d.numpy()
-    a_np = a.numpy()
-    b_np = b.numpy()
-    p_np = p.numpy()
+def max_min_lp_cvx(cost: torch.Tensor,
+                   lower: torch.Tensor,
+                   upper: torch.Tensor,
+                   empirical_marginal: torch.Tensor,
+                   num_steps=100,
+                   lr=1e-2,
+                   tol=1e-8):
+
+    d_np = cost.numpy()
+    a_np = lower.numpy()
+    b_np = upper.numpy()
+    p_np = empirical_marginal.numpy()
 
     def objective(w_np):
         w = np.clip(w_np, a_np, b_np)

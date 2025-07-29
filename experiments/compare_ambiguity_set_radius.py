@@ -12,6 +12,7 @@ if __name__ == '__main__':
     M = 10
     N = 2000
     beta = 1e-4
+    method = 'cvx_layers'
 
     support_assumption = HyperRectangle(lower=torch.tensor([-0.5, -0.5]), upper=torch.tensor([0.5, 0.5]))
 
@@ -23,13 +24,13 @@ if __name__ == '__main__':
     # Clusterize samples (obtaining \hat{P}_M)
     locs = generate_grid_from_samples(samples, int(M ** 0.5))
     partition = Partition(locs=locs, support=support_assumption)
-    for i in range(1):
+    for i in range(2):
         partition = partition.refine(samples=samples, prob_thr=0.01, diam_thr=0.1)
 
     # Plot samples and clusterized distribution
     plot_samples(samples=samples, regions=partition.regions, support_assumption=support_assumption)
 
-    data_driven_bound = data_driven_radius(samples=samples, partition=partition, beta=beta)
+    data_driven_bound = data_driven_radius(samples=samples, partition=partition, beta=beta, method=method)
     print(f"Ours: {data_driven_bound}")
 
     fournier_bound = fournier_radius(samples=samples, partition=partition, beta=beta)

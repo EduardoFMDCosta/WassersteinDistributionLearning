@@ -12,7 +12,7 @@ if __name__ == '__main__':
     M = 10
     N = 2000
     beta = 1e-4
-    method = 'cvx_layers'
+    method = 'dual'
 
     support_assumption = HyperRectangle(lower=torch.tensor([-0.5, -0.5]), upper=torch.tensor([0.5, 0.5]))
 

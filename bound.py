@@ -9,9 +9,9 @@ def bound_moment(partition: Partition,
                  confidence: Confidence):
 
     cost = partition.sup_distance_within_regions()
-    bound = o_maximization(cost, confidence.lower_proba, confidence.upper_proba) ** 0.5
+    bound, _ = o_maximization(cost, confidence.lower_proba, confidence.upper_proba)
 
-    return bound
+    return bound ** 0.5
 
 def bound_discrete(partition: Partition,
                    confidence: Confidence,
@@ -19,9 +19,9 @@ def bound_discrete(partition: Partition,
                    method: str):
 
     cost = partition.distance_locs()
-    bound = max_min_lp(cost=cost, lower=confidence.lower_proba, upper=confidence.upper_proba, empirical_marginal=empirical, method=method) ** 0.5
+    bound = max_min_lp(cost=cost, lower=confidence.lower_proba, upper=confidence.upper_proba, empirical_marginal=empirical, method=method)
 
-    return bound
+    return bound ** 0.5
 
 
 def data_driven_radius(samples: torch.Tensor,

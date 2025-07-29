@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import cvxpy as cp
+from copy import deepcopy
 from scipy.optimize import minimize
 from cvxpylayers.torch import CvxpyLayer
 
@@ -9,30 +10,31 @@ def o_maximization(cost: torch.Tensor,
                    lower: torch.Tensor,
                    upper: torch.Tensor):
 
-    sorted_idx = torch.argsort(cost, descending=True)
-    p = torch.zeros_like(cost)
-    total = 1.0
-
-    for j in sorted_idx:
-        lo = lower[j].item()
-        hi = upper[j].item()
-        alloc = min(hi, max(lo, total))
-        p[j] = alloc
-        total -= alloc
-        if total <= 1e-8:
+    # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
+    order = torch.argsort(-cost)
+    p = lower.clone()
+    rem = 1 - p.sum()
+    gap = upper - p
+    cumgap = torch.cumsum(gap[order], dim=0)
+    for idx, o in enumerate(order):
+        rem_state = max(rem - cumgap[idx] + gap[o], 0)
+        if gap[o] < rem_state:
+            p[o] += gap[o]
+        else:
+            p[o] += rem_state
             break
 
-    result = torch.einsum('i,i->', cost, p)
-    return result
+    result = torch.einsum('i,i->', cost.double(), p.double())
+    return result, p
 
 def max_min_lp(cost: torch.Tensor,
                lower: torch.Tensor,
                upper: torch.Tensor,
                empirical_marginal: torch.Tensor,
                method: str,
-               num_steps=100,
+               num_steps=1000,
                lr=1e-2,
-               tol=1e-8):
+               tol=1e-6):
 
     if method == 'cvx_layers':
         return max_min_lp_cvxlayers(cost=cost,
@@ -44,6 +46,14 @@ def max_min_lp(cost: torch.Tensor,
                                     tol=tol)
     elif method == 'cvxpy':
         return max_min_lp_cvx(cost=cost,
+                              lower=lower,
+                              upper=upper,
+                              empirical_marginal=empirical_marginal,
+                              num_steps=num_steps,
+                              lr=lr,
+                              tol=tol)
+    elif method == 'dual':
+        return max_min_lp_dual(cost=cost,
                               lower=lower,
                               upper=upper,
                               empirical_marginal=empirical_marginal,
@@ -77,9 +87,9 @@ def max_min_lp_cvxlayers(cost: torch.Tensor,
                          lower: torch.Tensor,
                          upper: torch.Tensor,
                          empirical_marginal: torch.Tensor,
-                         num_steps=100,
-                         lr=1e-2,
-                         tol=1e-8):
+                         num_steps: int,
+                         lr: float,
+                         tol: float):
 
     n = cost.shape[0]
     layer = lp_layer(d=cost, p=empirical_marginal, n=n)
@@ -150,9 +160,9 @@ def max_min_lp_cvx(cost: torch.Tensor,
                    lower: torch.Tensor,
                    upper: torch.Tensor,
                    empirical_marginal: torch.Tensor,
-                   num_steps=100,
-                   lr=1e-2,
-                   tol=1e-8):
+                   num_steps: int,
+                   lr: float,
+                   tol: float):
 
     d_np = cost.numpy()
     a_np = lower.numpy()
@@ -183,3 +193,77 @@ def max_min_lp_cvx(cost: torch.Tensor,
     w_opt = torch.tensor(res.x, dtype=torch.float32)
     min_cost = -res.fun
     return min_cost
+
+
+# ============================================================
+#                      Solving the dual
+# ============================================================
+
+def solve_dual_with_cvxpy(d, w, p):
+
+    n = d.shape[0]
+    d_np = d.detach().cpu().numpy()
+    w_np = w.detach().cpu().numpy()
+    p_np = p.detach().cpu().numpy()
+
+    # Define CVXPY variables
+    alpha = cp.Variable(n)
+    beta = cp.Variable(n)
+
+    # Objective
+    objective = cp.Maximize(alpha @ w_np + beta @ p_np)
+
+    # Constraints: α_i + β_j ≤ d_ij for all i, j
+    constraints = [alpha[i] + beta[j] <= d_np[i, j] for i in range(n) for j in range(n)]
+
+    # Solve
+    problem = cp.Problem(objective, constraints)
+    problem.solve(solver=cp.SCS)
+
+    if problem.status not in ["optimal", "optimal_inaccurate"]:
+        raise RuntimeError(f"CVXPY solve failed: {problem.status}")
+
+    alpha_val = torch.tensor(alpha.value, dtype=torch.float32)
+    beta_val = torch.tensor(beta.value, dtype=torch.float32)
+    return alpha_val, beta_val
+
+def max_min_lp_dual(cost: torch.Tensor,
+                         lower: torch.Tensor,
+                         upper: torch.Tensor,
+                         empirical_marginal: torch.Tensor,
+                    num_steps: int,
+                    lr: float,
+                    tol: float):
+    n = cost.shape[0]
+
+    # Initialize dual variables
+    alpha = torch.rand(n)
+    beta = torch.rand(n)
+
+    prev_obj = None
+
+    for step in range(num_steps):
+
+        # Solve maximization for w
+        _, w = o_maximization(alpha, lower, upper)
+
+        # Solve maximization for dual variables
+        alpha, beta = solve_dual_with_cvxpy(cost, w, empirical_marginal)
+
+        wasserstein_squared = torch.dot(alpha.double(), w.double()) + torch.dot(beta.double(), empirical_marginal.double())
+
+        # Early stopping condition
+        current_obj = wasserstein_squared.item()
+        if prev_obj is not None and abs(current_obj - prev_obj) < tol:
+            print(f"Early stopping at step {step} with change {abs(current_obj - prev_obj):.2e}")
+            break
+        prev_obj = current_obj
+
+        # Print every 100 steps
+        if step % 50 == 0 or step == num_steps - 1:
+            print(f"Step {step}: objective = {current_obj:.8f}")
+
+    # Compute objective
+    wasserstein_squared = torch.dot(alpha.double(), w.double()) + torch.dot(beta.double(), empirical_marginal.double())
+
+    return wasserstein_squared.item()

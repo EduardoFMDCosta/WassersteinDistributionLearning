@@ -227,6 +227,37 @@ def solve_dual_with_cvxpy(d, w, p):
     beta_val = torch.tensor(beta.value, dtype=torch.float32)
     return alpha_val, beta_val
 
+
+def sinkhorn_dual(cost, a, b, reg=1e-8, max_iter=1000, tol=1e-9):
+
+    n, m = cost.shape
+
+    # Compute the Gibbs kernel: K = exp(-cost/ε)
+    K = torch.exp(-cost / reg)
+
+    # Initialize scaling factors u and v
+    u = torch.ones(n, device=cost.device, dtype=cost.dtype) / n
+    v = torch.ones(m, device=cost.device, dtype=cost.dtype) / m
+
+    # Sinkhorn iterations
+    for i in range(max_iter):
+        u_prev = u.clone()
+        # Update v such that K^T * u * v = b
+        v = b / (K.t() @ u + 1e-16)
+        # Update u such that K * v * u = a
+        u = a / (K @ v + 1e-16)
+
+        # Check for convergence
+        if torch.max(torch.abs(u - u_prev)) < tol:
+            break
+
+    # Recover dual potentials (up to an additive constant)
+    # Note: log(·) is computed element-wise
+    f = reg * torch.log(u + 1e-16)
+    g = reg * torch.log(v + 1e-16)
+
+    return f, g
+
 def max_min_lp_dual(cost: torch.Tensor,
                          lower: torch.Tensor,
                          upper: torch.Tensor,
@@ -248,7 +279,8 @@ def max_min_lp_dual(cost: torch.Tensor,
         _, w = o_maximization(alpha, lower, upper)
 
         # Solve maximization for dual variables
-        alpha, beta = solve_dual_with_cvxpy(cost, w, empirical_marginal)
+        #alpha, beta = solve_dual_with_cvxpy(cost, w, empirical_marginal)
+        alpha, beta = sinkhorn_dual(cost.double(), w.double(), empirical_marginal.double())
 
         wasserstein_squared = torch.dot(alpha.double(), w.double()) + torch.dot(beta.double(), empirical_marginal.double())
 

@@ -214,11 +214,11 @@ def solve_dual_with_cvxpy(d, w, p):
     objective = cp.Maximize(alpha @ w_np + beta @ p_np)
 
     # Constraints: α_i + β_j ≤ d_ij for all i, j
-    constraints = [alpha[i] + beta[j] <= d_np[i, j] for i in range(n) for j in range(n)]
+    constraints = [cp.reshape(alpha, (n, 1), order="C") + cp.reshape(beta, (1, n), order="C") <= d_np]
 
     # Solve
     problem = cp.Problem(objective, constraints)
-    problem.solve(solver=cp.SCS)
+    problem.solve(solver=cp.ECOS)
 
     if problem.status not in ["optimal", "optimal_inaccurate"]:
         raise RuntimeError(f"CVXPY solve failed: {problem.status}")

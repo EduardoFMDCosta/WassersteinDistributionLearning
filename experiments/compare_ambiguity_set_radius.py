@@ -1,35 +1,52 @@
 import torch
 
-from bound import data_driven_radius, fournier_radius
-from sets import HyperRectangle, Partition
+from configs.construct import get_support_assumption, get_support, get_distribution
 from distributions import Uniform
 from plotting.plot import plot_samples
+from configs.handlers import parse_arguments
+from sets import HyperRectangle, Partition
 from utils import generate_grid_from_samples
+from bound import data_driven_radius, fournier_radius
 
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    M = 10
-    N = 2000
-    beta = 1e-4
-    method = 'dual'
+    args = parse_arguments(
+        distribution="Uniform",
+        dimension=2,
+        setting=0,
+        num_samples=1000,
+        num_clusters=10,
+        beta=1e-4,
+        plot=True
+    )
 
-    support_assumption = HyperRectangle(lower=torch.tensor([-0.5, -0.5]), upper=torch.tensor([0.5, 0.5]))
+    # Set parameters
+    M = args.num_clusters
+    N = args.num_samples
+    beta = args.beta
+    method = 'dual'
+    support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability
-    support = HyperRectangle(lower=torch.tensor([-0.15, -0.15]), upper=torch.tensor([0.15, 0.15]))
-    distribution = Uniform(support=support)
+    support = get_support(**vars(args))
+    distribution = get_distribution(**vars(args))
+
+    # Generate samples
     samples = distribution(num_samples=N)
 
     # Clusterize samples (obtaining \hat{P}_M)
-    locs = generate_grid_from_samples(samples, int(M ** 0.5))
+    dim = support.lower.shape[-1]
+    locs = generate_grid_from_samples(samples, int(M ** (1 / dim)))
     partition = Partition(locs=locs, support=support_assumption)
     for i in range(2):
         partition = partition.refine(samples=samples, prob_thr=0.01, diam_thr=0.1)
 
     # Plot samples and clusterized distribution
-    plot_samples(samples=samples, regions=partition.regions, support_assumption=support_assumption)
+    if args.plot:
+        plot_samples(samples=samples, regions=partition.regions, support_assumption=support_assumption)
 
+    # Compute bounds
     data_driven_bound = data_driven_radius(samples=samples, partition=partition, beta=beta, method=method)
     print(f"Ours: {data_driven_bound}")
 

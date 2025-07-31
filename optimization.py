@@ -41,35 +41,41 @@ def max_min_lp(cost: torch.Tensor,
     else:
         raise ValueError('Unknown optimization method.')
 
-def sinkhorn(cost, a, b, reg=1e-8, max_iter=1000, tol=1e-9):
-
+def sinkhorn(cost: torch.Tensor,
+             w: torch.Tensor,
+             empirical_marginal: torch.Tensor,
+             epsilon=1e-6,
+             max_iter=1000,
+             tol=1e-9):
+    # See Peyre and Cuturi, 2020 (https://arxiv.org/pdf/1803.00567)
+    # Section 4.2
     n, m = cost.shape
 
-    # Compute the Gibbs kernel: K = exp(-cost/ε)
-    K = torch.exp(-cost / reg)
+    # Compute the Gibbs kernel
+    K = torch.exp(-cost / epsilon)
 
-    # Initialize scaling factors u and v
-    u = torch.ones(n, device=cost.device, dtype=cost.dtype) / n
-    v = torch.ones(m, device=cost.device, dtype=cost.dtype) / m
+    # Initialize scaling factors
+    u = torch.ones(n)
+    v = torch.ones(m)
 
-    # Sinkhorn iterations
     for i in range(max_iter):
         u_prev = u.clone()
-        # Update v such that K^T * u * v = b
-        v = b / (K.t() @ u + 1e-16)
-        # Update u such that K * v * u = a
-        u = a / (K @ v + 1e-16)
+
+        u = w / (K @ v + 1e-16)
+        v = empirical_marginal / (K.t() @ u + 1e-16)
 
         # Check for convergence
         if torch.max(torch.abs(u - u_prev)) < tol:
+            print(f'Sinkhorn algorithm converged after {i+1} iterations.')
             break
 
-    # Recover dual potentials (up to an additive constant)
-    # Note: log(·) is computed element-wise
-    f = reg * torch.log(u + 1e-16)
-    g = reg * torch.log(v + 1e-16)
+    print('Sinkhorn algorithm did not converge.')
 
-    return f, g
+    # Recover dual variables
+    alpha = epsilon * torch.log(u + 1e-16)
+    beta = epsilon * torch.log(v + 1e-16)
+
+    return alpha, beta
 
 def max_min_lp_dual(cost: torch.Tensor,
                     lower: torch.Tensor,

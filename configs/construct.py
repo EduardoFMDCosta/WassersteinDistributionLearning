@@ -18,8 +18,6 @@ def get_support(distribution, support, **kwargs):
     else:
         return ValueError('Unknown distribution, thus cannot define support.')
 
-    return HyperRectangle(lower, upper)
-
 def construct_diag_gaussian_dist(mean, covariance_matrix, **kwargs):
     loc_dist = torch.as_tensor(mean)
     covariance_dist = torch.diag(torch.as_tensor(covariance_matrix))
@@ -27,7 +25,7 @@ def construct_diag_gaussian_dist(mean, covariance_matrix, **kwargs):
 
 def get_distribution(distribution, **kwargs):
     if distribution == 'Uniform':
-        support = get_support(**kwargs)
+        support = get_support(distribution, **kwargs)
         return Uniform(support=support)
     elif distribution == 'Gaussian':
         return construct_diag_gaussian_dist(**kwargs)

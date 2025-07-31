@@ -3,12 +3,15 @@ from sets import HyperRectangle
 import torch.distributions as ds
 
 class Distributions:
+    def generate_samples(self, num_samples: int):
+        pass
+
     def __call__(self, num_samples: int, support_assumption: HyperRectangle):
         max_iter = 100
         remaining = num_samples
 
         # Initial sampling
-        samples = self.sample((num_samples,))
+        samples = self.generate_samples(num_samples)
 
         for i in range(max_iter):
             reject = ((samples < support_assumption.lower) | (samples > support_assumption.upper)).any(dim=-1)
@@ -16,7 +19,7 @@ class Distributions:
             if remaining == 0:
                 break
             else:
-                samples[reject, :] = self.sample((remaining,))
+                samples[reject, :] = self.generate_samples(remaining)
 
         assert remaining == 0, "Maximum rejection iterations reached in sampling."
 
@@ -26,18 +29,17 @@ class Gaussian(ds.MultivariateNormal, Distributions):
     def __init__(self, mean: torch.Tensor, covariance_matrix: torch.Tensor, **kwargs):
         super().__init__(loc=mean, covariance_matrix=covariance_matrix)
 
-class Uniform:
+    def generate_samples(self, num_samples: int):
+        return self.sample((num_samples,))
+
+class Uniform(Distributions):
     def __init__(self, support: HyperRectangle, **kwargs):
         self.support = support
         self.dim = support.lower.shape[-1]
 
-    def __call__(self, num_samples: int, support_assumption: HyperRectangle):
+    def generate_samples(self, num_samples: int):
         u = torch.rand((num_samples, self.dim))
         samples = self.support.lower + u * (self.support.upper - self.support.lower)
-
-        valid = (samples >= support_assumption.lower) & (samples <= support_assumption.upper)
-        assert valid.all(), "Distribution support must be contained in support assumption."
-
         return samples
 
     def compute_probabilities(self, regions: HyperRectangle):

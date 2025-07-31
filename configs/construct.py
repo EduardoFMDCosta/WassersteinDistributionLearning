@@ -19,4 +19,4 @@ def get_distribution(distribution, **kwargs):
         support = get_support(**kwargs)
         return Uniform(support=support)
     else:
-        raise NotImplementedError
+        ValueError('Unknown distribution.')

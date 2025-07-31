@@ -59,14 +59,14 @@ class ClopperPearsonConfidence(Confidence):
 
     def _get_lower_proba(self):
 
-        lower = torch.zeros_like(self.n_set, dtype=torch.float64)
+        lower = torch.zeros_like(self.n_set, dtype=torch.float32)
 
         non_zero_mask = self.n_set > 0
         n_set_non_zero = self.n_set[non_zero_mask]
 
         lower_probs = torch.tensor(
             beta.ppf(self.beta / 2, n_set_non_zero.numpy(), (self.n - n_set_non_zero + 1).numpy()),
-            dtype=torch.float64
+            dtype=torch.float32
         )
 
         lower[non_zero_mask] = lower_probs
@@ -74,14 +74,14 @@ class ClopperPearsonConfidence(Confidence):
 
     def _get_upper_proba(self):
 
-        upper = torch.ones_like(self.n_set, dtype=torch.float64)
+        upper = torch.ones_like(self.n_set, dtype=torch.float32)
 
         non_full_mask = self.n_set < self.n
         n_set_valid = self.n_set[non_full_mask]
 
         upper_probs = torch.tensor(
             beta.ppf(1 - self.beta / 2, (n_set_valid + 1).numpy(), (self.n - n_set_valid).numpy()),
-            dtype=torch.float64
+            dtype=torch.float32
         )
 
         upper[non_full_mask] = upper_probs

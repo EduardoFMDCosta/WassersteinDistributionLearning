@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 import cvxpy as cp
-from copy import deepcopy
 from scipy.optimize import minimize
 from cvxpylayers.torch import CvxpyLayer
 
@@ -24,7 +23,7 @@ def o_maximization(cost: torch.Tensor,
             p[o] += rem_state
             break
 
-    result = torch.einsum('i,i->', cost.double(), p.double())
+    result = torch.einsum('i,i->', cost, p)
     return result, p
 
 def max_min_lp(cost: torch.Tensor,
@@ -280,9 +279,9 @@ def max_min_lp_dual(cost: torch.Tensor,
 
         # Solve maximization for dual variables
         #alpha, beta = solve_dual_with_cvxpy(cost, w, empirical_marginal)
-        alpha, beta = sinkhorn_dual(cost.double(), w.double(), empirical_marginal.double())
+        alpha, beta = sinkhorn_dual(cost, w, empirical_marginal)
 
-        wasserstein_squared = torch.dot(alpha.double(), w.double()) + torch.dot(beta.double(), empirical_marginal.double())
+        wasserstein_squared = torch.dot(alpha, w) + torch.dot(beta, empirical_marginal)
 
         # Early stopping condition
         current_obj = wasserstein_squared.item()
@@ -296,6 +295,6 @@ def max_min_lp_dual(cost: torch.Tensor,
             print(f"Step {step}: objective = {current_obj:.8f}")
 
     # Compute objective
-    wasserstein_squared = torch.dot(alpha.double(), w.double()) + torch.dot(beta.double(), empirical_marginal.double())
+    wasserstein_squared = torch.dot(alpha, w) + torch.dot(beta, empirical_marginal)
 
     return wasserstein_squared.item()

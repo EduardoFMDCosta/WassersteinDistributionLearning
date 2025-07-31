@@ -2,10 +2,7 @@ import torch
 from sets import HyperRectangle
 import torch.distributions as ds
 
-class Gaussian(ds.MultivariateNormal):
-    def __init__(self, mean: torch.Tensor, covariance_matrix: torch.Tensor, **kwargs):
-        super().__init__(loc=mean, covariance_matrix=covariance_matrix)
-
+class Distributions:
     def __call__(self, num_samples: int, support_assumption: HyperRectangle):
         max_iter = 100
         remaining = num_samples
@@ -24,6 +21,10 @@ class Gaussian(ds.MultivariateNormal):
         assert remaining == 0, "Maximum rejection iterations reached in sampling."
 
         return samples
+
+class Gaussian(ds.MultivariateNormal, Distributions):
+    def __init__(self, mean: torch.Tensor, covariance_matrix: torch.Tensor, **kwargs):
+        super().__init__(loc=mean, covariance_matrix=covariance_matrix)
 
 class Uniform:
     def __init__(self, support: HyperRectangle, **kwargs):

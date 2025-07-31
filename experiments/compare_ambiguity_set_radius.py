@@ -1,22 +1,20 @@
 import torch
-
-from configs.construct import get_support_assumption, get_support, get_distribution
-from distributions import Uniform
+from sets import Partition
 from plotting.plot import plot_samples
 from configs.handlers import parse_arguments
-from sets import HyperRectangle, Partition
 from utils import generate_grid_from_samples
 from bound import data_driven_radius, fournier_radius
+from configs.construct import get_support_assumption, get_support, get_distribution
 
 if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="Uniform",
-        dimension=4,
+        distribution="Gaussian",
+        dimension=2,
         setting=0,
-        num_samples=5000,
-        num_clusters=10,
+        num_samples=1000,
+        num_clusters=100,
         beta=1e-4,
         plot=True
     )
@@ -33,7 +31,7 @@ if __name__ == '__main__':
     distribution = get_distribution(**vars(args))
 
     # Generate samples
-    samples = distribution(num_samples=N)
+    samples = distribution(num_samples=N, support_assumption=support_assumption)
 
     # Clusterize samples (obtaining \hat{P}_M)
     dim = support.lower.shape[-1]

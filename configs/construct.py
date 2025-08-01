@@ -1,5 +1,5 @@
 import torch
-from distributions import Uniform, Gaussian
+from distributions import Uniform, Gaussian, GaussianMixture
 from sets import HyperRectangle
 
 
@@ -15,19 +15,34 @@ def get_support(distribution, support, **kwargs):
         return HyperRectangle(lower, upper)
     elif distribution == 'Gaussian':
         return get_support_assumption(**kwargs)
+    elif distribution == 'GaussianMixture':
+        return get_support_assumption(**kwargs)
     else:
         return ValueError('Unknown distribution, thus cannot define support.')
 
-def construct_diag_gaussian_dist(mean, covariance_matrix, **kwargs):
+def construct_diag_gaussian(mean, covariance_matrix, **kwargs):
     loc_dist = torch.as_tensor(mean)
     covariance_dist = torch.diag(torch.as_tensor(covariance_matrix))
     return Gaussian(mean=loc_dist, covariance_matrix=covariance_dist)
+
+def construct_gaussian_mixture(weight, mean, covariance_matrix, **kwargs):
+    weight = torch.as_tensor(weight)
+    mixture_distribution = torch.distributions.Categorical(probs=weight)
+
+    loc_dist = torch.as_tensor(mean)
+    covariance_dist = torch.diag_embed(torch.tensor(covariance_matrix))
+    component_distribution = Gaussian(mean=loc_dist, covariance_matrix=covariance_dist)
+
+    return GaussianMixture(mixture_distribution=mixture_distribution, component_distribution=component_distribution)
+
 
 def get_distribution(distribution, **kwargs):
     if distribution == 'Uniform':
         support = get_support(distribution, **kwargs)
         return Uniform(support=support)
     elif distribution == 'Gaussian':
-        return construct_diag_gaussian_dist(**kwargs)
+        return construct_diag_gaussian(**kwargs)
+    elif distribution == 'GaussianMixture':
+        return construct_gaussian_mixture(**kwargs)
     else:
         return ValueError('Unknown distribution.')

@@ -32,6 +32,20 @@ class Gaussian(ds.MultivariateNormal, Distributions):
     def generate_samples(self, num_samples: int):
         return self.sample((num_samples,))
 
+class GaussianMixture(torch.distributions.MixtureSameFamily, Distributions):
+    def __init__(
+            self,
+            mixture_distribution: torch.distributions.Categorical,
+            component_distribution: Gaussian
+    ):
+        super(GaussianMixture, self).__init__(
+            mixture_distribution=mixture_distribution,
+            component_distribution=component_distribution,
+            validate_args=False)
+
+    def generate_samples(self, num_samples: int):
+        return self.sample((num_samples,))
+
 class Uniform(Distributions):
     def __init__(self, support: HyperRectangle, **kwargs):
         self.support = support

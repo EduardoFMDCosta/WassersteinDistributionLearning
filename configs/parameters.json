@@ -53,5 +53,23 @@
               }
           }
       }
+  },
+  "GaussianMixture": {
+      "dimension": {
+          "2": {
+              "settings": {
+                  "0": {
+                      "support_assumption": [[-0.5, -0.5],
+                                             [0.5, 0.5]],
+                      "support": null,
+                      "weight": [0.4, 0.6],
+                      "mean": [[-0.1, -0.1],
+                               [0.1, 0.1]],
+                      "covariance_matrix": [[0.001, 0.001],
+                                            [0.001, 0.001]]
+                  }
+              }
+          }
+      }
   }
 }

@@ -30,14 +30,23 @@ class HyperRectangle:
 
 class Partition:
     def __init__(self,
-                 locs: torch.Tensor,
-                 support: HyperRectangle):
-        if not self._are_locs_in_grid(locs):
-            raise ValueError("locs must be in a grid")
+                 support: HyperRectangle,
+                 locs: torch.Tensor=None,
+                 regions: HyperRectangle=None):
+        if (locs is None and regions is None) or (locs is not None and regions is not None):
+            raise ValueError("Either locs or regions should be provided")
 
         self.support = support
-        self.locs = locs
-        self.regions = self._get_regions()
+
+        if locs is not None:
+            if not self._are_locs_in_grid(locs):
+                raise ValueError("locs must be in a grid")
+
+            self.locs = locs
+            self.regions = self._get_regions()
+        else:
+            self.regions = regions
+            self.locs = self._get_locs()
 
     @staticmethod
     def _are_locs_in_grid(locs: torch.Tensor):
@@ -80,6 +89,9 @@ class Partition:
         lower = self._get_lower()
 
         return HyperRectangle(lower=lower, upper=upper)
+
+    def _get_locs(self):
+        return self.regions.center
 
     def sup_distance_within_regions(self):
         # Compute distances to lower and upper bounds

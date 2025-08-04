@@ -6,6 +6,7 @@ from utils import generate_grid_from_samples
 from bound import data_driven_radius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
 
+
 if __name__ == '__main__':
     torch.manual_seed(0)
 

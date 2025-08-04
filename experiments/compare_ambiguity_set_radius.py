@@ -4,7 +4,7 @@ from plotting.plot import plot_samples
 from configs.handlers import parse_arguments
 from utils import generate_grid_from_samples
 from bound import data_driven_radius, fournier_radius
-from configs.construct import get_support_assumption, get_support, get_distribution
+from configs.construct import get_support_assumption, get_distribution
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     samples = distribution.sample((N,))
 
     # Clusterize samples (obtaining \hat{P}_M)
-    dim = support.lower.shape[-1]
+    dim = support_assumption.lower.shape[-1]
     locs = generate_grid_from_samples(samples, int(M ** (1 / dim)))
     partition = Partition(locs=locs, support=support_assumption)
     for i in range(2):

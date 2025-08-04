@@ -2,8 +2,9 @@ import torch
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import ScalarFormatter
 
-from sets import HyperRectangle, KMeansPartition
+from sets import KMeansPartition
 from confidence import Confidence
 from plotting.utils_plot import get_bounds_from_confidence_list
 
@@ -61,6 +62,30 @@ def plot_confidence(nums_samples:list,
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
     plt.show()
 
+@torch.no_grad()
+def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
+    sns.set_style("darkgrid")
+
+    fig, ax = plt.subplots()
+    sc = ax.scatter(empirical_prob, upper_prob, c=beta, cmap='viridis', s=15)
+
+    # Add colorbar to show beta values
+    cb = fig.colorbar(sc, ax=ax, pad=0.01)
+    cb.set_label(r'$\beta$')
+
+    ax.set_xlabel('Empirical')
+    ax.set_ylabel('Upper delta')
+
+    # Format axes to use scientific notation
+    formatter = ScalarFormatter(useMathText=True)
+    formatter.set_scientific(True)
+    formatter.set_powerlimits((-2, 2))
+
+    ax.xaxis.set_major_formatter(formatter)
+    ax.yaxis.set_major_formatter(formatter)
+
+    plt.tight_layout()
+    plt.show()
 
 def plot_kmeans_partition(
     partition: KMeansPartition

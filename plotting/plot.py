@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-from sets import HyperRectangle
+from sets import HyperRectangle, KMeansPartition
 from confidence import Confidence
 from plotting.utils_plot import get_bounds_from_confidence_list
 
@@ -61,34 +61,27 @@ def plot_confidence(nums_samples:list,
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
     plt.show()
 
-@torch.no_grad()
-def plot_samples(samples: torch.Tensor,
-                 regions: HyperRectangle,
-                 support_assumption: HyperRectangle):
 
-    if samples.shape[-1] == 2:
+def plot_kmeans_partition(
+    partition: KMeansPartition
+):
 
+    if partition.ndim == 2:
         # Plot samples
         plt.figure(figsize=(6, 6))
-        plt.scatter(samples[:, 0], samples[:, 1], s=0.05, alpha=1.0, color="deepskyblue")
+        plt.scatter(*partition.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
 
         # Plot shell
-        lower = support_assumption.lower.numpy()
-        upper = support_assumption.upper.numpy()
+        lower = partition.support.lower
+        upper = partition.support.upper
         width = upper[0] - lower[0]
         height = upper[1] - lower[1]
         rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
         plt.gca().add_patch(rect)
 
-        # Plot partition
-        n = regions.lower.shape[0]
-        lower = regions.lower.numpy()
-        upper = regions.upper.numpy()
-        for i in range(n):
-            width = upper[i][0] - lower[i][0]
-            height = upper[i][1] - lower[i][1]
-            rect = Rectangle(lower[i], width, height, linewidth=0.5, edgecolor='black', facecolor='none')
-            plt.gca().add_patch(rect)
+        # Plot locs
+        plt.scatter(*partition.locs.t(), s=10, color="red", label="Cluster Centers")
 
+        plt.legend()
         plt.axis('equal')
         plt.show()

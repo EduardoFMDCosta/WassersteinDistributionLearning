@@ -1,69 +1,91 @@
 import torch
-from sets import HyperRectangle
 import torch.distributions as ds
+import stable_trunc_gaussian
 
-class Distributions:
-    def generate_samples(self, num_samples: int):
-        pass
 
-    def __call__(self, num_samples: int, support_assumption: HyperRectangle):
-        max_iter = 100
-        remaining = num_samples
+__all__ = ['MultivariateUniform', 'TruncatedMultivariateNormal', 'MixtureTruncatedMultivariateNormal']
 
-        # Initial sampling
-        samples = self.generate_samples(num_samples)
 
-        for i in range(max_iter):
-            reject = ((samples < support_assumption.lower) | (samples > support_assumption.upper)).any(dim=-1)
-            remaining = int(reject.sum().item())
-            if remaining == 0:
-                break
-            else:
-                samples[reject, :] = self.generate_samples(remaining)
+class TruncatedMultivariateNormal(ds.Distribution):
+    arg_constraints = {
+        "loc": ds.constraints.real,
+        "scale": ds.constraints.positive,
+        "a": ds.constraints.dependent,
+        "b": ds.constraints.dependent,
+    }
+    has_rsample = True
+    support = ds.constraints.independent(ds.constraints.real, 1)
 
-        assert remaining == 0, "Maximum rejection iterations reached in sampling."
+    def __init__(self, loc, scale, a, b, validate_args=False):
+        assert loc.shape == scale.shape == a.shape == b.shape, "All shapes must match"
+        self.loc = loc
+        self.scale = scale
+        self.a = a
+        self.b = b
+        self._base = stable_trunc_gaussian.TruncatedGaussian(loc, scale, a, b)
+        batch_shape = loc.shape[:-1]
+        event_shape = loc.shape[-1:]
+        super().__init__(batch_shape=batch_shape, event_shape=event_shape, validate_args=validate_args)
 
-        return samples
+    def sample(self, sample_shape=torch.Size()):
+        return self._base.sample(sample_shape)
 
-class Gaussian(ds.MultivariateNormal, Distributions):
-    def __init__(self, mean: torch.Tensor, covariance_matrix: torch.Tensor, **kwargs):
-        super().__init__(loc=mean, covariance_matrix=covariance_matrix)
+    def rsample(self, sample_shape=torch.Size()):
+        return self._base.rsample(sample_shape)
 
-    def generate_samples(self, num_samples: int):
-        return self.sample((num_samples,))
+    def log_prob(self, value):
+        return self._base.log_prob(value)
 
-class GaussianMixture(torch.distributions.MixtureSameFamily, Distributions):
+    def entropy(self):
+        return self._base.entropy()
+
+    def cdf(self, value):
+        return self._base.cdf(value)
+
+    @property
+    def mean(self):
+        return self._base.mean
+
+    @property
+    def stddev(self):
+        return self._base.stddev
+
+
+class MixtureTruncatedMultivariateNormal(torch.distributions.MixtureSameFamily):
     def __init__(
             self,
             mixture_distribution: torch.distributions.Categorical,
-            component_distribution: Gaussian
+            component_distribution: TruncatedMultivariateNormal
     ):
-        super(GaussianMixture, self).__init__(
+        super(MixtureTruncatedMultivariateNormal, self).__init__(
             mixture_distribution=mixture_distribution,
             component_distribution=component_distribution,
             validate_args=False)
 
-    def generate_samples(self, num_samples: int):
-        return self.sample((num_samples,))
 
-class Uniform(Distributions):
-    def __init__(self, support: HyperRectangle, **kwargs):
-        self.support = support
-        self.dim = support.lower.shape[-1]
+class MultivariateUniform(ds.Distribution):
+    arg_constraints = {'low': ds.constraints.real, 'high': ds.constraints.real}
+    support = ds.constraints.independent(ds.constraints.real, 1)
+    has_rsample = True
 
-    def generate_samples(self, num_samples: int):
-        u = torch.rand((num_samples, self.dim))
-        samples = self.support.lower + u * (self.support.upper - self.support.lower)
-        return samples
+    def __init__(self, low: torch.Tensor, high: torch.Tensor, validate_args=False):
+        assert low.shape == high.shape, "low and high must have the same shape"
+        self.low = low
+        self.high = high
+        self._univariate = ds.Uniform(low, high, validate_args=validate_args)
+        batch_shape = self._univariate.batch_shape
+        event_shape = batch_shape[-1:]
+        super().__init__(batch_shape=batch_shape[:-1], event_shape=event_shape, validate_args=validate_args)
 
-    def compute_probabilities(self, regions: HyperRectangle):
+    def sample(self, sample_shape=torch.Size()):
+        return self._univariate.sample(sample_shape)
 
-        lower_overlap = torch.maximum(self.support.lower.unsqueeze(0), regions.lower)
-        upper_overlap = torch.minimum(self.support.upper.unsqueeze(0), regions.upper)
+    def rsample(self, sample_shape=torch.Size()):
+        return self._univariate.rsample(sample_shape)
 
-        side_lengths = (upper_overlap - lower_overlap).clamp(min=0.0)
-        intersection_volume = torch.prod(side_lengths, dim=-1)
-        support_volume = torch.prod(self.support.upper - self.support.lower)
+    def log_prob(self, value):
+        log_probs = self._univariate.log_prob(value)
+        return log_probs.sum(-1)
 
-        probs = intersection_volume / support_volume
-        return probs
+    def entropy(self):
+        return self._univariate.entropy().sum(-1)

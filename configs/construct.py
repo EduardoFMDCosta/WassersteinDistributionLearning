@@ -18,7 +18,7 @@ def get_support(distribution, support, **kwargs):
     elif distribution == 'GaussianMixture':
         return get_support_assumption(**kwargs)
     else:
-        return ValueError('Unknown distribution, thus cannot define support.')
+        raise ValueError('Unknown distribution, thus cannot define support.')
 
 def construct_diag_gaussian(mean, covariance_matrix, **kwargs):
     loc_dist = torch.as_tensor(mean)
@@ -45,4 +45,4 @@ def get_distribution(distribution, **kwargs):
     elif distribution == 'GaussianMixture':
         return construct_gaussian_mixture(**kwargs)
     else:
-        return ValueError('Unknown distribution.')
+        raise ValueError('Unknown distribution.')

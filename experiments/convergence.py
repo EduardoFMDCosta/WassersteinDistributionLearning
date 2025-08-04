@@ -27,16 +27,16 @@ if __name__ == '__main__':
     support_assumption = get_support_assumption(**vars(args))
     # M = args.num_clusters
     N = args.num_samples
+
+    # (Unknown) Generating probability
+    distribution = get_distribution(**vars(args))
+
+    # Generate samples
+    samples = distribution.sample((N,))
     
     data_driven_bounds, fournier_bounds = list(), list()
     M_options = torch.arange(10, 200, 20)
     for M in M_options:
-        # (Unknown) Generating probability
-        distribution = get_distribution(**vars(args))
-
-        # Generate samples
-        samples = distribution.sample((N,))
-
         # Clusterize samples (obtaining \hat{P}_M)
         partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
 

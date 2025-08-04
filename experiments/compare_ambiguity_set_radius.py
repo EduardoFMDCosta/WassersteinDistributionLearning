@@ -31,7 +31,7 @@ if __name__ == '__main__':
     distribution = get_distribution(**vars(args))
 
     # Generate samples
-    samples = distribution(num_samples=N, support_assumption=support_assumption)
+    samples = distribution.sample((N,))
 
     # Clusterize samples (obtaining \hat{P}_M)
     dim = support.lower.shape[-1]

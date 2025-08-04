@@ -35,7 +35,7 @@ if __name__ == '__main__':
     samples = distribution.sample((N,))
     
     data_driven_bounds, fournier_bounds = list(), list()
-    M_options = torch.arange(10, 200, 20)
+    M_options = torch.arange(10, 200, 20).tolist()
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
         partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))

@@ -1,10 +1,12 @@
 import torch
-from utils import in_set, generate_grid_from_locs
+from torch_kmeans import KMeans
 
 
 class HyperRectangle:
     def __init__(self, lower, upper):
+        assert lower.size() == upper.size(), "Lower and upper bounds must have the same shape"
         self.lower, self.upper = lower, upper
+        self.ndim = lower.size(-1)
 
     @property
     def width(self):
@@ -22,119 +24,48 @@ class HyperRectangle:
             return self.lower.size()
 
         return self.lower.size(dim)
+    
+    def included(self, point: torch.Tensor):
+        """Check if a point is included in the hyperrectangle."""
+        return torch.all((point >= self.lower) & (point <= self.upper), dim=-1)
 
     @staticmethod
     def from_eps(x, eps):
         lower, upper = x - eps, x + eps
         return HyperRectangle(lower, upper)
+    
 
-class Partition:
-    def __init__(self,
-                 support: HyperRectangle,
-                 locs: torch.Tensor=None,
-                 regions: HyperRectangle=None):
-        if (locs is None and regions is None) or (locs is not None and regions is not None):
-            raise ValueError("Either locs or regions should be provided")
+class KMeansPartition:
+    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int):
+        assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
+        assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
+
+        # TODO: check if samples are in support
+
+        kmeans_torch = KMeans(n_clusters=k)
+        cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
+
+        locs = cluster_result.centers.squeeze(0)
+        labels = cluster_result.labels.squeeze(0)
+        counts = torch.bincount(cluster_result.labels.squeeze(0), minlength=k)
+        assert counts.sum() == samples.shape[0], "Counts should sum to the number of samples"
+
+        distances = torch.norm(samples - locs[labels], dim=-1)
+        diameters = torch.zeros(k, device=samples.device)
+        for i in range(k):
+            if (labels == i).any():
+                diameters[i] = distances[labels == i].max()
 
         self.support = support
+        self.samples = samples
+        self.npartitions = k + 1
+        self.ndim = support.ndim
+        self.nsamples = samples.shape[0]
 
-        if locs is not None:
-            if not self._are_locs_in_grid(locs):
-                raise ValueError("locs must be in a grid")
+        self.locs = torch.cat((locs, support.center.unsqueeze(0)))
+        self.counts = torch.cat((counts, torch.zeros(1)))
+        self.probs = self.counts.float() / self.counts.sum()
+        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.diameters = torch.cat((diameters, torch.norm(support.width).unsqueeze(0) / 2. ))
 
-            self.locs = locs
-            self.regions = self._get_regions()
-        else:
-            self.regions = regions
-            self.locs = self._get_locs()
-
-    @staticmethod
-    def _are_locs_in_grid(locs: torch.Tensor):
-        unique_elements_per_n = torch.tensor([torch.unique(locs[:, i]).numel() for i in range(locs.size(1))])
-        return unique_elements_per_n.prod() == torch.unique(locs, dim=0).size(0)
-
-    @property
-    def num_locs(self):
-        return self.locs.size(0)
-
-    def _get_upper(self):
-        pos_diff = (self.locs.unsqueeze(-3) - self.locs.unsqueeze(-2)).clip(0, torch.inf)
-        mask = pos_diff == 0.
-        pos_diff[mask] = torch.inf
-
-        upper = self.locs + 0.5 * pos_diff.min(dim=-2).values
-
-        upper = torch.minimum(
-            torch.where(torch.isposinf(upper), self.support.upper, upper),
-            self.support.upper
-        )
-        return upper
-
-    def _get_lower(self):
-        neg_diff = (self.locs.unsqueeze(-3) - self.locs.unsqueeze(-2)).clip(-torch.inf, 0)
-        mask = neg_diff == 0.
-        neg_diff[mask] = -torch.inf
-
-        lower = self.locs + 0.5 * neg_diff.max(dim=-2).values
-
-        lower = torch.maximum(
-            torch.where(torch.isneginf(lower), self.support.lower, lower),
-            self.support.lower
-        )
-        return lower
-
-    def _get_regions(self):
-
-        upper = self._get_upper()
-        lower = self._get_lower()
-
-        return HyperRectangle(lower=lower, upper=upper)
-
-    def _get_locs(self):
-        return self.regions.center
-
-    def sup_distance_within_regions(self):
-        # Compute distances to lower and upper bounds
-        dist_to_lower = torch.abs(self.locs - self.regions.lower)
-        dist_to_upper = torch.abs(self.regions.upper - self.locs)
-
-        # Choose further vertice
-        furthest_corner = torch.where(dist_to_lower > dist_to_upper, self.regions.lower, self.regions.upper)
-
-        # Compute distance
-        squared_diff = (self.locs - furthest_corner) ** 2
-        maximum_squared_distance = torch.sum(squared_diff, dim=1)
-
-        return maximum_squared_distance
-
-    def distance_locs(self):
-
-        squared_distance = torch.cdist(self.locs, self.locs, p=2) ** 2
-        return squared_distance
-
-    def refine(self,
-               samples: torch.Tensor,
-               prob_thr: float = 0.01,
-               diam_thr: float = 0.1):
-
-        locs = self.locs
-        regions = self.regions
-
-        # Compute empirical prob in each region
-        num_samples = samples.shape[0]
-        n_set = in_set(samples=samples, regions=regions, include_complement=False)
-        empirical = n_set / num_samples
-
-        # Compute regions diameter
-        diameters = torch.max(torch.abs(regions.upper - regions.lower), dim=1).values
-
-        # Include new points in regions with high prob or high diameter
-        mask = empirical.max() > prob_thr or diameters.max() > diam_thr
-        to_upper = locs[mask] + (regions.upper[mask] - locs[mask]) / 2
-        to_lower = locs[mask] + (regions.lower[mask] - locs[mask]) / 2
-
-        locs = torch.cat([to_lower.squeeze(dim=0), to_upper.squeeze(dim=0)], dim=0)
-        grid = generate_grid_from_locs(locs)
-        partition = Partition(locs=grid, support=self.support)
-
-        return partition
+        assert self.locs.size(0) == self.counts.size(0) == self.probs.size(0) == self.distance_locs.size(0) == self.distance_locs.size(1) == self.diameters.size(0), "All tensors must have the same number of elements"

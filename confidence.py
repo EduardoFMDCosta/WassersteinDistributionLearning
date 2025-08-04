@@ -1,6 +1,6 @@
 import math
 import torch
-from scipy.stats import beta
+from scipy.stats import beta as scipy_beta
 
 class Confidence:
     def __init__(self, beta: float, n_set: torch.Tensor, n: int):
@@ -65,7 +65,7 @@ class ClopperPearsonConfidence(Confidence):
         n_set_non_zero = self.n_set[non_zero_mask]
 
         lower_probs = torch.tensor(
-            beta.ppf(self.beta / 2, n_set_non_zero.numpy(), (self.n - n_set_non_zero + 1).numpy()),
+            scipy_beta.ppf(self.beta / 2, n_set_non_zero.numpy(), (self.n - n_set_non_zero + 1).numpy()),
             dtype=torch.float32
         )
 
@@ -80,7 +80,7 @@ class ClopperPearsonConfidence(Confidence):
         n_set_valid = self.n_set[non_full_mask]
 
         upper_probs = torch.tensor(
-            beta.ppf(1 - self.beta / 2, (n_set_valid + 1).numpy(), (self.n - n_set_valid).numpy()),
+            scipy_beta.ppf(1 - self.beta / 2, (n_set_valid + 1).numpy(), (self.n - n_set_valid).numpy()),
             dtype=torch.float32
         )
 

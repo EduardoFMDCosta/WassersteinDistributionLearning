@@ -13,11 +13,11 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="GaussianMixture",
+        distribution="Discrete",
         dimension=2,
         setting=0,
         num_samples=5000,
-        num_clusters=10,
+        num_clusters=None,
         beta=1e-4,
         plot=False
     )
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     samples = distribution.sample((N,))
     
     data_driven_bounds, fournier_bounds = list(), list()
-    M_options = torch.arange(10, 200, 20).tolist()
+    M_options = torch.arange(20, 100, 10).tolist()
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
         partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")

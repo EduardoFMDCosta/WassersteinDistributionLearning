@@ -62,7 +62,7 @@ def data_driven_radius(
     return DataDrivenOutput(
         moment_bound=moment_bound,
         discrete_bound=discrete_bound,
-        lower_bound=pearson_confidence.upper_proba[-1] * (partition.support.width / 2).norm()
+        lower_bound=(pearson_confidence.upper_proba[-1] * (partition.support.width.norm() / 2).pow(2)).sqrt()
     )
 
 

@@ -1,9 +1,12 @@
+from typing import Optional
 import torch
-from distributions import MultivariateUniform, TruncatedMultivariateNormal, MixtureTruncatedMultivariateNormal
+from distributions import MultivariateUniform, TruncatedMultivariateNormal, MixtureTruncatedMultivariateNormal, CategoricalFloat
 from sets import HyperRectangle
 
 
-def get_support_assumption(support, support_assumption=None, **kwargs):
+def get_support_assumption(support=None, support_assumption=None, **kwargs):
+    if support is None and support_assumption is None:
+        raise ValueError("Either 'support' or 'support_assumption' must be provided.")
     support_assumption = support if support_assumption is None else support_assumption
     lower = torch.as_tensor(support_assumption[0])
     upper = torch.as_tensor(support_assumption[1])
@@ -32,6 +35,14 @@ def construct_mixture_trunc_mult_norm(weight, mean, variance, support, **kwargs)
 
     return MixtureTruncatedMultivariateNormal(mixture_distribution=mixture_distribution, component_distribution=component_distribution)
 
+def construct_random_categorical_float(support_assumption, support_size, **kwargs):
+    support_assumption = torch.as_tensor(support_assumption)
+    ndim = support_assumption[0].ndim
+    return CategoricalFloat(
+        probs=torch.ones(support_size) / support_size, 
+        locs=torch.rand(support_size, ndim) * (support_assumption[1] - support_assumption[0]) + support_assumption[0]
+    )
+
 
 def get_distribution(distribution, **kwargs):
     if distribution == 'Uniform':
@@ -40,5 +51,7 @@ def get_distribution(distribution, **kwargs):
         return construct_trunc_mult_norm(**kwargs)
     elif distribution == 'GaussianMixture':
         return construct_mixture_trunc_mult_norm(**kwargs)
+    elif distribution == 'Discrete':
+        return construct_random_categorical_float(**kwargs)
     else:
         raise ValueError('Unknown distribution.')

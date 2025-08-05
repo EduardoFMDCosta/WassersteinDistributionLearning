@@ -69,5 +69,18 @@
               }
           }
       }
+  }, 
+  "Discrete": {
+      "dimension": {
+          "2": {
+              "settings": {
+                  "0": {
+                      "support_assumption": [[-0.5, -0.5],
+                                             [0.5, 0.5]],
+                      "support_size": 40
+                  }
+              }
+          }
+      }
   }
 }

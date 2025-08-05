@@ -40,10 +40,11 @@ class KMeansPartition:
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
 
-        # TODO: check if samples are in support
-
-        kmeans_torch = KMeans(n_clusters=k)
-        cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
+        nsamples = samples.size(0)
+        
+        if nsamples > k:
+            kmeans_torch = KMeans(n_clusters=k)
+            cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 
         locs = cluster_result.centers.squeeze(0)
         labels = cluster_result.labels.squeeze(0)

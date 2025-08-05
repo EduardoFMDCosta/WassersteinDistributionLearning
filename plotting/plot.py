@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -109,4 +110,26 @@ def plot_kmeans_partition(
 
         plt.legend()
         plt.axis('equal')
+        plt.show()
+
+
+@torch.no_grad()
+def colored_scatter(x, y, c, title, s: int = 200, file_name: Optional[str] = None):
+    plt.figure(figsize=(8, 6))
+
+    scatter = plt.scatter(x, y, s=s, c=c, cmap='coolwarm', alpha=1.0)
+    plt.colorbar(scatter)
+
+    plt.xscale('log')  # Log scale for x-axis
+    plt.yscale('log')  # Log scale for y-axis
+
+    plt.xlabel('Number of samples (N)')
+    plt.ylabel('Number of clusters (M)')
+    plt.title(title)
+    plt.grid(True)
+    plt.tight_layout()
+    if file_name:
+        plt.savefig(file_name, bbox_inches='tight')
+        plt.close()
+    else:
         plt.show()

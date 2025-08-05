@@ -30,11 +30,28 @@ def bound_discrete(
     return bound ** 0.5
 
 
+class DataDrivenOutput:
+    def __init__(self, moment_bound, discrete_bound, lower_bound):
+        self.moment_bound = moment_bound
+        self.discrete_bound = discrete_bound
+        self.lower_bound = lower_bound
+
+    @property
+    def radius(self):
+        return self.moment_bound + self.discrete_bound
+    
+    def lower_bound(self):
+        return self.moment_bound
+    
+    def __repr__(self):
+        return self.radius
+
+
 def data_driven_radius(
         partition: KMeansPartition,
         beta: float,
         method: str
-    ):
+    ) -> DataDrivenOutput:
 
     adjusted_beta = beta / partition.npartitions
     pearson_confidence = ClopperPearsonConfidence(beta=adjusted_beta, n_set=partition.counts, n=partition.nsamples)
@@ -42,7 +59,11 @@ def data_driven_radius(
     moment_bound = bound_moment(partition=partition, confidence=pearson_confidence)
     discrete_bound = bound_discrete(partition=partition, confidence=pearson_confidence, method=method)
 
-    return moment_bound + discrete_bound
+    return DataDrivenOutput(
+        moment_bound=moment_bound,
+        discrete_bound=discrete_bound,
+        lower_bound=pearson_confidence.upper_proba[-1] * (partition.support.width / 2).norm()
+    )
 
 
 def fournier_radius(

@@ -43,16 +43,10 @@ if __name__ == '__main__':
         if args.plot:
             plot_kmeans_partition(partition=partition)
 
-        # Compute bounds explicitly
-        adjusted_beta = beta / partition.npartitions
-        pearson_confidence = ClopperPearsonConfidence(beta=adjusted_beta, n_set=partition.counts, n=partition.nsamples)
-
-        moment_bound = bound_moment(partition=partition, confidence=pearson_confidence)
-        discrete_bound = bound_discrete(partition=partition, confidence=pearson_confidence, method=method)
-
         # Compute bounds
-        moment_bounds.append(moment_bound)
-        discrete_bounds.append(discrete_bound)
+        data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
+        moment_bounds.append(data_driven_output.moment_bound)
+        discrete_bounds.append(data_driven_output.discrete_bound)
 
 
     with torch.no_grad():

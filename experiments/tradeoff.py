@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
                 print(f"### Bounding for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                bound_result = data_driven_radius(partition=partition, beta=beta, method=method)
+                data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
                 bounding_time = time.time() - start
                 print(f"Data-driven bounding completed in {bounding_time:.2f} seconds")
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
                 kmean_times.append(kmeans_time)
                 fournier_bounds.append(fournier_result)
-                data_driven_bounds.append(bound_result)
+                data_driven_bounds.append(data_driven_output.radius)
                 data_driven_times.append(bounding_time)
                 Ns.append(N)
                 Ms.append(M)

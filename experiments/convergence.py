@@ -13,11 +13,11 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="Discrete",
+        distribution="GaussianMixture",
         dimension=2,
         setting=0,
         num_samples=5000,
-        num_clusters=None,
+        num_clusters=10,
         beta=1e-4,
         plot=False
     )
@@ -25,6 +25,7 @@ if __name__ == '__main__':
     beta = args.beta
     method = 'dual_sinkhorn'
     support_assumption = get_support_assumption(**vars(args))
+    # M = args.num_clusters
     N = args.num_samples
 
     # (Unknown) Generating probability
@@ -34,7 +35,7 @@ if __name__ == '__main__':
     samples = distribution.sample((N,))
     
     data_driven_bounds, fournier_bounds = list(), list()
-    M_options = torch.arange(20, 100, 10).tolist()
+    M_options = torch.arange(10, 200, 20).tolist()
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
         partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")

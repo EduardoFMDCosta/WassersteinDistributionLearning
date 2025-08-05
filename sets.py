@@ -46,22 +46,27 @@ class KMeansPartition:
             kmeans_torch = KMeans(n_clusters=k)
             cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 
-        locs = cluster_result.centers.squeeze(0)
-        labels = cluster_result.labels.squeeze(0)
-        counts = torch.bincount(cluster_result.labels.squeeze(0), minlength=k)
-        assert counts.sum() == samples.shape[0], "Counts should sum to the number of samples"
+            locs = cluster_result.centers.squeeze(0)
+            labels = cluster_result.labels.squeeze(0)
+            counts = torch.bincount(cluster_result.labels.squeeze(0), minlength=k)
+            assert counts.sum() == nsamples, "Counts should sum to the number of samples"
 
-        distances = torch.norm(samples - locs[labels], dim=-1)
-        diameters = torch.zeros(k, device=samples.device)
-        for i in range(k):
-            if (labels == i).any():
-                diameters[i] = distances[labels == i].max()
+            distances = torch.norm(samples - locs[labels], dim=-1)
+            diameters = torch.zeros(k)
+            for i in range(k):
+                if (labels == i).any():
+                    diameters[i] = distances[labels == i].max()
+        else:
+            locs = samples
+            labels = torch.arange(nsamples)
+            counts = torch.ones(nsamples)
+            diameters = torch.zeros(nsamples)
 
         self.support = support
         self.samples = samples
         self.npartitions = k + 1
         self.ndim = support.ndim
-        self.nsamples = samples.shape[0]
+        self.nsamples = nsamples
 
         self.locs = torch.cat((locs, support.center.unsqueeze(0)))
         self.counts = torch.cat((counts, torch.zeros(1)))

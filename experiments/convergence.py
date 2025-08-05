@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # Generate samples
     samples = distribution.sample((N,))
     
-    data_driven_bounds, fournier_bounds = list(), list()
+    data_driven_bounds, data_driven_lower_bounds, fournier_bounds = list(), list(), list()
     M_options = torch.arange(20, 100, 10).tolist()
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
@@ -47,6 +47,7 @@ if __name__ == '__main__':
         # Compute bounds
         data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
         data_driven_bounds.append(data_driven_output.radius)
+        data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
         fournier_bound = fournier_radius(partition=partition, beta=beta)
         fournier_bounds.append(fournier_bound)
@@ -58,6 +59,7 @@ if __name__ == '__main__':
     with torch.no_grad():
         plt.plot(M_options, torch.tensor(data_driven_bounds), label='Ours', marker='o')
         plt.plot(M_options, torch.tensor(fournier_bounds), label='Fournier', marker='x')
+        plt.plot(M_options, torch.tensor(data_driven_lower_bounds), label='Ours Lower Bound', linestyle='--')
         plt.xlabel("Number of clusters (M)")
         plt.legend()
         plt.show()

@@ -34,7 +34,7 @@ if __name__ == '__main__':
     samples = distribution.sample((N,))
 
     # Clusterize samples (obtaining \hat{P}_M)
-    partition = KMeansPartition(support=support_assumption, samples=samples, k=M)
+    partition = KMeansPartition(support=support_assumption, samples=samples, k=M, prefilter=args.distribution == "Discrete")
 
     # Plot samples and clusterized distribution
     if args.plot:

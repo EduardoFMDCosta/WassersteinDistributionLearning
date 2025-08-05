@@ -38,7 +38,7 @@ if __name__ == '__main__':
     M_options = torch.arange(10, 200, 20).tolist()
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
+        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
 
         # Plot samples and clusterized distribution
         if args.plot:

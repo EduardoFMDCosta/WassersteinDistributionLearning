@@ -42,8 +42,9 @@ if __name__ == '__main__':
 
     # Compute bounds
     data_driven_bound = data_driven_radius(partition=partition, beta=beta, method=method)
-    print(f"Ours: {data_driven_bound}")
-
     fournier_bound = fournier_radius(partition=partition, beta=beta)
-    print(f"Fournier: {fournier_bound}")
+
+    print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"
+        f"\t Ours: {data_driven_bound:.4f} \n"
+        f"\t Fournier: {fournier_bound:.4f} \n")
 

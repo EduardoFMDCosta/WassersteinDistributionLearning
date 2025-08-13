@@ -33,9 +33,29 @@ class HyperRectangle:
     def from_eps(x, eps):
         lower, upper = x - eps, x + eps
         return HyperRectangle(lower, upper)
-    
 
-class ConvexHullPartition:
+class Partition:
+    def __init__(
+            self, 
+            support: HyperRectangle,
+            locs: torch.Tensor, 
+            distance_locs: torch.Tensor, 
+            diameters: torch.Tensor
+        ):
+        assert locs.size(0) == distance_locs.size(0) == distance_locs.size(1) == diameters.size(0), "All tensors must have the same number of elements"
+
+        self.support = support
+        self.ndim = support.ndim
+        self.locs = locs
+        self.distance_locs = distance_locs
+        self.diameters = diameters
+        self.npartitions = locs.size(0) # TODO remove
+
+    def __len__(self):
+        return self.locs.size(0)
+
+
+class ConvexHullPartition(Partition):
     def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
@@ -48,30 +68,19 @@ class ConvexHullPartition:
 
             locs = cluster_result.centers.squeeze(0)
             labels = cluster_result.labels.squeeze(0)
-            counts = torch.bincount(cluster_result.labels.squeeze(0), minlength=k)
 
             distances = torch.norm(samples - locs[labels], dim=-1)
             diameters = torch.zeros(k)
-            for i in range(k):
+            for i in range(k): # TODO do this using vmap
                 if (labels == i).any():
                     diameters[i] = distances[labels == i].max()
         else:
             locs = samples
-            counts = torch.ones(nsamples)
             diameters = torch.zeros(nsamples)
 
-        assert counts.sum() == nsamples, "Counts should sum to the number of samples"
+        # Append outer region
+        locs = torch.cat((locs, support.center.unsqueeze(0)))
+        distance_locs =torch.cdist(locs, locs, p=2)
+        diameters = torch.cat((diameters, torch.norm(support.width).unsqueeze(0) / 2. ))
 
-        self.support = support
-        self.samples = samples
-        self.npartitions = k + 1
-        self.ndim = support.ndim
-        self.nsamples = nsamples
-
-        self.locs = torch.cat((locs, support.center.unsqueeze(0)))
-        self.counts = torch.cat((counts, torch.zeros(1)))
-        self.probs = self.counts.float() / self.counts.sum()
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
-        self.diameters = torch.cat((diameters, torch.norm(support.width).unsqueeze(0) / 2. ))
-
-        assert self.locs.size(0) == self.counts.size(0) == self.probs.size(0) == self.distance_locs.size(0) == self.distance_locs.size(1) == self.diameters.size(0), "All tensors must have the same number of elements"
+        super().__init__(support, locs, distance_locs, diameters)

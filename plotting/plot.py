@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
-from sets import ConvexHullPartition
+from quantization import Quantization
 from confidence import Confidence
 from plotting.utils_plot import get_bounds_from_confidence_list
 
@@ -89,24 +89,24 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
     plt.show()
 
 def plot_kmeans_partition(
-    partition: ConvexHullPartition
+    quantization: Quantization
 ):
 
-    if partition.ndim == 2:
+    if quantization.ndim == 2:
         # Plot samples
         plt.figure(figsize=(6, 6))
-        plt.scatter(*partition.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
+        plt.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
 
         # Plot shell
-        lower = partition.support.lower
-        upper = partition.support.upper
+        lower = quantization.partition.support.lower
+        upper = quantization.partition.support.upper
         width = upper[0] - lower[0]
         height = upper[1] - lower[1]
         rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
         plt.gca().add_patch(rect)
 
         # Plot locs
-        plt.scatter(*partition.locs.t(), s=10, color="red", label="Cluster Centers")
+        plt.scatter(*quantization.locs.t(), s=10, color="red", label="Cluster Centers")
 
         plt.legend()
         plt.axis('equal')

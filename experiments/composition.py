@@ -1,6 +1,7 @@
 import torch
 from confidence import ClopperPearsonConfidence
 from sets import ConvexHullPartition
+from quantization import Quantization
 from plotting.plot import plot_kmeans_partition
 from bound import data_driven_radius, fournier_radius, bound_moment, bound_discrete
 from configs.construct import get_support_assumption, get_distribution
@@ -38,13 +39,14 @@ if __name__ == '__main__':
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
         partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
+        quantization = Quantization(partition=partition, samples=samples)
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(partition=partition)
+            plot_kmeans_partition(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
+        data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
         moment_bounds.append(data_driven_output.moment_bound)
         discrete_bounds.append(data_driven_output.discrete_bound)
 

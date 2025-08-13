@@ -1,5 +1,6 @@
 import torch
 from sets import ConvexHullPartition
+from quantization import Quantization
 from plotting.plot import plot_kmeans_partition
 from configs.handlers import parse_arguments
 from bound import data_driven_radius, fournier_radius
@@ -23,17 +24,18 @@ def num_samples(args, M):
 
         # Clusterize samples (obtaining \hat{P}_M)
         partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
+        quantization = Quantization(partition=partition, samples=samples)
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(partition=partition)
+            plot_kmeans_partition(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(partition=partition, beta=args.beta, method=args.method)
+        data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
         data_driven_bounds.append(data_driven_output.radius)
         data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
-        fournier_bounds.append(fournier_radius(partition=partition, beta=args.beta))
+        fournier_bounds.append(fournier_radius(quantization=quantization, beta=args.beta))
 
     return N_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
 
@@ -49,17 +51,18 @@ def num_clusters(args, N):
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
         # Clusterize samples (obtaining \hat{P}_M)
         partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
+        quantization = Quantization(partition=partition, samples=samples)
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(partition=partition)
+            plot_kmeans_partition(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(partition=partition, beta=args.beta, method=args.method)
+        data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
         data_driven_bounds.append(data_driven_output.radius)
         data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
-        fournier_bounds.append(fournier_radius(partition=partition, beta=args.beta))
+        fournier_bounds.append(fournier_radius(quantization=quantization, beta=args.beta))
 
     return M_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
 

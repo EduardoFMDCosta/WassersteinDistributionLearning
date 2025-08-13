@@ -3,6 +3,7 @@ import time
 import os
 
 from sets import ConvexHullPartition
+from quantization import Quantization
 from bound import data_driven_radius, fournier_radius
 from plotting.plot import colored_scatter
 
@@ -110,16 +111,17 @@ if __name__ == '__main__':
                 print(f"### Kmeans for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
                 partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
+                quantization = Quantization(partition=partition, samples=samples)
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 
                 print(f"### Bounding for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
+                data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
                 bounding_time = time.time() - start
                 print(f"Data-driven bounding completed in {bounding_time:.2f} seconds")
 
-                fournier_result = fournier_radius(partition=partition, beta=beta)
+                fournier_result = fournier_radius(quantization=quantization, beta=beta)
                 print(f"Fournier bound completed")
 
                 kmean_times.append(kmeans_time)

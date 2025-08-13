@@ -1,5 +1,6 @@
 import torch
 from sets import ConvexHullPartition
+from quantization import Quantization
 from plotting.plot import plot_kmeans_partition
 from configs.handlers import parse_arguments
 from bound import data_driven_radius, fournier_radius
@@ -35,14 +36,15 @@ if __name__ == '__main__':
 
     # Clusterize samples (obtaining \hat{P}_M)
     partition = ConvexHullPartition(support=support_assumption, samples=samples, k=M)
+    quantization = Quantization(partition=partition, samples=samples)
 
     # Plot samples and clusterized distribution
     if args.plot:
-        plot_kmeans_partition(partition=partition)
+        plot_kmeans_partition(quantization=quantization)
 
     # Compute bounds
-    data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
-    fournier_bound = fournier_radius(partition=partition, beta=beta)
+    data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
+    fournier_bound = fournier_radius(quantization=quantization, beta=beta)
 
     print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"
         f"\t Ours: {data_driven_output.radius:.4f} \n"

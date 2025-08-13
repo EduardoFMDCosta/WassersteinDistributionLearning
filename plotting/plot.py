@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
-from sets import KMeansPartition
+from sets import ConvexHullPartition
 from confidence import Confidence
 from plotting.utils_plot import get_bounds_from_confidence_list
 
@@ -89,7 +89,7 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
     plt.show()
 
 def plot_kmeans_partition(
-    partition: KMeansPartition
+    partition: ConvexHullPartition
 ):
 
     if partition.ndim == 2:

@@ -1,11 +1,11 @@
 import math
-from sets import KMeansPartition
+from sets import ConvexHullPartition
 from confidence import ClopperPearsonConfidence, Confidence
 from optimization import o_maximization, max_min_lp
 
 
 def bound_moment(
-        partition: KMeansPartition,
+        partition: ConvexHullPartition,
         confidence: Confidence
 ):
 
@@ -15,7 +15,7 @@ def bound_moment(
 
 
 def bound_discrete(
-        partition: KMeansPartition,
+        partition: ConvexHullPartition,
         confidence: Confidence,
         method: str
 ):
@@ -48,7 +48,7 @@ class DataDrivenOutput:
 
 
 def data_driven_radius(
-        partition: KMeansPartition,
+        partition: ConvexHullPartition,
         beta: float,
         method: str
     ) -> DataDrivenOutput:
@@ -67,7 +67,7 @@ def data_driven_radius(
 
 
 def fournier_radius(
-        partition: KMeansPartition,
+        partition: ConvexHullPartition,
         beta: float
 ):
     #See Lemma 2 in Gracia et at, 2024 (https://proceedings.mlr.press/v242/gracia24a/gracia24a.pdf)

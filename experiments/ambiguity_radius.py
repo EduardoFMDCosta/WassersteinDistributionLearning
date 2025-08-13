@@ -1,5 +1,5 @@
 import torch
-from sets import KMeansPartition
+from sets import ConvexHullPartition
 from plotting.plot import plot_kmeans_partition
 from configs.handlers import parse_arguments
 from bound import data_driven_radius, fournier_radius
@@ -17,7 +17,7 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=10,
         beta=1e-4,
-        plot=True
+        plot=False
     )
 
     # Set parameters
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     samples = distribution.sample((N,))
 
     # Clusterize samples (obtaining \hat{P}_M)
-    partition = KMeansPartition(support=support_assumption, samples=samples, k=M)
+    partition = ConvexHullPartition(support=support_assumption, samples=samples, k=M)
 
     # Plot samples and clusterized distribution
     if args.plot:

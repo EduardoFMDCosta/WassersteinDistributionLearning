@@ -1,6 +1,6 @@
 import torch
 from confidence import ClopperPearsonConfidence
-from sets import KMeansPartition
+from sets import ConvexHullPartition
 from plotting.plot import plot_kmeans_partition
 from bound import data_driven_radius, fournier_radius, bound_moment, bound_discrete
 from configs.construct import get_support_assumption, get_distribution
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     M_options = [10, 20, 50, 70, 100, 150, 200, 500, 1000]
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
+        partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
 
         # Plot samples and clusterized distribution
         if args.plot:

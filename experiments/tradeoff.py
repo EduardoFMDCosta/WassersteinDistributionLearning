@@ -2,7 +2,7 @@ import torch
 import time
 import os
 
-from sets import KMeansPartition
+from sets import ConvexHullPartition
 from bound import data_driven_radius, fournier_radius
 from plotting.plot import colored_scatter
 
@@ -109,7 +109,7 @@ if __name__ == '__main__':
             try:
                 print(f"### Kmeans for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
+                partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 

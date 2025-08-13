@@ -109,7 +109,7 @@ if __name__ == '__main__':
             try:
                 print(f"### Kmeans for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
+                partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 

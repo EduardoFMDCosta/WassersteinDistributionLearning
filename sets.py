@@ -36,26 +36,13 @@ class HyperRectangle:
     
 
 class KMeansPartition:
-    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int, prefilter: bool = False):
+    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
 
         nsamples = samples.size(0)
-        
 
-        locs, counts = torch.unique(samples, dim=0, return_counts=True)
-        support_size = locs.size(0)
-        diameters = torch.zeros(support_size)
-
-        if prefilter and k == support_size:
-            pass
-        elif prefilter and k > support_size:
-            # locs = torch.cat((locs, support.center.unsqueeze(0).expand(k - support_size, -1)))
-            locs = torch.cat((locs, torch.rand(k-support_size, 2) * (support.upper - support.lower) + support.lower))
-            counts = torch.cat((counts, torch.zeros(k - support_size)))
-            diameters = torch.cat((diameters, torch.zeros(k - support_size)))
-            assert locs.size(0) == k, "Number of cluster centers must match k"
-        elif nsamples > k:
+        if nsamples > k:
             kmeans_torch = KMeans(n_clusters=k)
             cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 

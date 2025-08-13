@@ -22,7 +22,7 @@ def num_samples(args, M):
         samples = distribution.sample((N,))
 
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
+        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
 
         # Plot samples and clusterized distribution
         if args.plot:
@@ -48,7 +48,7 @@ def num_clusters(args, N):
     for M in M_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
+        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M))
 
         # Plot samples and clusterized distribution
         if args.plot:

@@ -89,7 +89,8 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
     plt.show()
 
 def plot_kmeans_partition(
-    quantization: Quantization
+    quantization: Quantization, 
+    title: str = ''
 ):
 
     if quantization.ndim == 2:
@@ -110,6 +111,7 @@ def plot_kmeans_partition(
 
         plt.legend()
         plt.axis('equal')
+        plt.title(title)
         plt.show()
 
 

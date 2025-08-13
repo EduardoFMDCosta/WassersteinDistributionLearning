@@ -1,5 +1,5 @@
 import math
-from sets import Partition
+from sets import Partition, HyperRectangle
 from quantization import Quantization
 from confidence import ClopperPearsonConfidence, Confidence
 from optimization import o_maximization, max_min_lp
@@ -68,38 +68,39 @@ def data_driven_radius(
 
 
 def fournier_radius(
-        quantization: Quantization,
+        support: HyperRectangle,
+        nsamples: int,
         beta: float
 ):
     #See Lemma 2 in Gracia et at, 2024 (https://proceedings.mlr.press/v242/gracia24a/gracia24a.pdf)
-    support_diameter = quantization.partition.support.width.max().item()
+    support_diameter = support.width.max().item()
     log_inv_beta = math.log(1 / beta)
-    tau = (2 * support_diameter ** 4 * log_inv_beta / quantization.nsamples) ** 0.25
+    tau = (2 * support_diameter ** 4 * log_inv_beta / nsamples) ** 0.25
 
     # See Table 2 in Fournier, 2023 (https://www.esaim-ps.org/articles/ps/pdf/2023/01/ps220050.pdf)
     if support_diameter == 1.0:
-        if quantization.ndim == 1:
-            moment_bound = 1.05 / (quantization.nsamples ** (1 / 4))
-        elif quantization.ndim == 2:
-            moment_bound = 1.42 / (quantization.nsamples ** (1 / 4))
-        elif quantization.ndim == 3:
-            moment_bound = 2.20 / (quantization.nsamples ** (1 / 4))
-        elif quantization.ndim == 4:
-            moment_bound = math.sqrt(0.73 * math.log(quantization.nsamples) + 1.26) / (quantization.nsamples ** (1 / 4))
-        elif quantization.ndim == 5:
-            moment_bound = 2.75 / (quantization.nsamples ** (1 / 5))
-        elif quantization.ndim == 6:
-            moment_bound = 2.20 / (quantization.nsamples ** (1 / 6))
-        elif quantization.ndim == 7:
-            moment_bound = 2.01 / (quantization.nsamples ** (1 / 7))
-        elif quantization.ndim == 8:
-            moment_bound = 1.92 / (quantization.nsamples ** (1 / 8))
-        elif quantization.ndim == 9:
-            moment_bound = 1.87 / (quantization.nsamples ** (1 / 9))
+        if support.ndim == 1:
+            moment_bound = 1.05 / (nsamples ** (1 / 4))
+        elif support.ndim == 2:
+            moment_bound = 1.42 / (nsamples ** (1 / 4))
+        elif support.ndim == 3:
+            moment_bound = 2.20 / (nsamples ** (1 / 4))
+        elif support.ndim == 4:
+            moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.26) / (nsamples ** (1 / 4))
+        elif support.ndim == 5:
+            moment_bound = 2.75 / (nsamples ** (1 / 5))
+        elif support.ndim == 6:
+            moment_bound = 2.20 / (nsamples ** (1 / 6))
+        elif support.ndim == 7:
+            moment_bound = 2.01 / (nsamples ** (1 / 7))
+        elif support.ndim == 8:
+            moment_bound = 1.92 / (nsamples ** (1 / 8))
+        elif support.ndim == 9:
+            moment_bound = 1.87 / (nsamples ** (1 / 9))
         else:
             raise NotImplementedError
 
-        moment_bound = moment_bound * math.sqrt(quantization.ndim) # Adjustment for 2-Wasserstein
+        moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for 2-Wasserstein
 
     else:
         raise NotImplementedError

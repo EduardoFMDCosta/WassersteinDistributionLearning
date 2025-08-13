@@ -44,7 +44,7 @@ if __name__ == '__main__':
         plot_kmeans_partition(quantization=quantization, title=f"M={M}, N={N}")
 
     # Compute bounds
-    fournier_bound = fournier_radius(quantization=quantization, beta=beta)
+    fournier_bound = fournier_radius(support=partition.support, nsamples=N, beta=beta)
     data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
 
     print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"

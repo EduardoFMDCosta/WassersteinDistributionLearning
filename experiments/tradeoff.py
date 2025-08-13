@@ -122,7 +122,7 @@ if __name__ == '__main__':
                 bounding_time = time.time() - start
                 print(f"Data-driven bounding completed in {bounding_time:.2f} seconds")
 
-                fournier_result = fournier_radius(quantization=quantization, beta=beta)
+                fournier_result = fournier_radius(support=partition.support, nsamples=N, beta=beta)
                 print(f"Fournier bound completed")
 
                 kmean_times.append(kmeans_time)

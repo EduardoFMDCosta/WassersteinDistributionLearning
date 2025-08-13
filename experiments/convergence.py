@@ -36,7 +36,7 @@ def num_samples(args, M):
         data_driven_bounds.append(data_driven_output.radius)
         data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
-        fournier_bounds.append(fournier_radius(quantization=quantization, beta=args.beta))
+        fournier_bounds.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
 
     return N_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
 
@@ -64,7 +64,7 @@ def num_clusters(args, N):
         data_driven_bounds.append(data_driven_output.radius)
         data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
-        fournier_bounds.append(fournier_radius(quantization=quantization, beta=args.beta))
+        fournier_bounds.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
 
     return M_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
 

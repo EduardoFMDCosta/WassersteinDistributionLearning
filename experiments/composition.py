@@ -3,7 +3,7 @@ from confidence import ClopperPearsonConfidence
 from sets import VoronoiPartition
 from quantization import Quantization
 from plotting.plot import plot_kmeans_partition
-from bound import data_driven_radius, fournier_radius, bound_moment, bound_discrete
+from bound import data_driven_radius
 from configs.construct import get_support_assumption, get_distribution
 from configs.handlers import parse_arguments
 

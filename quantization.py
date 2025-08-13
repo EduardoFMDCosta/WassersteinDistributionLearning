@@ -24,7 +24,7 @@ class Quantization:
     
     @property
     def locs(self):
-        self.partition.locs
+        return self.partition.locs
 
     @property
     def ndim(self):

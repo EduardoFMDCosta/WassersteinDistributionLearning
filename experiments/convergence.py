@@ -1,7 +1,7 @@
 import torch
 from sets import VoronoiPartition
 from quantization import Quantization
-from plotting.plot import plot_kmeans_partition
+from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from bound import data_driven_radius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
@@ -29,7 +29,7 @@ def num_samples(args, M):
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(quantization=quantization)
+            plot_quantization(quantization=quantization)
 
         # Compute bounds
         data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
@@ -57,7 +57,7 @@ def num_clusters(args, N):
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(quantization=quantization)
+            plot_quantization(quantization=quantization)
 
         # Compute bounds
         data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)

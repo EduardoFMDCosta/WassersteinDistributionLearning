@@ -6,8 +6,9 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
 from quantization import Quantization
+from sets import VoronoiPartition
 from confidence import Confidence
-from plotting.utils_plot import get_bounds_from_confidence_list
+import plotting.utils_plot as utils_plot
 
 colors = [
         "lightcoral",
@@ -29,14 +30,14 @@ def plot_confidence(nums_samples:list,
                     hoeff_list: list[Confidence],
                     duchi_list: list[Confidence],
                     pearson_list: list[Confidence],
-                    actual_prob: torch.Tensor = None):
+                    actual_prob: Optional[torch.Tensor] = None):
 
     sns.set_style("darkgrid")
 
     # Get lists
-    hoeff_lower, hoeff_upper = get_bounds_from_confidence_list(hoeff_list)
-    duchi_lower, duchi_upper = get_bounds_from_confidence_list(duchi_list)
-    pearson_lower, pearson_upper = get_bounds_from_confidence_list(pearson_list)
+    hoeff_lower, hoeff_upper = utils_plot.get_bounds_from_confidence_list(hoeff_list)
+    duchi_lower, duchi_upper = utils_plot.get_bounds_from_confidence_list(duchi_list)
+    pearson_lower, pearson_upper = utils_plot.get_bounds_from_confidence_list(pearson_list)
 
     # Plot
     plt.fill_between(nums_samples, hoeff_lower, hoeff_upper, color="deepskyblue", label = r'Hoeffding', alpha=0.2)
@@ -88,15 +89,15 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
     plt.tight_layout()
     plt.show()
 
-def plot_kmeans_partition(
+def plot_quantization(
     quantization: Quantization, 
     title: str = ''
 ):
 
     if quantization.ndim == 2:
         # Plot samples
-        plt.figure(figsize=(6, 6))
-        plt.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
 
         # Plot shell
         lower = quantization.partition.support.lower
@@ -104,14 +105,21 @@ def plot_kmeans_partition(
         width = upper[0] - lower[0]
         height = upper[1] - lower[1]
         rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
-        plt.gca().add_patch(rect)
+        ax.add_patch(rect)
 
         # Plot locs
-        plt.scatter(*quantization.locs.t(), s=10, color="red", label="Cluster Centers")
+        ax.scatter(*quantization.locs.t(), s=10, color="red", label="Cluster Centers")
 
-        plt.legend()
-        plt.axis('equal')
-        plt.title(title)
+        if len(quantization) < 100 and isinstance(quantization.partition, VoronoiPartition):
+            ax = utils_plot.plot_clipped_voronoi_2d(
+                centers=quantization.partition.cluster_centers,
+                max_diameters=quantization.partition.cluster_diameters * 2,
+                ax=ax
+            )
+
+        ax.legend()
+        ax.axis('equal')
+        ax.set_title(title)
         plt.show()
 
 

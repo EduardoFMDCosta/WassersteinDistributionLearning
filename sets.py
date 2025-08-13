@@ -38,21 +38,31 @@ class Partition:
     def __init__(
             self, 
             support: HyperRectangle,
-            locs: torch.Tensor, 
-            distance_locs: torch.Tensor, 
-            diameters: torch.Tensor
+            cluster_centers: torch.Tensor,
+            cluster_diameters: torch.Tensor,
         ):
-        assert locs.size(0) == distance_locs.size(0) == distance_locs.size(1) == diameters.size(0), "All tensors must have the same number of elements"
+        assert cluster_centers.size(0) == cluster_diameters.size(0), "All tensors must have the same number of elements"
 
         self.support = support
         self.ndim = support.ndim
-        self.locs = locs
-        self.distance_locs = distance_locs
-        self.diameters = diameters
-        self.npartitions = locs.size(0) # TODO remove
+        
+        self.cluster_centers = cluster_centers
+        self.cluster_diameters = cluster_diameters
+        self.outer_loc = support.center.unsqueeze(0)
+        
+        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
 
     def __len__(self):
         return self.locs.size(0)
+    
+    @property
+    def locs(self):
+        return torch.cat((self.cluster_centers, self.outer_loc), dim=0)
+
+    @property
+    def diameters(self):
+        return torch.cat((self.cluster_diameters, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+
 
 
 class ConvexHullPartition(Partition):
@@ -78,9 +88,4 @@ class ConvexHullPartition(Partition):
             locs = samples
             diameters = torch.zeros(nsamples)
 
-        # Append outer region
-        locs = torch.cat((locs, support.center.unsqueeze(0)))
-        distance_locs =torch.cdist(locs, locs, p=2)
-        diameters = torch.cat((diameters, torch.norm(support.width).unsqueeze(0) / 2. ))
-
-        super().__init__(support, locs, distance_locs, diameters)
+        super().__init__(support, locs, diameters)

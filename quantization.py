@@ -10,9 +10,13 @@ class Quantization:
         self.samples = samples
         self.nsamples = samples.size(0)
 
-        distances_locs_samples = torch.cdist(partition.locs, samples, p=2)
-        assignment = torch.argmin(distances_locs_samples, dim=0)
-        self.counts = torch.bincount(assignment, minlength=partition.npartitions)
+        distances = torch.cdist(partition.cluster_centers, samples, p=2)
+        assignment = torch.argmin(distances, dim=0)
+        self.cluster_counts = torch.bincount(assignment, minlength=partition.cluster_centers.size(0))
+
+    @property
+    def counts(self):
+        return torch.cat((self.cluster_counts, torch.zeros(1)))
 
     @property
     def probs(self):
@@ -25,7 +29,6 @@ class Quantization:
     @property
     def ndim(self):
         return self.partition.ndim
-
 
     def __len__(self):
         return len(self.partition)

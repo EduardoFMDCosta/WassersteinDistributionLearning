@@ -107,7 +107,6 @@ class VoronoiPartition(Partition):
             cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 
             locs = cluster_result.centers.squeeze(0)
-            labels = cluster_result.labels.squeeze(0)
 
             diameters, bounded_mask = VoronoiCellDiameter().compute(locs)
             radius = (diameters / 2.).to(samples.dtype)
@@ -137,7 +136,7 @@ class VoronoiCellDiameter:
         diameters : (N,) np.ndarray of float64
             For bounded cells: the maximum pairwise Euclidean distance between
             the cell's Voronoi vertices.
-            For unbounded cells: the largest finite Euclidean distance from the
+            For unbounded cells: 2 * the largest finite Euclidean distance from the
             site (generator point) to any finite vertex of its Voronoi region.
             Degenerate cases with fewer than two finite vertices return 0.0.
         bounded_mask : (N,) np.ndarray of bool
@@ -171,10 +170,10 @@ class VoronoiCellDiameter:
             verts = vor.vertices[np.array(finite_idx, dtype=int)]
 
             if -1 in region:
-                # Unbounded: largest finite distance from site to any finite vertex.
-                diffs = verts - points_np[i]
-                dists = np.sqrt(np.sum(diffs * diffs, axis=1))
-                diameters[i] = dists.max() if dists.size else 0.0
+                # Unbounded: 2x max finite distance from site to any finite vertex.
+                diffs = verts - points_np[i]                    # (m, d)
+                dists = np.sqrt(np.sum(diffs * diffs, axis=1))  # (m,)
+                diameters[i] = 2.0 * (dists.max() if dists.size else 0.0)
                 bounded_mask[i] = False
             else:
                 # Bounded: true diameter via vertex–vertex pairs.

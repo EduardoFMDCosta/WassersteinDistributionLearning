@@ -95,7 +95,7 @@ class ConvexHullPartition(Partition):
         super().__init__(support, locs, diameters)
 
 
-class VornoiPartition(Partition):
+class VoronoiPartition(Partition):
     def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"

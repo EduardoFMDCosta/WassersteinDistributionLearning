@@ -2,7 +2,7 @@ import torch
 import time
 import os
 
-from sets import ConvexHullPartition
+from sets import VoronoiPartition
 from quantization import Quantization
 from bound import data_driven_radius, fournier_radius
 from plotting.plot import colored_scatter
@@ -90,8 +90,9 @@ if __name__ == '__main__':
 
     Ns, Ms, kmean_times, data_driven_times, data_driven_bounds, fournier_bounds = [], [], [], [], [], []
     for N in N_options:
-        samples = distribution.sample((N,))
-        
+        samples_partition = distribution.sample((N,))
+        samples_quantization = distribution.sample((N,))
+
         for M in M_options:
             # Pre-assess K-means feasibility
             is_feasible, reasons, stats = assess_kmeans_feasibility(
@@ -110,8 +111,8 @@ if __name__ == '__main__':
             try:
                 print(f"### Kmeans for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
-                quantization = Quantization(partition=partition, samples=samples)
+                partition = VoronoiPartition(support=support_assumption, samples=samples_partition, k=int(M))
+                quantization = Quantization(partition=partition, samples=samples_quantization)
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 

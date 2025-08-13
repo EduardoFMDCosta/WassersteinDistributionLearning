@@ -1,5 +1,5 @@
 import torch
-from sets import ConvexHullPartition
+from sets import VoronoiPartition
 from quantization import Quantization
 from plotting.plot import plot_kmeans_partition
 from configs.handlers import parse_arguments
@@ -18,7 +18,7 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=10,
         beta=1e-4,
-        plot=False
+        plot=True
     )
 
     # Set parameters
@@ -31,22 +31,24 @@ if __name__ == '__main__':
     # (Unknown) Generating probability
     distribution = get_distribution(**vars(args))
 
-    # Generate samples
-    samples = distribution.sample((N,))
+    # Generate Partitions
+    samples_partition = distribution.sample((N,))
+    partition = VoronoiPartition(support=support_assumption, samples=samples_partition, k=M)
 
-    # Clusterize samples (obtaining \hat{P}_M)
-    partition = ConvexHullPartition(support=support_assumption, samples=samples, k=M)
-    quantization = Quantization(partition=partition, samples=samples)
+    # Generate Quantization
+    samples_quantization = distribution.sample((N,))
+    quantization = Quantization(partition=partition, samples=samples_quantization)
 
     # Plot samples and clusterized distribution
     if args.plot:
-        plot_kmeans_partition(quantization=quantization)
+        plot_kmeans_partition(quantization=quantization, title=f"M={M}, N={N}")
 
     # Compute bounds
-    data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
     fournier_bound = fournier_radius(quantization=quantization, beta=beta)
+    data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
 
     print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"
-        f"\t Ours: {data_driven_output.radius:.4f} \n"
-        f"\t Fournier: {fournier_bound:.4f} \n")
+          f"\t Fournier: {fournier_bound:.4f} \n"
+          f"\t Ours : {data_driven_output.radius:.4f} \n"
+        )
 

@@ -1,5 +1,5 @@
 import torch
-from sets import ConvexHullPartition
+from sets import VoronoiPartition
 from quantization import Quantization
 from plotting.plot import plot_kmeans_partition
 from configs.handlers import parse_arguments
@@ -20,11 +20,12 @@ def num_samples(args, M):
     N_options = [1000, 5000, 10000, 50000]
     for N in N_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
-        samples = distribution.sample((N,))
+        samples_partition = distribution.sample((N,))
+        samples_quantization = distribution.sample((N,))
 
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
-        quantization = Quantization(partition=partition, samples=samples)
+        partition = VoronoiPartition(support=support_assumption, samples=samples_partition, k=int(M))
+        quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution
         if args.plot:
@@ -43,15 +44,16 @@ def num_clusters(args, N):
     support_assumption = get_support_assumption(**vars(args))
 
     distribution = get_distribution(**vars(args))
-    samples = distribution.sample((N,))
-    
+    samples_partition = distribution.sample((N,))
+    samples_quantization = distribution.sample((N,))
+
     data_driven_bounds, data_driven_lower_bounds, fournier_bounds = list(), list(), list()
     M_options = torch.arange(20, 100, 10).tolist()
     for M in M_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = ConvexHullPartition(support=support_assumption, samples=samples, k=int(M))
-        quantization = Quantization(partition=partition, samples=samples)
+        partition = VoronoiPartition(support=support_assumption, samples=samples_partition, k=int(M))
+        quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution
         if args.plot:

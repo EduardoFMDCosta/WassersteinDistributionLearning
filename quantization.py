@@ -16,8 +16,7 @@ class Quantization:
         else:
             raise NotImplementedError
     
-        self.outer_counts = self.nsamples - self.cluster_counts.sum()
-        assert self.outer_counts >= 0
+        
 
     @property
     def counts(self):

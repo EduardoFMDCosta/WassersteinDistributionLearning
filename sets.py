@@ -69,31 +69,6 @@ class Partition:
         return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
 
 
-
-class ConvexHullPartition(Partition):
-    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int):
-        assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
-        assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
-
-        nsamples = samples.size(0)
-
-        if nsamples > k:
-            kmeans_torch = KMeans(n_clusters=k)
-            cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
-
-            locs = cluster_result.centers.squeeze(0)
-            labels = cluster_result.labels.squeeze(0)
-            
-            # Compute the max sample to center distance for each cluster in one operation
-            radii = compute_cluster_radii(samples, locs, labels)
-            radii *= radius_scale_factor
-        else:
-            locs = samples
-            radii = torch.zeros(nsamples)
-
-        super().__init__(support, locs, radii)
-
-
 class BoundedVoronoiPartition(Partition):
     def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int, radius_scale_factor: float = 1.2):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"

@@ -113,7 +113,7 @@ def plot_quantization(
         if len(quantization) < 100 and isinstance(quantization.partition, VoronoiPartition):
             ax = utils_plot.plot_clipped_voronoi_2d(
                 centers=quantization.partition.cluster_centers,
-                max_diameters=quantization.partition.cluster_diameters * 2,
+                max_diameters=quantization.partition.cluster_radii * 2,
                 ax=ax
             )
 

@@ -10,7 +10,7 @@ def bound_moment(
         confidence: Confidence
 ):
 
-    bound, _ = o_maximization(partition.diameters, confidence.lower_proba, confidence.upper_proba)
+    bound, _ = o_maximization(partition.radii, confidence.lower_proba, confidence.upper_proba)
 
     return bound ** 0.5
 

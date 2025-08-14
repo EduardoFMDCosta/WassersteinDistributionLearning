@@ -1,5 +1,10 @@
+from typing import Tuple
 import torch
 from torch_kmeans import KMeans
+
+import numpy as np
+from scipy.spatial import Voronoi
+from scipy.spatial.distance import pdist
 
 
 class HyperRectangle:
@@ -33,58 +38,145 @@ class HyperRectangle:
     def from_eps(x, eps):
         lower, upper = x - eps, x + eps
         return HyperRectangle(lower, upper)
-    
 
-class KMeansPartition:
-    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int, prefilter: bool = False):
+class Partition:
+    def __init__(
+            self, 
+            support: HyperRectangle,
+            cluster_centers: torch.Tensor,
+            cluster_radii: torch.Tensor,
+        ):
+        assert cluster_centers.size(0) == cluster_radii.size(0), "All tensors must have the same number of elements"
+
+        self.support = support
+        self.ndim = support.ndim
+        
+        self.cluster_centers = cluster_centers
+        self.cluster_radii = cluster_radii
+        self.outer_loc = support.center.unsqueeze(0)
+        
+        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+
+    def __len__(self):
+        return self.locs.size(0)
+    
+    @property
+    def locs(self):
+        return torch.cat((self.cluster_centers, self.outer_loc), dim=0)
+
+    @property
+    def radii(self):
+        return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+
+
+class BoundedVoronoiPartition(Partition):
+    def __init__(
+            self, 
+            support: HyperRectangle, 
+            samples: torch.Tensor, 
+            M: int, 
+            radius_scale_factor: float = 1.2, 
+            use_voronoi_radii: bool = True
+        ):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
 
         nsamples = samples.size(0)
-        
 
-        locs, counts = torch.unique(samples, dim=0, return_counts=True)
-        support_size = locs.size(0)
-        diameters = torch.zeros(support_size)
-
-        if prefilter and k == support_size:
-            pass
-        elif prefilter and k > support_size:
-            # locs = torch.cat((locs, support.center.unsqueeze(0).expand(k - support_size, -1)))
-            locs = torch.cat((locs, torch.rand(k-support_size, 2) * (support.upper - support.lower) + support.lower))
-            counts = torch.cat((counts, torch.zeros(k - support_size)))
-            diameters = torch.cat((diameters, torch.zeros(k - support_size)))
-            assert locs.size(0) == k, "Number of cluster centers must match k"
-        elif nsamples > k:
-            kmeans_torch = KMeans(n_clusters=k)
+        if nsamples > M:
+            kmeans_torch = KMeans(n_clusters=M)
             cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 
             locs = cluster_result.centers.squeeze(0)
             labels = cluster_result.labels.squeeze(0)
-            counts = torch.bincount(cluster_result.labels.squeeze(0), minlength=k)
 
-            distances = torch.norm(samples - locs[labels], dim=-1)
-            diameters = torch.zeros(k)
-            for i in range(k):
-                if (labels == i).any():
-                    diameters[i] = distances[labels == i].max()
+            # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
+            # For unbounded cells, the diameter will be infinite.
+            if use_voronoi_radii:
+                radii = compute_voronoi_radius(locs)
+            else:
+                radii = torch.full((M,), torch.inf)
+
+            # Compute the max sample to center distance for each cluster in one operation
+            max_sample_distances = compute_cluster_radii(samples, locs, labels)
+            
+            radii.clamp_(max=radius_scale_factor * max_sample_distances)
         else:
             locs = samples
-            counts = torch.ones(nsamples)
-            diameters = torch.zeros(nsamples)
+            radii = torch.zeros(nsamples)
 
-        assert counts.sum() == nsamples, "Counts should sum to the number of samples"
+        super().__init__(support, locs, radii)
 
-        self.support = support
-        self.samples = samples
-        self.npartitions = k + 1
-        self.ndim = support.ndim
-        self.nsamples = nsamples
 
-        self.locs = torch.cat((locs, support.center.unsqueeze(0)))
-        self.counts = torch.cat((counts, torch.zeros(1)))
-        self.probs = self.counts.float() / self.counts.sum()
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
-        self.diameters = torch.cat((diameters, torch.norm(support.width).unsqueeze(0) / 2. ))
+def compute_cluster_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """
+    Compute the maximum distance from samples to their assigned cluster centers.
+    
+    Args:
+        samples: Sample points (n_samples, n_features)
+        cluster_centers: Cluster center locations (k, n_features)  
+        labels: Cluster assignments for each sample (n_samples,)
+        
+    Returns:
+        radii: Maximum distance for each cluster (k,)
+    """
+    k = cluster_centers.size(0)
+    sample_to_center_distance = torch.norm(samples - cluster_centers[labels], dim=-1)
+    return torch.zeros(k).scatter_reduce(0, labels, sample_to_center_distance, reduce='amax', include_self=False)
 
-        assert self.locs.size(0) == self.counts.size(0) == self.probs.size(0) == self.distance_locs.size(0) == self.distance_locs.size(1) == self.diameters.size(0), "All tensors must have the same number of elements"
+
+@torch.no_grad
+def compute_voronoi_radius(points: torch.Tensor) -> torch.Tensor:
+    """
+    Compute a per-site Voronoi radius-like measure in R^d.
+
+    Parameters
+    ----------
+    points : (N, d) array-like or torch.Tensor
+        Input sites. Must be two-dimensional with N >= 2.
+
+    Returns
+    -------
+    radii : (N,) torch.Tensor of float64
+        Half the maximum pairwise Euclidean distance between
+        the cell's Voronoi vertices (i.e., the radius). 
+        Unbounded cells return inf.
+        Degenerate cases with fewer than two finite vertices return 0.0.
+    bounded_mask : (N,) torch.Tensor of bool
+        True if the Voronoi region is bounded, False otherwise.
+
+    Notes
+    -----
+    - A region is unbounded if its vertex index list contains -1.
+    - Finite vertices are taken directly from `scipy.spatial.Voronoi.vertices`.
+    - Qhull options are controlled via `self.qhull_options` (default "QJ").
+    """
+    assert points.ndim == 2 and points.size(0) >= 2, "points must be (N, d) with N>=2"
+    points_np = points.detach().cpu().numpy()
+    
+    vor = Voronoi(points_np, qhull_options="QJ")
+    radii = np.full(points_np.shape[0], np.inf)
+    bounded_mask = np.zeros(points_np.shape[0], dtype=bool)
+
+    for i, reg_idx in enumerate(vor.point_region):
+        region = vor.regions[reg_idx]
+        if not region:
+            radii[i] = 0.0
+            continue
+
+        finite_idx = [v for v in region if v != -1]
+        if len(finite_idx) == 0:
+            # Extremely degenerate; no finite vertices found.
+            radii[i] = 0.0
+            continue
+
+        verts = vor.vertices[np.array(finite_idx, dtype=int)]
+
+        if -1 in region:
+            bounded_mask[i] = False
+        else:
+            # Bounded: radius is half the true diameter via vertex–vertex pairs.
+            radii[i] = (pdist(verts).max() / 2.0) if len(verts) > 1 else 0.0
+            bounded_mask[i] = True
+
+    return torch.from_numpy(radii).to(dtype=points.dtype)

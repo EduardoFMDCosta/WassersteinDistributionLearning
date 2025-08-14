@@ -1,6 +1,7 @@
 import torch
-from sets import KMeansPartition
-from plotting.plot import plot_kmeans_partition
+from sets import BoundedVoronoiPartition
+from quantization import Quantization
+from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from bound import data_driven_radius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
@@ -19,21 +20,28 @@ def num_samples(args, M):
     N_options = [1000, 5000, 10000, 50000]
     for N in N_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
-        samples = distribution.sample((N,))
+        samples_partition = distribution.sample((N,))
+        samples_quantization = distribution.sample((N,))
 
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
+        partition = BoundedVoronoiPartition(
+            support=support_assumption, 
+            samples=samples_partition, 
+            M=M,
+            use_voronoi_radii=False # set to false to speed up
+        )
+        quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(partition=partition)
+            plot_quantization(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(partition=partition, beta=args.beta, method=args.method)
+        data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
         data_driven_bounds.append(data_driven_output.radius)
         data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
-        fournier_bounds.append(fournier_radius(partition=partition, beta=args.beta))
+        fournier_bounds.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
 
     return N_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
 
@@ -41,25 +49,32 @@ def num_clusters(args, N):
     support_assumption = get_support_assumption(**vars(args))
 
     distribution = get_distribution(**vars(args))
-    samples = distribution.sample((N,))
-    
+    samples_partition = distribution.sample((N,))
+    samples_quantization = distribution.sample((N,))
+
     data_driven_bounds, data_driven_lower_bounds, fournier_bounds = list(), list(), list()
     M_options = torch.arange(20, 100, 10).tolist()
     for M in M_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
+        partition = BoundedVoronoiPartition(
+            support=support_assumption, 
+            samples=samples_partition, 
+            M=M,
+            use_voronoi_radii=False # set to false to speed up
+        )
+        quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution
         if args.plot:
-            plot_kmeans_partition(partition=partition)
+            plot_quantization(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(partition=partition, beta=args.beta, method=args.method)
+        data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
         data_driven_bounds.append(data_driven_output.radius)
         data_driven_lower_bounds.append(data_driven_output.lower_bound)
 
-        fournier_bounds.append(fournier_radius(partition=partition, beta=args.beta))
+        fournier_bounds.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
 
     return M_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
 

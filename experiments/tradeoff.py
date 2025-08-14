@@ -2,7 +2,8 @@ import torch
 import time
 import os
 
-from sets import KMeansPartition
+from sets import BoundedVoronoiPartition
+from quantization import Quantization
 from bound import data_driven_radius, fournier_radius
 from plotting.plot import colored_scatter
 
@@ -89,8 +90,9 @@ if __name__ == '__main__':
 
     Ns, Ms, kmean_times, data_driven_times, data_driven_bounds, fournier_bounds = [], [], [], [], [], []
     for N in N_options:
-        samples = distribution.sample((N,))
-        
+        samples_partition = distribution.sample((N,))
+        samples_quantization = distribution.sample((N,))
+
         for M in M_options:
             # Pre-assess K-means feasibility
             is_feasible, reasons, stats = assess_kmeans_feasibility(
@@ -109,17 +111,23 @@ if __name__ == '__main__':
             try:
                 print(f"### Kmeans for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                partition = KMeansPartition(support=support_assumption, samples=samples, k=int(M), prefilter=args.distribution == "Discrete")
+                partition = BoundedVoronoiPartition(
+                    support=support_assumption, 
+                    samples=samples_partition, 
+                    M=M,
+                    use_voronoi_radii=False # set to false to speed up
+                )
+                quantization = Quantization(partition=partition, samples=samples_quantization)
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 
                 print(f"### Bounding for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                data_driven_output = data_driven_radius(partition=partition, beta=beta, method=method)
+                data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
                 bounding_time = time.time() - start
                 print(f"Data-driven bounding completed in {bounding_time:.2f} seconds")
 
-                fournier_result = fournier_radius(partition=partition, beta=beta)
+                fournier_result = fournier_radius(support=partition.support, nsamples=N, beta=beta)
                 print(f"Fournier bound completed")
 
                 kmean_times.append(kmeans_time)

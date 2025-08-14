@@ -97,7 +97,7 @@ class ConvexHullPartition(Partition):
 
 
 class BoundedVoronoiPartition(Partition):
-    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int, inflate: float = 1.2):
+    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int, radius_scale_factor: float = 1.2):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
 
@@ -115,11 +115,11 @@ class BoundedVoronoiPartition(Partition):
             diameters, bounded_mask = compute_voronoi_diameter(locs)
             radii = diameters / 2.
 
-            # set the radii to inflate * the max distance to any sample in the region
-            sample_to_center_distance = inflate * torch.norm(samples - locs[labels], dim=-1)
+            # set the radii to radius_scale_factor * the max distance to any sample in the region
+            sample_to_center_distance = radius_scale_factor * torch.norm(samples - locs[labels], dim=-1)
             for i in range(k):
                 if (labels == i).any():
-                    radii[i].clamp_(min=0, max=inflate * sample_to_center_distance[labels == i].max().item())
+                    radii[i].clamp_(min=0, max=radius_scale_factor * sample_to_center_distance[labels == i].max().item())
         else:
             locs = samples
             radii = torch.zeros(nsamples)

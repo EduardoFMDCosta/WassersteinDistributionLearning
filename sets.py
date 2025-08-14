@@ -116,7 +116,7 @@ class BoundedVoronoiPartition(Partition):
             radii = diameters / 2.
 
             # set the radii to radius_scale_factor * the max distance to any sample in the region
-            sample_to_center_distance = radius_scale_factor * torch.norm(samples - locs[labels], dim=-1)
+            sample_to_center_distance = torch.norm(samples - locs[labels], dim=-1)
             for i in range(k):
                 if (labels == i).any():
                     radii[i].clamp_(min=0, max=radius_scale_factor * sample_to_center_distance[labels == i].max().item())

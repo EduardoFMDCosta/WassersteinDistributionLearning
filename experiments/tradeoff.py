@@ -111,7 +111,7 @@ if __name__ == '__main__':
             try:
                 print(f"### Kmeans for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, k=int(M))
+                partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, M=int(M))
                 quantization = Quantization(partition=partition, samples=samples_quantization)
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")

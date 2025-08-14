@@ -74,7 +74,7 @@ class BoundedVoronoiPartition(Partition):
             self, 
             support: HyperRectangle, 
             samples: torch.Tensor, 
-            k: int, 
+            M: int, 
             radius_scale_factor: float = 1.2, 
             use_voronoi_radii: bool = True
         ):
@@ -83,8 +83,8 @@ class BoundedVoronoiPartition(Partition):
 
         nsamples = samples.size(0)
 
-        if nsamples > k:
-            kmeans_torch = KMeans(n_clusters=k)
+        if nsamples > M:
+            kmeans_torch = KMeans(n_clusters=M)
             cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 
             locs = cluster_result.centers.squeeze(0)
@@ -95,7 +95,7 @@ class BoundedVoronoiPartition(Partition):
             if use_voronoi_radii:
                 radii = compute_voronoi_radius(locs)
             else:
-                radii = torch.full((k,), torch.inf)
+                radii = torch.full((M,), torch.inf)
 
             # Compute the max sample to center distance for each cluster in one operation
             max_sample_distances = compute_cluster_radii(samples, locs, labels)

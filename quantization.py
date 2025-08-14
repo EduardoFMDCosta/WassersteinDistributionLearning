@@ -9,10 +9,17 @@ class Quantization:
         self.samples = samples
         self.nsamples = samples.size(0)
 
-        if isinstance(partition, VoronoiPartition):
-            distances = torch.cdist(partition.cluster_centers, samples, p=2)
-            assignment = torch.argmin(distances, dim=0)
-            self.cluster_counts = torch.bincount(assignment, minlength=partition.cluster_centers.size(0))
+        if isinstance(partition, BoundedVoronoiPartition):
+            centers_to_samples_distance = torch.cdist(partition.cluster_centers, samples, p=2)
+            labels = torch.argmin(centers_to_samples_distance, dim=0)
+
+            sample_to_center_distance = torch.norm(samples - partition.cluster_centers[labels], dim=-1)
+            in_outer = sample_to_center_distance > partition.cluster_radii[labels]
+
+            self.cluster_counts = torch.bincount(labels[~in_outer], minlength=len(partition) - 1)
+
+            self.outer_counts = self.nsamples - self.cluster_counts.sum()
+            assert self.outer_counts == sum(in_outer) >= 0, "Inconsistent outer counts"
         else:
             raise NotImplementedError
     

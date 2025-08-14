@@ -33,7 +33,12 @@ if __name__ == '__main__':
 
     # Generate Partitions
     samples_partition = distribution.sample((N,))
-    partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, M=M)
+    partition = BoundedVoronoiPartition(
+        support=support_assumption, 
+        samples=samples_partition, 
+        M=M,
+        use_voronoi_radii=False # set to false to speed up
+    )
 
     # Generate Quantization
     samples_quantization = distribution.sample((N,))

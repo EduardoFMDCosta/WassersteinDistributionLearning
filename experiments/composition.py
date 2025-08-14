@@ -39,7 +39,12 @@ if __name__ == '__main__':
     M_options = [10, 20, 50, 70, 100, 150, 200, 500, 1000]
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, M=int(M))
+        partition = BoundedVoronoiPartition(
+            support=support_assumption, 
+            samples=samples_partition, 
+            M=M,
+            use_voronoi_radii=False # set to false to speed up
+        )
         quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution

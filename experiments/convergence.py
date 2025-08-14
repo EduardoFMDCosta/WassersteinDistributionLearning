@@ -24,7 +24,12 @@ def num_samples(args, M):
         samples_quantization = distribution.sample((N,))
 
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, M=int(M))
+        partition = BoundedVoronoiPartition(
+            support=support_assumption, 
+            samples=samples_partition, 
+            M=M,
+            use_voronoi_radii=False # set to false to speed up
+        )
         quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution
@@ -52,7 +57,12 @@ def num_clusters(args, N):
     for M in M_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
         # Clusterize samples (obtaining \hat{P}_M)
-        partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, M=int(M))
+        partition = BoundedVoronoiPartition(
+            support=support_assumption, 
+            samples=samples_partition, 
+            M=M,
+            use_voronoi_radii=False # set to false to speed up
+        )
         quantization = Quantization(partition=partition, samples=samples_quantization)
 
         # Plot samples and clusterized distribution

@@ -1,5 +1,5 @@
 import torch
-from sets import VoronoiPartition
+from sets import BoundedVoronoiPartition
 from quantization import Quantization
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     # Generate Partitions
     samples_partition = distribution.sample((N,))
-    partition = VoronoiPartition(support=support_assumption, samples=samples_partition, k=M)
+    partition = BoundedVoronoiPartition(support=support_assumption, samples=samples_partition, k=M)
 
     # Generate Quantization
     samples_quantization = distribution.sample((N,))

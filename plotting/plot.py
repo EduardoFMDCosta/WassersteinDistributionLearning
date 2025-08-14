@@ -6,7 +6,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
 from quantization import Quantization
-from sets import VoronoiPartition
+from sets import BoundedVoronoiPartition
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
 
@@ -110,7 +110,7 @@ def plot_quantization(
         # Plot locs
         ax.scatter(*quantization.locs.t(), s=10, color="red", label="Cluster Centers")
 
-        if len(quantization) < 100 and isinstance(quantization.partition, VoronoiPartition):
+        if len(quantization) < 100 and isinstance(quantization.partition, BoundedVoronoiPartition):
             ax = utils_plot.plot_clipped_voronoi_2d(
                 centers=quantization.partition.cluster_centers,
                 max_diameters=quantization.partition.cluster_radii * 2,

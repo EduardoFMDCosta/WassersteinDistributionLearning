@@ -1,6 +1,6 @@
 import torch
 
-from sets import Partition, VoronoiPartition
+from sets import Partition, BoundedVoronoiPartition
 
 
 class Quantization:

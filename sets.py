@@ -83,12 +83,10 @@ class ConvexHullPartition(Partition):
 
             locs = cluster_result.centers.squeeze(0)
             labels = cluster_result.labels.squeeze(0)
-
-            distances = torch.norm(samples - locs[labels], dim=-1)
-            radii = torch.zeros(k)
-            for i in range(k): # TODO do this using vmap
-                if (labels == i).any():
-                    radii[i] = distances[labels == i].max()
+            
+            # Compute the max sample to center distance for each cluster in one operation
+            radii = compute_cluster_radii(samples, locs, labels)
+            radii *= radius_scale_factor
         else:
             locs = samples
             radii = torch.zeros(nsamples)
@@ -115,16 +113,32 @@ class BoundedVoronoiPartition(Partition):
             diameters, bounded_mask = compute_voronoi_diameter(locs)
             radii = diameters / 2.
 
-            # set the radii to radius_scale_factor * the max distance to any sample in the region
-            sample_to_center_distance = torch.norm(samples - locs[labels], dim=-1)
-            for i in range(k):
-                if (labels == i).any():
-                    radii[i].clamp_(min=0, max=radius_scale_factor * sample_to_center_distance[labels == i].max().item())
+            # Compute the max sample to center distance for each cluster in one operation
+            max_sample_distances = compute_cluster_radii(samples, locs, labels)
+            
+            radii.clamp_(max=radius_scale_factor * max_sample_distances)
         else:
             locs = samples
             radii = torch.zeros(nsamples)
 
         super().__init__(support, locs, radii)
+
+
+def compute_cluster_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """
+    Compute the maximum distance from samples to their assigned cluster centers.
+    
+    Args:
+        samples: Sample points (n_samples, n_features)
+        cluster_centers: Cluster center locations (k, n_features)  
+        labels: Cluster assignments for each sample (n_samples,)
+        
+    Returns:
+        radii: Maximum distance for each cluster (k,)
+    """
+    k = cluster_centers.size(0)
+    sample_to_center_distance = torch.norm(samples - cluster_centers[labels], dim=-1)
+    return torch.zeros(k).scatter_reduce(0, labels, sample_to_center_distance, reduce='amax', include_self=False)
 
 
 @torch.no_grad

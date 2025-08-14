@@ -70,7 +70,14 @@ class Partition:
 
 
 class BoundedVoronoiPartition(Partition):
-    def __init__(self, support: HyperRectangle, samples: torch.Tensor, k: int, radius_scale_factor: float = 1.2):
+    def __init__(
+            self, 
+            support: HyperRectangle, 
+            samples: torch.Tensor, 
+            k: int, 
+            radius_scale_factor: float = 1.2, 
+            use_voronoi_radii: bool = True
+        ):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
 
@@ -85,8 +92,10 @@ class BoundedVoronoiPartition(Partition):
 
             # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
             # For unbounded cells, the diameter will be infinite.
-            diameters, bounded_mask = compute_voronoi_diameter(locs)
-            radii = diameters / 2.
+            if use_voronoi_radii:
+                radii = compute_voronoi_radius(locs)
+            else:
+                radii = torch.full((k,), torch.inf)
 
             # Compute the max sample to center distance for each cluster in one operation
             max_sample_distances = compute_cluster_radii(samples, locs, labels)
@@ -117,9 +126,9 @@ def compute_cluster_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, 
 
 
 @torch.no_grad
-def compute_voronoi_diameter(points: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def compute_voronoi_radius(points: torch.Tensor) -> torch.Tensor:
     """
-    Compute a per-site Voronoi diameter-like measure in R^d.
+    Compute a per-site Voronoi radius-like measure in R^d.
 
     Parameters
     ----------
@@ -128,9 +137,9 @@ def compute_voronoi_diameter(points: torch.Tensor) -> Tuple[torch.Tensor, torch.
 
     Returns
     -------
-    diameters : (N,) torch.Tensor of float64
-        The maximum pairwise Euclidean distance between
-        the cell's Voronoi vertices. 
+    radii : (N,) torch.Tensor of float64
+        Half the maximum pairwise Euclidean distance between
+        the cell's Voronoi vertices (i.e., the radius). 
         Unbounded cells return inf.
         Degenerate cases with fewer than two finite vertices return 0.0.
     bounded_mask : (N,) torch.Tensor of bool
@@ -146,32 +155,28 @@ def compute_voronoi_diameter(points: torch.Tensor) -> Tuple[torch.Tensor, torch.
     points_np = points.detach().cpu().numpy()
     
     vor = Voronoi(points_np, qhull_options="QJ")
-    diameters = np.full(points_np.shape[0], np.inf)
+    radii = np.full(points_np.shape[0], np.inf)
     bounded_mask = np.zeros(points_np.shape[0], dtype=bool)
 
     for i, reg_idx in enumerate(vor.point_region):
         region = vor.regions[reg_idx]
         if not region:
-            diameters[i] = 0.0
+            radii[i] = 0.0
             continue
 
         finite_idx = [v for v in region if v != -1]
         if len(finite_idx) == 0:
             # Extremely degenerate; no finite vertices found.
-            diameters[i] = 0.0
+            radii[i] = 0.0
             continue
 
         verts = vor.vertices[np.array(finite_idx, dtype=int)]
 
         if -1 in region:
-            ## Unbounded: 2x max finite distance from site to any finite vertex.
-            # diffs = verts - points_np[i]                    # (m, d)
-            # dists = np.sqrt(np.sum(diffs * diffs, axis=1))  # (m,)
-            # diameters[i] = 2.0 * (dists.max() if dists.size else 0.0)
             bounded_mask[i] = False
         else:
-            # Bounded: true diameter via vertex–vertex pairs.
-            diameters[i] = pdist(verts).max() if len(verts) > 1 else 0.0
+            # Bounded: radius is half the true diameter via vertex–vertex pairs.
+            radii[i] = (pdist(verts).max() / 2.0) if len(verts) > 1 else 0.0
             bounded_mask[i] = True
 
-    return torch.from_numpy(diameters).to(dtype=points.dtype), torch.from_numpy(bounded_mask)
+    return torch.from_numpy(radii).to(dtype=points.dtype)

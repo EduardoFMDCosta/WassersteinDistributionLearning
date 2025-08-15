@@ -80,7 +80,7 @@ if __name__ == '__main__':
     )
 
     beta = args.beta
-    method = 'dual_sinkhorn'
+    method = 'stackelberg_equilibrium'
     support_assumption = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
 

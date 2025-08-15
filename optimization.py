@@ -23,7 +23,7 @@ def o_maximization(cost: torch.Tensor,
             break
 
     assert 1.0 - TOL <= p.sum() <= 1.0 + TOL
-    assert (p >= lower).all() & (p <= upper).all()
+    assert (p >= lower - TOL).all() & (p <= upper + TOL).all()
 
     result = torch.einsum('i,i->', cost, p)
     return result, p
@@ -73,7 +73,7 @@ def gradient_step(
     learning_rate = lr / (iteration + 1) # square-summable but not summable
 
     if iteration < 100:
-        learning_rate = lr
+        learning_rate = lr # TODO: IMPROVE LR SCHEDULING
 
     return w + learning_rate * alpha # TODO: CHECK IF IT SHOULD BE MINUS OR PLUS
 

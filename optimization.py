@@ -72,7 +72,7 @@ def gradient_step(
 
     learning_rate = lr / (iteration + 1) # square-summable but not summable
 
-    if iteration < 100:
+    if iteration < 500:
         learning_rate = lr # TODO: IMPROVE LR SCHEDULING
 
     return w + learning_rate * alpha # TODO: CHECK IF IT SHOULD BE MINUS OR PLUS
@@ -153,8 +153,12 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
                                 tol: float):
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
+    # Store quantities of interest
+    result = {}
+
     # Initialize w
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
+    result["initial_w"] = w
 
     previous_obj = None
 
@@ -172,29 +176,34 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
             print(f'Stackelberg equilibrium found after {step + 1} iterations.')
             break
         previous_obj = objective
+        # TODO: ADD CHECK FOR THE BEST VALUE AS IT IS COMMON TO SUBGRADIENT METHODS
 
     assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
     assert (w>=lower).all() & (w<=upper).all()
 
     Pi, objective, duals = solve_lin_prog(cost, w, empirical_marginal)
 
-    return objective
+    result["final_w"] = w
+    result["objective_value"] = objective
+
+    return result
 
 def max_min_lp(cost: torch.Tensor,
                lower: torch.Tensor,
                upper: torch.Tensor,
                empirical_marginal: torch.Tensor,
                method: str,
-               num_steps=1000,
+               num_steps=2000,
                lr=1e-2,
                tol=1e-6):
     if method == 'stackelberg_equilibrium':
-        return max_oracle_gradient_descent(cost=cost,
+        result = max_oracle_gradient_descent(cost=cost,
                                            lower=lower,
                                            upper=upper,
                                            empirical_marginal=empirical_marginal,
                                            num_steps=num_steps,
                                            lr=lr,
                                            tol=tol)
+        return result["objective_value"]
     else:
         raise ValueError('Unknown optimization method.')

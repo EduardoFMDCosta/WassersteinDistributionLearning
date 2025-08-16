@@ -71,11 +71,7 @@ def gradient_step(
         **kwargs):
 
     learning_rate = lr / (iteration + 1) # square-summable but not summable
-
-    if iteration < 500:
-        learning_rate = lr # TODO: IMPROVE LR SCHEDULING
-
-    return w + learning_rate * alpha # TODO: CHECK IF IT SHOULD BE MINUS OR PLUS
+    return w + learning_rate * alpha # TODO: CHANGE TO AUTODIFF SO WE CAN USE OPTIMIZERS?
 
 def solve_lin_prog(
     cost: torch.Tensor,
@@ -92,7 +88,7 @@ def solve_lin_prog(
     q_np = empirical_distribution.detach().cpu().double().numpy()
 
     # Decision variable is vec(T) of length n*n in row-major order
-    c = C_np.reshape(-1)
+    c = C_np.reshape(-1) * (-1)
 
     # Equality constraints: A_eq x = b_eq
     # Row sums: for each i, sum_j T[i,j] = p[i]
@@ -160,30 +156,26 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
     result["initial_w"] = w
 
-    previous_obj = None
+    best_objective, best_w = None, None
 
     for step in range(num_steps):
         # Solve for primal and dual (lines 2 and 3)
         Pi, objective, duals = solve_lin_prog(cost, w, empirical_marginal)
         alpha, beta = duals
 
+        # Check for best value
+        if best_objective is None or objective < best_objective:
+            best_objective = objective
+            best_w = w.clone()
+
         # Gradient step (line 4)
         w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
         w = project_to_subspace(w=w, lower=lower, upper=upper)
 
-        # Check for convergence
-        if previous_obj is not None and abs(objective - previous_obj) < tol:
-            print(f'Stackelberg equilibrium found after {step + 1} iterations.')
-            break
-        previous_obj = objective
-        # TODO: ADD CHECK FOR THE BEST VALUE AS IT IS COMMON TO SUBGRADIENT METHODS
+        assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
+        assert (w>=lower).all() & (w<=upper).all()
 
-    assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
-    assert (w>=lower).all() & (w<=upper).all()
-
-    Pi, objective, duals = solve_lin_prog(cost, w, empirical_marginal)
-
-    result["final_w"] = w
+    result["final_w"] = best_w
     result["objective_value"] = objective
 
     return result

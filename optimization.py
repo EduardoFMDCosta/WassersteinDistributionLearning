@@ -70,8 +70,10 @@ def gradient_step(
         lr: float,
         **kwargs):
 
-    learning_rate = lr / (iteration + 1) # square-summable but not summable
-    return w + learning_rate * alpha # TODO: CHANGE TO AUTODIFF SO WE CAN USE OPTIMIZERS?
+    #learning_rate = lr / (iteration + 1) # square-summable but not summable
+    learning_rate = lr # TODO: IMPROVE GRADIENT STEP SIZE
+
+    return w + learning_rate * alpha
 
 def solve_lin_prog(
     cost: torch.Tensor,
@@ -88,7 +90,7 @@ def solve_lin_prog(
     q_np = empirical_distribution.detach().cpu().double().numpy()
 
     # Decision variable is vec(T) of length n*n in row-major order
-    c = C_np.reshape(-1) * (-1)
+    c = C_np.reshape(-1)
 
     # Equality constraints: A_eq x = b_eq
     # Row sums: for each i, sum_j T[i,j] = p[i]
@@ -126,7 +128,7 @@ def solve_lin_prog(
 
     # Convert back to torch on original device/dtype
     T = torch.tensor(T_np)
-    obj = float((cost * T).sum().item())
+    obj = float((-cost * T).sum().item())
 
     # Try to return dual potentials (u for rows, v for cols) if provided
     u = v = None
@@ -164,7 +166,7 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
         alpha, beta = duals
 
         # Check for best value
-        if best_objective is None or objective < best_objective:
+        if step >= 1 and (best_objective is None or objective < best_objective):
             best_objective = objective
             best_w = w.clone()
 
@@ -176,7 +178,7 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
         assert (w>=lower).all() & (w<=upper).all()
 
     result["final_w"] = best_w
-    result["objective_value"] = objective
+    result["objective_value"] = best_objective * (-1) # as we solve for f = -h
 
     return result
 
@@ -185,9 +187,9 @@ def max_min_lp(cost: torch.Tensor,
                upper: torch.Tensor,
                empirical_marginal: torch.Tensor,
                method: str,
-               num_steps=2000,
-               lr=1e-2,
-               tol=1e-6):
+               num_steps=1000,
+               lr=1e-3,
+               tol=1e-8):
     if method == 'stackelberg_equilibrium':
         result = max_oracle_gradient_descent(cost=cost,
                                            lower=lower,

@@ -46,7 +46,7 @@ if __name__ == '__main__':
                                             upper=upper,
                                             empirical_marginal=empirical_marginal,
                                             num_steps=1000,
-                                            lr=0.01,
+                                            lr=0.001,
                                             tol=1e-6)
 
         print(f"-------------Iteration {i+1}-------------")

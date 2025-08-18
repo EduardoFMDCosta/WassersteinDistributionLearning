@@ -90,7 +90,7 @@ if __name__ == '__main__':
         beta=1e-4,
         plot=False
     )
-    args.method = 'dual_sinkhorn'
+    args.method = 'stackelberg_equilibrium'
     investigate_clusters = False
 
     if investigate_clusters:

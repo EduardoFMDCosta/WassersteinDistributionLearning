@@ -246,6 +246,7 @@ def nested_gradient_descent(cost: torch.Tensor,
 
                 assert (Pi>=0).all()
                 assert 1.0 - TOL <= Pi.sum() <= 1.0 + TOL
+                assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
                 # Convergence check
                 if prev_L is not None and abs((loss.item() - prev_L)) < tol:

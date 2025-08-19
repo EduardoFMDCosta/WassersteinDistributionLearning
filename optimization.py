@@ -28,11 +28,11 @@ def o_maximization(cost: torch.Tensor,
     result = torch.einsum('i,i->', cost, p)
     return result, p
 
-def project_to_subspace(w: torch.Tensor,
-                        lower: torch.Tensor,
-                        upper: torch.Tensor,
-                        tol: float = 1e-10,
-                        max_iter: int = 1000):
+def project_to_omega_subspace(w: torch.Tensor,
+                              lower: torch.Tensor,
+                              upper: torch.Tensor,
+                              tol: float = 1e-10,
+                              max_iter: int = 1000):
 
     y = torch.clamp(w, min=lower, max=upper)
     s = y.sum().item()
@@ -62,6 +62,23 @@ def project_to_subspace(w: torch.Tensor,
 
     # fallback
     return torch.clamp(w - mid, min=lower, max=upper)
+
+def project_to_gamma_subspace(Pi: torch.Tensor, empirical_marginal: torch.Tensor):
+    n = Pi.size(0)
+
+    # sort each column descending
+    U, _ = torch.sort(Pi, dim=0, descending=True)  # (n, n), per-column sort
+    cssv = U.cumsum(dim=0) - empirical_marginal.unsqueeze(0)  # (n, n)
+    ks = torch.arange(1, n + 1).unsqueeze(1)  # (n,1)
+    thetas = cssv / ks  # (n, n)
+    cond = (U - thetas) > 0  # (n, n) booleans
+    rho = cond.sum(dim=0).clamp(min=1)  # (n,) number of positives per col
+    # gather theta at rho-1 for each column
+    idx = rho - 1  # (n,)
+    theta = thetas.gather(0, idx.unsqueeze(0).expand(1, n)).squeeze(0)  # (n,)
+    # project
+    return (Pi - theta.unsqueeze(0)).clamp(min=0)
+
 
 def gradient_step(
         w: torch.Tensor,
@@ -172,13 +189,97 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
 
         # Gradient step (line 4)
         w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
-        w = project_to_subspace(w=w, lower=lower, upper=upper)
+        w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
 
         assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
         assert (w>=lower).all() & (w<=upper).all()
 
     result["final_w"] = best_w
     result["objective_value"] = best_objective * (-1) # as we solve for f = -h
+
+    return result
+
+def f(Pi: torch.Tensor, cost: torch.Tensor):
+    return (cost * Pi).sum()
+
+def g(w: torch.Tensor, Pi: torch.Tensor):
+    return Pi.sum(dim=1) - w
+
+def lagrangian(w: torch.Tensor, Pi: torch.Tensor, lambd: torch.Tensor, cost: torch.Tensor):
+    return f(Pi=Pi, cost=cost) + torch.dot(lambd, g(w=w, Pi=Pi))
+
+def nested_gradient_descent(cost: torch.Tensor,
+                            lower: torch.Tensor,
+                            upper: torch.Tensor,
+                            empirical_marginal: torch.Tensor,
+                            num_steps: int,
+                            lr: float,
+                            tol: float):
+    # See Algorithm 2 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
+
+    # Store quantities of interest
+    result = {}
+    M = cost.shape[0]
+
+    # Initialize w and Pi
+    w = torch.distributions.Dirichlet(torch.ones(M)).sample()
+    result["initial_w"] = w
+    Pi = torch.outer(w, empirical_marginal).clone().requires_grad_(True)
+    lambd = torch.randn(M, requires_grad=True)
+
+    # Optimizers for each variable
+    Pi_optimizer = torch.optim.Adam([Pi], lr=lr)
+    lambd_optimizer = torch.optim.Adam([lambd], lr=lr)
+    w_optimizer = torch.optim.Adam([w], lr=lr)
+
+    for step in range(num_steps):
+
+        prev_L = None
+        for _ in range(10):
+            Pi_optimizer.zero_grad()
+            loss = f(Pi=Pi, cost=cost)
+            loss.backward()
+            Pi_optimizer.step()
+
+            with torch.no_grad():
+                Pi.copy_(project_to_gamma_subspace(Pi=Pi, empirical_marginal=empirical_marginal))
+
+                assert (Pi>=0).all()
+                assert 1.0 - TOL <= Pi.sum() <= 1.0 + TOL
+                assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
+
+                # Convergence check
+                if prev_L is not None and abs((loss.item() - prev_L)) < tol:
+                    break
+                prev_L = loss.item()
+
+        prev_L = None
+        for _ in range(10):
+            lambd_optimizer.zero_grad()
+            L = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
+            (-L).backward()
+            lambd_optimizer.step()
+
+            with torch.no_grad():
+                if prev_L is not None and abs((L.item() - prev_L)) < 1e-6:
+                    break
+                prev_L = L.item()
+
+        w_optimizer.zero_grad()
+        L = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
+        (-L).backward()
+        w_optimizer.step()
+
+        with torch.no_grad():
+            w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
+
+            assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
+            assert (w>=lower).all() & (w<=upper).all()
+
+
+    Pi, objective, duals = solve_lin_prog(cost=cost, w=w, empirical_distribution=empirical_marginal)
+    result["final_w"] = w
+    result["objective_value"] = objective * (-1) # as we solve for f = -h
 
     return result
 
@@ -198,6 +299,15 @@ def max_min_lp(cost: torch.Tensor,
                                            num_steps=num_steps,
                                            lr=lr,
                                            tol=tol)
+        return result["objective_value"]
+    elif method == 'nested_gradient_descent':
+        result = nested_gradient_descent(cost=cost,
+                                         lower=lower,
+                                         upper=upper,
+                                         empirical_marginal=empirical_marginal,
+                                         num_steps=num_steps,
+                                         lr=lr,
+                                         tol=tol)
         return result["objective_value"]
     else:
         raise ValueError('Unknown optimization method.')

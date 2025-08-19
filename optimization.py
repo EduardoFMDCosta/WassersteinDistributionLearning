@@ -232,51 +232,52 @@ def nested_gradient_descent(cost: torch.Tensor,
     lambd_optimizer = torch.optim.Adam([lambd], lr=lr)
     w_optimizer = torch.optim.Adam([w], lr=lr)
 
+    previous_loss = None
+
     for step in range(num_steps):
 
-        prev_L = None
-        for _ in range(10):
-            Pi_optimizer.zero_grad()
-            loss = f(Pi=Pi, cost=cost)
-            loss.backward()
-            Pi_optimizer.step()
+        # Phase 1: Gradient descent for Pi
+        Pi_optimizer.zero_grad()
+        loss = f(Pi=Pi, cost=cost)
+        loss.backward()
+        Pi_optimizer.step()
 
-            with torch.no_grad():
-                Pi.copy_(project_to_gamma_subspace(Pi=Pi, empirical_marginal=empirical_marginal))
+        # Projection
+        with torch.no_grad():
+            Pi = project_to_gamma_subspace(Pi=Pi, empirical_marginal=empirical_marginal)
+            Pi = Pi.clone().requires_grad_(True) # TODO: Avoid creating new copy
 
-                assert (Pi>=0).all()
-                assert 1.0 - TOL <= Pi.sum() <= 1.0 + TOL
-                assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
+            assert (Pi >= 0).all()
+            assert abs(Pi.sum() - 1.0) <= TOL
+            assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
-                # Convergence check
-                if prev_L is not None and abs((loss.item() - prev_L)) < tol:
-                    break
-                prev_L = loss.item()
+        # Phase 2: Gradient ascent for lambd
+        lambd_optimizer.zero_grad()
+        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
+        (-loss).backward()
+        lambd_optimizer.step()
 
-        prev_L = None
-        for _ in range(10):
-            lambd_optimizer.zero_grad()
-            L = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-            (-L).backward()
-            lambd_optimizer.step()
-
-            with torch.no_grad():
-                if prev_L is not None and abs((L.item() - prev_L)) < 1e-6:
-                    break
-                prev_L = L.item()
-
+        # Phase 3: Gradient ascent for w
         w_optimizer.zero_grad()
-        L = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-L).backward()
+        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
+        (-loss).backward()
         w_optimizer.step()
 
+        # Projection
         with torch.no_grad():
             w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
 
-            assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
+            assert abs(w.sum() - 1.0) <= TOL
             assert (w>=lower).all() & (w<=upper).all()
 
+        # Check convergence
+        with torch.no_grad():
+            if previous_loss is not None and abs((loss.item() - previous_loss)) < tol:
+                print(f"Gradient ascent-descent converged after {step + 1} iterations.")
+                break
+            previous_loss = loss.item()
 
+    # Compute exact value
     Pi, objective, duals = solve_lin_prog(cost=cost, w=w, empirical_distribution=empirical_marginal)
     result["final_w"] = w
     result["objective_value"] = objective * (-1) # as we solve for f = -h

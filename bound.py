@@ -23,7 +23,7 @@ def bound_discrete(
     cost_matrix = quantization.partition.distance_locs ** 2
 
     bound = max_min_lp(
-        cost=cost_matrix,
+        cost=cost_matrix.detach(),
         lower=confidence.lower_proba, 
         upper=confidence.upper_proba, 
         empirical_marginal=quantization.probs, 

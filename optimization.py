@@ -247,25 +247,27 @@ def nested_gradient_descent(cost: torch.Tensor,
     for step in range(num_steps):
 
         # Phase 1: Gradient ascent for Pi
-        Pi_optimizer.zero_grad()
-        loss = f(Pi=Pi, cost=cost)
-        (-loss).backward()
-        Pi_optimizer.step()
+        for _ in range(10):
+            Pi_optimizer.zero_grad()
+            loss = f(Pi=Pi, cost=cost)
+            (-loss).backward()
+            Pi_optimizer.step()
 
-        # Projection
-        with torch.no_grad():
-            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
-            Pi.copy_(projected)
+            # Projection
+            with torch.no_grad():
+                projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
+                Pi.copy_(projected)
 
-            assert (Pi >= 0).all()
-            assert abs(Pi.sum() - 1.0) <= TOL
-            assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
+                assert (Pi >= 0).all()
+                assert abs(Pi.sum() - 1.0) <= TOL
+                assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
         # Phase 2: Gradient descent for lambd
-        lambd_optimizer.zero_grad()
-        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        loss.backward()
-        lambd_optimizer.step()
+        for _ in range(10):
+            lambd_optimizer.zero_grad()
+            loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
+            loss.backward()
+            lambd_optimizer.step()
 
         # Phase 3: Gradient descent for w
         w_optimizer.zero_grad()
@@ -286,6 +288,21 @@ def nested_gradient_descent(cost: torch.Tensor,
                 print(f"Gradient ascent-descent converged after {step + 1} iterations.")
                 break
             previous_loss = loss.item()
+
+    for _ in range(1000):
+        Pi_optimizer.zero_grad()
+        loss = f(Pi=Pi, cost=cost)
+        (-loss).backward()
+        Pi_optimizer.step()
+
+        # Projection
+        with torch.no_grad():
+            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
+            Pi.copy_(projected)
+
+            assert (Pi >= 0).all()
+            assert abs(Pi.sum() - 1.0) <= TOL
+            assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
     # Compute exact value
     result["final_w"] = w

@@ -63,21 +63,31 @@ def project_to_omega_subspace(w: torch.Tensor,
     # fallback
     return torch.clamp(w - mid, min=lower, max=upper)
 
-def project_to_gamma_subspace(Pi: torch.Tensor, empirical_marginal: torch.Tensor):
-    n = Pi.size(0)
+def project_to_gamma_subspace(Pi: torch.Tensor,
+                        w: torch.Tensor,
+                        empirical_marginal: torch.Tensor,
+                        max_iters: int = 100,
+                        tol: float = 1e-9) -> torch.Tensor:
 
-    # sort each column descending
-    U, _ = torch.sort(Pi, dim=0, descending=True)  # (n, n), per-column sort
-    cssv = U.cumsum(dim=0) - empirical_marginal.unsqueeze(0)  # (n, n)
-    ks = torch.arange(1, n + 1).unsqueeze(1)  # (n,1)
-    thetas = cssv / ks  # (n, n)
-    cond = (U - thetas) > 0  # (n, n) booleans
-    rho = cond.sum(dim=0).clamp(min=1)  # (n,) number of positives per col
-    # gather theta at rho-1 for each column
-    idx = rho - 1  # (n,)
-    theta = thetas.gather(0, idx.unsqueeze(0).expand(1, n)).squeeze(0)  # (n,)
-    # project
-    return (Pi - theta.unsqueeze(0)).clamp(min=0)
+    n = Pi.shape[0]
+
+    # Ensure strictly positive entries to avoid division by 0
+    K = Pi.clamp_min(1e-12)
+
+    u = torch.ones(n)
+    v = torch.ones(n)
+
+    for _ in range(max_iters):
+        u_prev = u
+        u = w / (K @ v)
+        v = empirical_marginal / (K.t() @ u)
+
+        # check convergence on rows
+        if torch.max(torch.abs(u - u_prev)) < tol:
+            break
+
+    Pi = torch.diag(u) @ K @ torch.diag(v)
+    return Pi
 
 
 def gradient_step(
@@ -244,7 +254,7 @@ def nested_gradient_descent(cost: torch.Tensor,
 
         # Projection
         with torch.no_grad():
-            projected = project_to_gamma_subspace(Pi=Pi, empirical_marginal=empirical_marginal)
+            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
             Pi.copy_(projected)
 
             assert (Pi >= 0).all()

@@ -6,7 +6,7 @@ from quantization import UncertainQuantization
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from bound import DataDrivenRadius, fournier_radius
-from experiments.statistics import RadiiStatistics, UncertainQuantizationStatistics
+from experiments.utils import RadiiStatistics, UncertainQuantizationStatistics
 
 from configs.construct import get_support_assumption, get_distribution
 from configs.handlers import parse_arguments

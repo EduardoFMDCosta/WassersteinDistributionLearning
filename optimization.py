@@ -200,7 +200,7 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
     return result
 
 def f(Pi: torch.Tensor, cost: torch.Tensor):
-    return (cost * Pi).sum()
+    return -(cost * Pi).sum()
 
 def g(w: torch.Tensor, Pi: torch.Tensor):
     return Pi.sum(dim=1) - w
@@ -236,10 +236,10 @@ def nested_gradient_descent(cost: torch.Tensor,
 
     for step in range(num_steps):
 
-        # Phase 1: Gradient descent for Pi
+        # Phase 1: Gradient ascent for Pi
         Pi_optimizer.zero_grad()
         loss = f(Pi=Pi, cost=cost)
-        loss.backward()
+        (-loss).backward()
         Pi_optimizer.step()
 
         # Projection
@@ -251,16 +251,16 @@ def nested_gradient_descent(cost: torch.Tensor,
             assert abs(Pi.sum() - 1.0) <= TOL
             assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
-        # Phase 2: Gradient ascent for lambd
+        # Phase 2: Gradient descent for lambd
         lambd_optimizer.zero_grad()
         loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-loss).backward()
+        loss.backward()
         lambd_optimizer.step()
 
-        # Phase 3: Gradient ascent for w
+        # Phase 3: Gradient descent for w
         w_optimizer.zero_grad()
         loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-loss).backward()
+        loss.backward()
         w_optimizer.step()
 
         # Projection
@@ -278,9 +278,8 @@ def nested_gradient_descent(cost: torch.Tensor,
             previous_loss = loss.item()
 
     # Compute exact value
-    Pi, objective, duals = solve_lin_prog(cost=cost, w=w, empirical_distribution=empirical_marginal)
     result["final_w"] = w
-    result["objective_value"] = objective * (-1) # as we solve for f = -h
+    result["objective_value"] = -f(Pi=Pi, cost=cost) # as we solve for f = -h
 
     return result
 

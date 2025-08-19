@@ -35,7 +35,7 @@ def generate_empirical(n):
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    n = 10
+    n = 2
     cost = generate_symmetric_cost(n=n, low=0.1, high=2.0)
     empirical_marginal = generate_empirical(n=n)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                          lower=lower,
                                          upper=upper,
                                          empirical_marginal=empirical_marginal,
-                                         num_steps=10000,
+                                         num_steps=1000,
                                          lr=0.01,
                                          tol=1e-6)
         print(f"Final w (Algorithm 2) = {result['final_w']}")

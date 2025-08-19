@@ -1,9 +1,9 @@
 import torch
 from sets import BoundedVoronoiPartition
-from quantization import Quantization
+from quantization import Quantization, UncertainQuantization
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from bound import data_driven_radius, fournier_radius
+from bound import DataDrivenRadius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
 
 from configs.handlers import parse_arguments
@@ -43,6 +43,7 @@ if __name__ == '__main__':
     # Generate Quantization
     samples_quantization = distribution.sample((N,))
     quantization = Quantization(partition=partition, samples=samples_quantization)
+    quantization = UncertainQuantization(quantization=quantization, beta=beta)
 
     # Plot samples and clusterized distribution
     if args.plot:
@@ -50,7 +51,7 @@ if __name__ == '__main__':
 
     # Compute bounds
     fournier_bound = fournier_radius(support=partition.support, nsamples=N, beta=beta)
-    data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
+    data_driven_output = DataDrivenRadius(quantization=quantization, method=method)
 
     print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"
           f"\t Fournier: {fournier_bound:.4f} \n"

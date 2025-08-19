@@ -1,43 +1,39 @@
 import math
+from quantization import UncertainQuantization
 from sets import Partition, HyperRectangle
-from quantization import Quantization
-from confidence import ClopperPearsonConfidence, Confidence
+from quantization import UncertainQuantization
 from optimization import o_maximization, max_min_lp
 
-
 def bound_moment(
-        partition: Partition,
-        confidence: Confidence
+        quantization: UncertainQuantization,
 ):
-
-    bound, _ = o_maximization(partition.radii, confidence.lower_proba, confidence.upper_proba)
-
+    bound, _ = o_maximization(quantization.partition.radii, quantization.lower_probs, quantization.upper_probs)
     return bound ** 0.5
 
 
 def bound_discrete(
-        quantization: Quantization,
-        confidence: Confidence,
+        quantization: UncertainQuantization,
         method: str
 ):
     cost_matrix = quantization.partition.distance_locs ** 2
 
     bound = max_min_lp(
         cost=cost_matrix,
-        lower=confidence.lower_proba, 
-        upper=confidence.upper_proba, 
-        empirical_marginal=quantization.probs, 
+        lower=quantization.lower_probs,
+        upper=quantization.upper_probs,
+        empirical_marginal=quantization.probs,
         method=method
     )
 
     return bound ** 0.5
 
 
-class DataDrivenOutput:
-    def __init__(self, moment_bound, discrete_bound, lower_bound):
-        self.moment_bound = moment_bound
-        self.discrete_bound = discrete_bound
-        self.lower_bound = lower_bound
+class DataDrivenRadius:
+    def __init__(self, quantization: UncertainQuantization, method: str):
+        self.moment_bound = bound_moment(quantization=quantization)
+        self.discrete_bound = bound_discrete(quantization=quantization, method=method)
+
+        self.lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 
     @property
     def radius(self):
@@ -48,25 +44,6 @@ class DataDrivenOutput:
     
     def __repr__(self):
         return self.radius
-
-
-def data_driven_radius(
-        quantization: Quantization,
-        beta: float,
-        method: str
-    ) -> DataDrivenOutput:
-
-    adjusted_beta = beta / len(quantization)
-    pearson_confidence = ClopperPearsonConfidence(beta=adjusted_beta, n_set=quantization.counts, n=quantization.nsamples)
-
-    moment_bound = bound_moment(partition=quantization.partition, confidence=pearson_confidence)
-    discrete_bound = bound_discrete(quantization=quantization, confidence=pearson_confidence, method=method)
-
-    return DataDrivenOutput(
-        moment_bound=moment_bound,
-        discrete_bound=discrete_bound,
-        lower_bound=(pearson_confidence.upper_proba[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
-    )
 
 
 def fournier_radius(

@@ -1,5 +1,6 @@
 import torch
 
+from confidence import ClopperPearsonConfidence
 from sets import BoundedVoronoiPartition
 
 
@@ -38,3 +39,23 @@ class Quantization:
 
     def __len__(self):
         return len(self.partition)
+
+
+class UncertainQuantization(Quantization):
+    def __init__(self, quantization: Quantization, beta: float, ConfidenceClass: type = ClopperPearsonConfidence):
+
+        super().__init__(partition=quantization.partition, samples=quantization.samples)
+
+        self.confidence = ConfidenceClass(
+            beta=beta / self.__len__(), 
+            n_set=self.counts, 
+            n=self.nsamples
+        )
+
+    @property
+    def lower_probs(self):
+        return self.confidence.lower_proba
+    
+    @property
+    def upper_probs(self):
+        return self.confidence.upper_proba

@@ -3,7 +3,7 @@ import time
 import os
 
 from sets import BoundedVoronoiPartition
-from quantization import Quantization, UncertainQuantization
+from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius
 from plotting.plot import colored_scatter
 
@@ -117,8 +117,7 @@ if __name__ == '__main__':
                     M=M,
                     use_voronoi_radii=False # set to false to speed up
                 )
-                quantization = Quantization(partition=partition, samples=samples_quantization)
-                quantization = UncertainQuantization(quantization=quantization, beta=beta)
+                quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=beta)
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 

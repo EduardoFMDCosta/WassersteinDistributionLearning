@@ -1,6 +1,6 @@
 import torch
 from sets import BoundedVoronoiPartition
-from quantization import Quantization, UncertainQuantization
+from quantization import UncertainQuantization
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from bound import DataDrivenRadius, fournier_radius
@@ -42,8 +42,7 @@ if __name__ == '__main__':
 
     # Generate Quantization
     samples_quantization = distribution.sample((N,))
-    quantization = Quantization(partition=partition, samples=samples_quantization)
-    quantization = UncertainQuantization(quantization=quantization, beta=beta)
+    quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=beta)
 
     # Plot samples and clusterized distribution
     if args.plot:

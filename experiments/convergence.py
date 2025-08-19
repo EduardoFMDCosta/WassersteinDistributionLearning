@@ -1,7 +1,7 @@
 from typing import List
 import torch
 from sets import BoundedVoronoiPartition
-from quantization import Quantization, UncertainQuantization
+from quantization import UncertainQuantization
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from bound import DataDrivenRadius, fournier_radius
@@ -31,8 +31,7 @@ def num_samples(args, M):
             M=M,
             use_voronoi_radii=False # set to false to speed up
         )
-        quantization = Quantization(partition=partition, samples=samples_quantization)
-        quantization = UncertainQuantization(quantization=quantization, beta=args.beta)
+        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
         # Plot samples and clusterized distribution
         if args.plot:
@@ -65,8 +64,7 @@ def num_clusters(args, N):
             M=M,
             use_voronoi_radii=False # set to false to speed up
         )
-        quantization = Quantization(partition=partition, samples=samples_quantization)
-        quantization = UncertainQuantization(quantization=quantization, beta=args.beta)
+        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
         # Plot samples and clusterized distribution
         if args.plot:
@@ -133,7 +131,7 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="Discrete",
+        distribution="Uniform",
         dimension=2,
         setting=0,
         num_samples=5000,
@@ -142,7 +140,7 @@ if __name__ == '__main__':
         plot=False
     )
     args.method = 'stackelberg_equilibrium'
-    investigate_clusters = False
+    investigate_clusters = True
 
     if investigate_clusters:
         options, quantizations, data_driven_radii, fournier_radii = num_clusters(args, N=args.num_samples)

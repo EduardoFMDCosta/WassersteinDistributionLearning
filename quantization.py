@@ -5,7 +5,11 @@ from sets import BoundedVoronoiPartition
 
 
 class Quantization:
-    def __init__(self, partition: BoundedVoronoiPartition, samples: torch.Tensor):
+    def __init__(
+            self, 
+            partition: BoundedVoronoiPartition, 
+            samples: torch.Tensor
+    ):
         self.partition = partition
         self.samples = samples
         self.nsamples = samples.size(0)
@@ -42,9 +46,15 @@ class Quantization:
 
 
 class UncertainQuantization(Quantization):
-    def __init__(self, quantization: Quantization, beta: float, ConfidenceClass: type = ClopperPearsonConfidence):
+    def __init__(
+            self, 
+            partition: BoundedVoronoiPartition, 
+            samples: torch.Tensor,
+            beta: float, 
+            ConfidenceClass: type = ClopperPearsonConfidence
+    ):
 
-        super().__init__(partition=quantization.partition, samples=quantization.samples)
+        super().__init__(partition=partition, samples=samples)
 
         self.confidence = ConfidenceClass(
             beta=beta / self.__len__(), 

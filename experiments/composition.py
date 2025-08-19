@@ -1,7 +1,6 @@
 import torch
-from confidence import ClopperPearsonConfidence
 from sets import BoundedVoronoiPartition
-from quantization import Quantization, UncertainQuantization
+from quantization import UncertainQuantization
 from plotting.plot import plot_quantization
 from bound import DataDrivenRadius
 from configs.construct import get_support_assumption, get_distribution
@@ -45,8 +44,7 @@ if __name__ == '__main__':
             M=M,
             use_voronoi_radii=False # set to false to speed up
         )
-        quantization = Quantization(partition=partition, samples=samples_quantization)
-        quantization = UncertainQuantization(quantization=quantization, beta=beta)
+        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=beta)
 
         # Plot samples and clusterized distribution
         if args.plot:

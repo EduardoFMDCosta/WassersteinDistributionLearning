@@ -33,35 +33,59 @@ def project_to_omega_subspace(w: torch.Tensor,
                               upper: torch.Tensor,
                               tol: float = 1e-10,
                               max_iter: int = 1000):
+    """Project a vector onto the capped probability simplex.
 
+    Solve:  minimize ||y - w||_2  subject to  lower <= y <= upper (elementwise), sum(y)=1.
+
+    The KKT conditions imply the solution has the form
+        y_i = clip(w_i - λ, lower_i, upper_i)
+    for a single scalar Lagrange multiplier λ enforcing the sum constraint. Define
+        S(λ) = sum_i clip(w_i - λ, lower_i, upper_i).
+    S is continuous and strictly decreasing in λ, so we locate λ* with bisection.
+
+    Parameters
+    ---------
+    w : torch.Tensor (n,)
+        Point to project.
+    lower, upper : torch.Tensor (n,)
+        Elementwise bounds (must satisfy lower <= upper and
+        sum(lower) <= 1 <= sum(upper) for feasibility).
+    tol : float
+        Absolute tolerance on the sum constraint.
+    max_iter : int
+        Maximum bisection iterations.
+    """
+
+    # First clamp into the box; if the sum hits 1 already we're done.
     y = torch.clamp(w, min=lower, max=upper)
     s = y.sum().item()
     if abs(s - 1.0) <= tol:
         return y
 
-    # lower/upper bounds for lambda such that S(low)=sum(b) and S(high)=sum(a)
-    # Using scalars (float) for the bisection endpoints.
-    low = float(torch.min(w - upper).item())   # yields S(low) = sum(b)
-    high = float(torch.max(w - lower).item())  # yields S(high) = sum(a)
+    # Establish bisection interval [low, high] for λ.
+    # Let low = min_i (w_i - upper_i). Then for every i: w_i - low >= upper_i, so after clipping y = upper and S(low)=sum(upper).
+    # Let high = max_i (w_i - lower_i). Then for every i: w_i - high <= lower_i, so after clipping y = lower and S(high)=sum(lower).
+    # Feasibility (sum(lower) <= 1 <= sum(upper)) guarantees the root λ* with S(λ*)=1 lies in [low, high].
+    low = float(torch.min(w - upper).item())   # yields S(low) = sum(upper)
+    high = float(torch.max(w - lower).item())  # yields S(high) = sum(lower)
 
-    # bisection loop
+    # Bisection on S(λ) - 1 = 0. S decreases with λ.
     for _ in range(max_iter):
         mid = 0.5 * (low + high)
-        # compute clipped values and their sum
         y = torch.clamp(w - mid, min=lower, max=upper)
         s = y.sum().item()
 
         if abs(s - 1.0) <= tol:
             return y
         if s > 1.0:
-            # need to reduce lambda to make sum smaller? note: S(lambda) is decreasing in lambda
-            # if s > 1 => mid is too small (y too big) => move low up
+            # Current sum too large ⇒ λ too small (need larger λ) ⇒ move lower bound up.
             low = mid
         else:
+            # Current sum too small ⇒ λ too large ⇒ move upper bound down.
             high = mid
 
-    # fallback
-    return torch.clamp(w - mid, min=lower, max=upper)
+    # Fallback (max_iter reached): return last approximation.
+    return torch.clamp(w - 0.5 * (low + high), min=lower, max=upper)
 
 def project_to_gamma_subspace(Pi: torch.Tensor, empirical_marginal: torch.Tensor):
     n = Pi.size(0)

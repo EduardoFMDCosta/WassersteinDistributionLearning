@@ -6,9 +6,11 @@ import ot
 
 TOL = 1e-6
 
-def o_maximization(cost: torch.Tensor,
-                   lower: torch.Tensor,
-                   upper: torch.Tensor):
+def o_maximization(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor
+):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
     order = torch.argsort(-cost)
@@ -30,11 +32,13 @@ def o_maximization(cost: torch.Tensor,
     result = torch.einsum('i,i->', cost, p)
     return result, p
 
-def project_to_omega_subspace(w: torch.Tensor,
-                              lower: torch.Tensor,
-                              upper: torch.Tensor,
-                              tol: float = 1e-10,
-                              max_iter: int = 1000):
+def project_to_omega_subspace(
+        w: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        tol: float = 1e-10,
+        max_iter: int = 1000
+):
     """Project a vector onto the capped probability simplex.
 
     Solve:  minimize ||y - w||_2  subject to  lower <= y <= upper (elementwise), sum(y)=1.
@@ -111,7 +115,8 @@ def gradient_step(
         alpha: torch.Tensor,
         iteration: int,
         lr: float,
-        **kwargs):
+        **kwargs
+):
 
     #learning_rate = lr / (iteration + 1) # square-summable but not summable
     learning_rate = lr # TODO: IMPROVE GRADIENT STEP SIZE
@@ -119,11 +124,12 @@ def gradient_step(
     return w + learning_rate * alpha
 
 def ot_lp_solver(
-    cost: torch.Tensor,
-    w: torch.Tensor,
-    empirical_distribution: torch.Tensor,
-    method: str = "highs",
-    tol: float = 1e-9):
+        cost: torch.Tensor,
+        w: torch.Tensor,
+        empirical_distribution: torch.Tensor,
+        method: str = "highs",
+        tol: float = 1e-9
+):
 
     n = cost.shape[0]
 
@@ -186,12 +192,12 @@ def ot_lp_solver(
     return T, obj, (u, v) if (u is not None and v is not None) else None
 
 def ot_sinkhorn_solver(
-    cost: torch.Tensor,
-    w: torch.Tensor,
-    empirical_distribution: torch.Tensor,
-    epsilon: float = 1e-3,
-    max_iter: int = 100,
-    tol: float = 1e-5,
+        cost: torch.Tensor,
+        w: torch.Tensor,
+        empirical_distribution: torch.Tensor,
+        epsilon: float = 1e-3,
+        max_iter: int = 100,
+        tol: float = 1e-5,
 ):
     """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
 
@@ -223,15 +229,16 @@ def ot_sinkhorn_solver(
     objective = float((-cost * T).sum().item())
     return T, objective, (alpha, beta)
 
-def max_oracle_gradient_descent(cost: torch.Tensor,
-                                lower: torch.Tensor,
-                                upper: torch.Tensor,
-                                empirical_marginal: torch.Tensor,
-                                num_steps: int,
-                                lr: float,
-                                tol: float,
-                                ot_solver: Callable
-                                ):
+def max_oracle_gradient_descent(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        num_steps: int,
+        lr: float,
+        tol: float,
+        ot_solver: Callable
+):
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Store quantities of interest
@@ -274,13 +281,15 @@ def g(w: torch.Tensor, Pi: torch.Tensor):
 def lagrangian(w: torch.Tensor, Pi: torch.Tensor, lambd: torch.Tensor, cost: torch.Tensor):
     return f(Pi=Pi, cost=cost) + torch.dot(lambd, g(w=w, Pi=Pi))
 
-def nested_gradient_descent(cost: torch.Tensor,
-                            lower: torch.Tensor,
-                            upper: torch.Tensor,
-                            empirical_marginal: torch.Tensor,
-                            num_steps: int,
-                            lr: float,
-                            tol: float):
+def nested_gradient_descent(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        num_steps: int,
+        lr: float,
+        tol: float
+):
     # See Algorithm 2 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Store quantities of interest
@@ -349,14 +358,16 @@ def nested_gradient_descent(cost: torch.Tensor,
 
     return result
 
-def max_min_lp(cost: torch.Tensor,
-               lower: torch.Tensor,
-               upper: torch.Tensor,
-               empirical_marginal: torch.Tensor,
-               method: str,
-               num_steps=1000,
-               lr=1e-3,
-               tol=1e-8):
+def max_min_lp(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        method: str,
+        num_steps=1000,
+        lr=1e-3,
+        tol=1e-8
+):
     if method == 'stackelberg_equilibrium':
         result = max_oracle_gradient_descent(cost=cost,
                                            lower=lower,

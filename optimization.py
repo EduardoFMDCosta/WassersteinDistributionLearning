@@ -1,6 +1,8 @@
+from typing import Callable
 import torch
 import numpy as np
 from scipy.optimize import linprog
+import ot
 
 TOL = 1e-6
 
@@ -116,7 +118,7 @@ def gradient_step(
 
     return w + learning_rate * alpha
 
-def solve_lin_prog(
+def ot_lp_solver(
     cost: torch.Tensor,
     w: torch.Tensor,
     empirical_distribution: torch.Tensor,
@@ -183,13 +185,53 @@ def solve_lin_prog(
 
     return T, obj, (u, v) if (u is not None and v is not None) else None
 
+def ot_sinkhorn_solver(
+    cost: torch.Tensor,
+    w: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    epsilon: float = 1e-3,
+    max_iter: int = 100,
+    tol: float = 1e-5,
+):
+    """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
+
+    Returns transport plan T, objective = (-cost * T).sum() for consistency
+    with solve_lin_prog, and dual-like potentials (alpha, beta) derived from
+    scaling vectors. Alpha/beta are epsilon * log(u/v) and defined up to an
+    additive constant.
+    """
+
+    assert cost.dim() == 2 and cost.shape[0] == cost.shape[1], "cost must be square"
+    n = cost.shape[0]
+    assert w.shape == (n,) and empirical_distribution.shape == (n,), "marginals must match cost dimension"
+
+    C_np = cost.detach().cpu().double().numpy()
+    a_np = w.detach().cpu().double().numpy()
+    b_np = empirical_distribution.detach().cpu().double().numpy()
+
+    # Stabilized log-domain sinkhorn
+    T_np, log = ot.sinkhorn(a_np, b_np, C_np, reg=epsilon, numItermax=max_iter,
+                             stopThr=tol, method='sinkhorn_log', log=True)
+
+    T = torch.from_numpy(T_np).to(device=cost.device, dtype=cost.dtype)
+    # POT's log dict gives scaling factors 'u','v' (not log) for stabilized method
+    u = torch.from_numpy(log['u']).to(cost.device, cost.dtype)
+    v = torch.from_numpy(log['v']).to(cost.device, cost.dtype)
+    alpha = epsilon * torch.log(u.clamp_min(1e-300))
+    beta = epsilon * torch.log(v.clamp_min(1e-300))
+
+    objective = float((-cost * T).sum().item())
+    return T, objective, (alpha, beta)
+
 def max_oracle_gradient_descent(cost: torch.Tensor,
                                 lower: torch.Tensor,
                                 upper: torch.Tensor,
                                 empirical_marginal: torch.Tensor,
                                 num_steps: int,
                                 lr: float,
-                                tol: float):
+                                tol: float,
+                                ot_solver: Callable
+                                ):
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Store quantities of interest
@@ -203,7 +245,7 @@ def max_oracle_gradient_descent(cost: torch.Tensor,
 
     for step in range(num_steps):
         # Solve for primal and dual (lines 2 and 3)
-        Pi, objective, duals = solve_lin_prog(cost, w, empirical_marginal)
+        Pi, objective, duals = ot_solver(cost, w, empirical_marginal)
         alpha, beta = duals
 
         # Check for best value
@@ -301,7 +343,7 @@ def nested_gradient_descent(cost: torch.Tensor,
             assert (w>=lower).all() & (w<=upper).all()
 
 
-    Pi, objective, duals = solve_lin_prog(cost=cost, w=w, empirical_distribution=empirical_marginal)
+    Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
     result["final_w"] = w
     result["objective_value"] = objective * (-1) # as we solve for f = -h
 
@@ -322,7 +364,8 @@ def max_min_lp(cost: torch.Tensor,
                                            empirical_marginal=empirical_marginal,
                                            num_steps=num_steps,
                                            lr=lr,
-                                           tol=tol)
+                                           tol=tol,
+                                           ot_solver=ot_lp_solver)
         return result["objective_value"]
     elif method == 'nested_gradient_descent':
         result = nested_gradient_descent(cost=cost,
@@ -332,6 +375,16 @@ def max_min_lp(cost: torch.Tensor,
                                          num_steps=num_steps,
                                          lr=lr,
                                          tol=tol)
+        return result["objective_value"]
+    elif method == 'sinkhorn':
+        result = max_oracle_gradient_descent(cost=cost,
+                                           lower=lower,
+                                           upper=upper,
+                                           empirical_marginal=empirical_marginal,
+                                           num_steps=num_steps,
+                                           lr=lr,
+                                           tol=tol,
+                                           ot_solver=ot_sinkhorn_solver)
         return result["objective_value"]
     else:
         raise ValueError('Unknown optimization method.')

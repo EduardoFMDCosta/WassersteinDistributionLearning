@@ -1,6 +1,6 @@
 import torch
 
-from optimization import max_oracle_gradient_descent
+from optimization import max_oracle_gradient_descent, nested_gradient_descent
 
 
 def generate_symmetric_cost(n, low, high):
@@ -51,5 +51,15 @@ if __name__ == '__main__':
 
         print(f"-------------Iteration {i+1}-------------")
         print(f"Initial w = {result['initial_w']}")
-        print(f"Final w = {result['final_w']}")
-        print(f"Value = {result['objective_value']} \n")
+        print(f"Final w (Algorithm 1) = {result['final_w']}")
+        print(f"Value (Algorithm 1) = {result['objective_value']} \n")
+
+        result = nested_gradient_descent(cost=cost,
+                                         lower=lower,
+                                         upper=upper,
+                                         empirical_marginal=empirical_marginal,
+                                         num_steps=10000,
+                                         lr=0.01,
+                                         tol=1e-6)
+        print(f"Final w (Algorithm 2) = {result['final_w']}")
+        print(f"Value (Algorithm 2) = {result['objective_value']} \n")

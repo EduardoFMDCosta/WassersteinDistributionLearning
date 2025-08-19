@@ -1,9 +1,10 @@
+from typing import List
 import torch
 from sets import BoundedVoronoiPartition
-from quantization import Quantization
+from quantization import UncertainQuantization
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from bound import data_driven_radius, fournier_radius
+from bound import DataDrivenRadius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
 
 from configs.handlers import parse_arguments
@@ -16,7 +17,7 @@ def num_samples(args, M):
 
     distribution = get_distribution(**vars(args))
     
-    data_driven_bounds, data_driven_lower_bounds, fournier_bounds = list(), list(), list()
+    quantizations, data_driven_radii, fournier_radii = list(), list(), list()
     N_options = [1000, 5000, 10000, 50000]
     for N in N_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
@@ -30,20 +31,20 @@ def num_samples(args, M):
             M=M,
             use_voronoi_radii=False # set to false to speed up
         )
-        quantization = Quantization(partition=partition, samples=samples_quantization)
+        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
         # Plot samples and clusterized distribution
         if args.plot:
             plot_quantization(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
-        data_driven_bounds.append(data_driven_output.radius)
-        data_driven_lower_bounds.append(data_driven_output.lower_bound)
+        data_driven_radii.append(DataDrivenRadius(quantization=quantization, method=args.method))
+        fournier_radii.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
 
-        fournier_bounds.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
+        quantizations.append(quantization)
 
-    return N_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
+    return N_options, quantizations, data_driven_radii, fournier_radii
+
 
 def num_clusters(args, N):
     support_assumption = get_support_assumption(**vars(args))
@@ -52,8 +53,8 @@ def num_clusters(args, N):
     samples_partition = distribution.sample((N,))
     samples_quantization = distribution.sample((N,))
 
-    data_driven_bounds, data_driven_lower_bounds, fournier_bounds = list(), list(), list()
-    M_options = torch.arange(20, 100, 10).tolist()
+    quantizations, data_driven_radii, fournier_radii = list(), list(), list()
+    M_options = [10, 15]
     for M in M_options:
         print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
         # Clusterize samples (obtaining \hat{P}_M)
@@ -63,26 +64,74 @@ def num_clusters(args, N):
             M=M,
             use_voronoi_radii=False # set to false to speed up
         )
-        quantization = Quantization(partition=partition, samples=samples_quantization)
+        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
         # Plot samples and clusterized distribution
         if args.plot:
             plot_quantization(quantization=quantization)
 
         # Compute bounds
-        data_driven_output = data_driven_radius(quantization=quantization, beta=args.beta, method=args.method)
-        data_driven_bounds.append(data_driven_output.radius)
-        data_driven_lower_bounds.append(data_driven_output.lower_bound)
+        data_driven_radii.append(DataDrivenRadius(quantization=quantization, method=args.method))
+        fournier_radii.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
+        quantizations.append(quantization)
 
-        fournier_bounds.append(fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
+    return M_options, quantizations, data_driven_radii, fournier_radii
 
-    return M_options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds
+
+class RadiiStatistics:
+    def __init__(self, data_driven_radii: List[DataDrivenRadius]):
+        self.data_driven_radii = data_driven_radii
+
+    @property
+    def epsilon1(self): 
+        return torch.tensor([elem.moment_bound for elem in self.data_driven_radii])
+    
+    @property
+    def epsilon2(self):
+        return torch.tensor([elem.discrete_bound for elem in self.data_driven_radii])
+
+    @property
+    def radius(self):
+        return torch.tensor([elem.radius for elem in self.data_driven_radii])
+    
+class UncertainQuantizationStatistics:
+    def __init__(self, quantizations: List[UncertainQuantization]):
+        self.quantizations = quantizations
+
+    @property
+    def lower_probs_avg(self):
+        return torch.tensor([elem.lower_probs.mean() for elem in self.quantizations])
+
+    @property
+    def upper_probs_avg(self):
+        return torch.tensor([elem.upper_probs.mean() for elem in self.quantizations])
+    
+    @property
+    def probs_avg(self):
+        return torch.tensor([elem.probs.mean() for elem in self.quantizations])
+    
+    @property
+    def cluster_radius_avg(self):
+        return torch.tensor([elem.partition.cluster_radii.mean() for elem in self.quantizations])
+    
+    @property
+    def cluster_radius_min(self):
+        return torch.tensor([elem.partition.cluster_radii.min() for elem in self.quantizations])
+
+    @property
+    def cluster_radius_max(self):
+        return torch.tensor([elem.partition.cluster_radii.max() for elem in self.quantizations])
+
+    @property
+    def distances_locs(self):
+        return None # TODO self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+
 
 if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="Discrete",
+        distribution="Uniform",
         dimension=2,
         setting=0,
         num_samples=5000,
@@ -91,18 +140,37 @@ if __name__ == '__main__':
         plot=False
     )
     args.method = 'stackelberg_equilibrium'
-    investigate_clusters = False
+    investigate_clusters = True
 
     if investigate_clusters:
-        options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds = num_clusters(args, N=args.num_samples)
+        options, quantizations, data_driven_radii, fournier_radii = num_clusters(args, N=args.num_samples)
     else:
-        options, data_driven_bounds, fournier_bounds, data_driven_lower_bounds = num_samples(args, M=args.num_clusters)
+        options, quantizations,data_driven_radii, fournier_radii = num_samples(args, M=args.num_clusters)
+
+    radii_stats = RadiiStatistics(data_driven_radii=data_driven_radii)
+    quantization_stats = UncertainQuantizationStatistics(quantizations=quantizations)
 
     with torch.no_grad():
-        plt.plot(options, torch.tensor(data_driven_bounds), label='Ours', marker='o')
-        plt.plot(options, torch.tensor(fournier_bounds), label='Fournier', marker='x')
-        plt.plot(options, torch.tensor(data_driven_lower_bounds), label='Ours Lower Bound', linestyle='--')
-        plt.xlabel(f"Number of {'clusters (M)' if investigate_clusters else 'samples (N)'}")
-        plt.title(f"Number of {'samples (N)' if investigate_clusters else 'clusters (M)'} = {args.num_samples if investigate_clusters else args.num_clusters}")
-        plt.legend()
+        fig, ax = plt.subplots(3, 1, figsize=(10, 12), constrained_layout=True)
+
+        ax[0].plot(options, radii_stats.radius, label='w2', marker='o')
+        ax[0].plot(options, radii_stats.epsilon1, label='e1', linestyle='--')
+        ax[0].plot(options, radii_stats.epsilon2, label='e2', linestyle=':')
+        ax[0].set_xlabel(f"Number of {'clusters (M)' if investigate_clusters else 'samples (N)'}")
+        ax[0].set_title(f"Number of {'samples (N)' if investigate_clusters else 'clusters (M)'} = {args.num_samples if investigate_clusters else args.num_clusters}")
+        # ax[0].set_xscale('log')
+        ax[0].legend(loc='best')
+
+        ax[1].plot(options, quantization_stats.lower_probs_avg, label='avg lower prob', color='red')
+        ax[1].plot(options, quantization_stats.probs_avg, label='avg prob', color='black')
+        ax[1].plot(options, quantization_stats.upper_probs_avg, label='avg upper prob', color='green')
+        # ax[1].set_xscale('log')
+        ax[1].legend(loc='best')
+
+        ax[2].plot(options, quantization_stats.cluster_radius_min, label='min cluster radii', color='red')
+        ax[2].plot(options, quantization_stats.cluster_radius_avg, label='avg cluster radii', color='black')
+        ax[2].plot(options, quantization_stats.cluster_radius_max, label='max cluster radii', color='green')
+        # ax[2].set_xscale('log')
+        ax[2].legend(loc='best')
+
         plt.show()

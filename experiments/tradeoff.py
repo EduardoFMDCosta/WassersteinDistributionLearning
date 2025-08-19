@@ -3,8 +3,8 @@ import time
 import os
 
 from sets import BoundedVoronoiPartition
-from quantization import Quantization
-from bound import data_driven_radius, fournier_radius
+from quantization import UncertainQuantization
+from bound import DataDrivenRadius, fournier_radius
 from plotting.plot import colored_scatter
 
 from configs.handlers import parse_arguments
@@ -117,13 +117,13 @@ if __name__ == '__main__':
                     M=M,
                     use_voronoi_radii=False # set to false to speed up
                 )
-                quantization = Quantization(partition=partition, samples=samples_quantization)
+                quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=beta)
                 kmeans_time = time.time() - start
                 print(f"K-means completed in {kmeans_time:.2f} seconds")
 
                 print(f"### Bounding for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                data_driven_output = data_driven_radius(quantization=quantization, beta=beta, method=method)
+                data_driven_output = DataDrivenRadius(quantization=quantization, method=method)
                 bounding_time = time.time() - start
                 print(f"Data-driven bounding completed in {bounding_time:.2f} seconds")
 

@@ -35,7 +35,7 @@ def generate_empirical(n):
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    n = 2
+    n = 10
     cost = generate_symmetric_cost(n=n, low=0.1, high=2.0)
     empirical_marginal = generate_empirical(n=n)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)

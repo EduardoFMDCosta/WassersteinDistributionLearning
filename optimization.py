@@ -244,8 +244,8 @@ def nested_gradient_descent(cost: torch.Tensor,
 
         # Projection
         with torch.no_grad():
-            Pi = project_to_gamma_subspace(Pi=Pi, empirical_marginal=empirical_marginal)
-            Pi = Pi.clone().requires_grad_(True) # TODO: Avoid creating new copy
+            projected = project_to_gamma_subspace(Pi=Pi, empirical_marginal=empirical_marginal)
+            Pi.copy_(projected)
 
             assert (Pi >= 0).all()
             assert abs(Pi.sum() - 1.0) <= TOL

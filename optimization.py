@@ -129,6 +129,11 @@ def project_to_gamma_subspace(
             break
 
     Pi = torch.diag(u) @ K @ torch.diag(v)
+
+    assert (Pi >= 0).all(), "Projection failed: negative entries found."
+    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total proability mass not equal to one"
+    assert torch.isclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
+
     return Pi
 
 
@@ -342,10 +347,6 @@ def nested_gradient_descent(
                 projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
                 Pi.copy_(projected)
 
-                assert (Pi >= 0).all()
-                assert abs(Pi.sum() - 1.0) <= TOL
-                assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
-
         # Phase 2: Gradient descent for lambd
         for _ in range(10):
             lambd_optimizer.zero_grad()
@@ -380,10 +381,6 @@ def nested_gradient_descent(
         with torch.no_grad():
             projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
             Pi.copy_(projected)
-
-            assert (Pi >= 0).all()
-            assert abs(Pi.sum() - 1.0) <= TOL
-            assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
     # Compute exact value
     result["final_w"] = w

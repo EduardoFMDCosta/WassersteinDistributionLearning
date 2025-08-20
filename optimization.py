@@ -132,7 +132,7 @@ def project_to_gamma_subspace(
 
     assert (Pi >= 0).all(), "Projection failed: negative entries found."
     assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total proability mass not equal to one"
-    assert torch.isclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
+    assert torch.allclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
 
     return Pi
 

@@ -271,7 +271,7 @@ def max_oracle_gradient_descent(
 
     # Initialize w
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
-    result["initial_w"] = w
+    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
     # Initialize trackers for best solution (objective is minimized here before sign flip)
     best_objective = float('inf')

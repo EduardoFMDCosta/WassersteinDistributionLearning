@@ -92,10 +92,8 @@ def project_to_omega_subspace(
                 # Current sum too small ⇒ λ too large ⇒ move upper bound down.
                 high = mid
 
-        # Fallback (max_iter reached): last midpoint approximation if not yet assigned.
-        if final_y is None:
-            mid = 0.5 * (low + high)
-            final_y = torch.clamp(w - mid, min=lower, max=upper)
+        if final_y is None: 
+            raise RuntimeError(f"Bisection did not converge: residual={abs(s-1.0):.3e}, interval=({low:.3e},{high:.3e})")
 
 
     assert abs(final_y.sum() - 1.0) <= tol

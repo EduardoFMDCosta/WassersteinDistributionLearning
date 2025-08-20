@@ -16,6 +16,10 @@ class RadiiStatistics:
     @property
     def discrete_bound(self):
         return torch.tensor([elem.discrete_bound for elem in self.data_driven_radii])
+    
+    @property
+    def lower_bound(self):
+        return torch.tensor([elem.lower_bound for elem in self.data_driven_radii])
 
     @property
     def radius(self):

@@ -126,6 +126,7 @@ if __name__ == '__main__':
         ax[0].plot(options, radii_stats.radius, label='w2', marker='o')
         ax[0].plot(options, radii_stats.moment_bound, label='e1', linestyle='--')
         ax[0].plot(options, radii_stats.discrete_bound, label='e2', linestyle=':')
+        ax[0].plot(options, radii_stats.lower_bound, label='lower_bound', linestyle='--')
         ax[0].set_xlabel(f"Number of {'clusters (M)' if investigate_clusters else 'samples (N)'}")
         ax[0].set_title(f"Number of {'samples (N)' if investigate_clusters else 'clusters (M)'} = {args.num_samples if investigate_clusters else args.num_clusters}")
         # ax[0].set_xscale('log')

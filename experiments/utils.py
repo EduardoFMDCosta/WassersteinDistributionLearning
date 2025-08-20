@@ -10,12 +10,16 @@ class RadiiStatistics:
         self.data_driven_radii = data_driven_radii
 
     @property
-    def epsilon1(self): 
+    def moment_bound(self): 
         return torch.tensor([elem.moment_bound for elem in self.data_driven_radii])
+
+    @property
+    def discrete_bound(self):
+        return torch.tensor([elem.discrete_bound for elem in self.data_driven_radii])
     
     @property
-    def epsilon2(self):
-        return torch.tensor([elem.discrete_bound for elem in self.data_driven_radii])
+    def lower_bound(self):
+        return torch.tensor([elem.lower_bound for elem in self.data_driven_radii])
 
     @property
     def radius(self):
@@ -38,8 +42,20 @@ class UncertainQuantizationStatistics:
         return torch.tensor([elem.probs.mean() for elem in self.quantizations])
     
     @property
+    def range_probs_avg(self):
+        return torch.tensor([(elem.upper_probs - elem.lower_probs).mean() for elem in self.quantizations])
+    
+    @property
+    def range_probs_std(self):
+        return torch.tensor([(elem.upper_probs - elem.lower_probs).std() for elem in self.quantizations])
+
+    @property
     def cluster_radius_avg(self):
         return torch.tensor([elem.partition.cluster_radii.mean() for elem in self.quantizations])
+    
+    @property
+    def cluster_radius_std(self):
+        return torch.tensor([elem.partition.cluster_radii.std() for elem in self.quantizations])
     
     @property
     def cluster_radius_min(self):
@@ -50,5 +66,9 @@ class UncertainQuantizationStatistics:
         return torch.tensor([elem.partition.cluster_radii.max() for elem in self.quantizations])
 
     @property
-    def distances_locs(self):
-        return None # TODO self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+    def distances_locs_avg(self):
+        return torch.tensor([elem.partition.distance_locs[:-1,:-1].mean() for elem in self.quantizations])
+    
+    @property
+    def distances_locs_std(self):
+        return torch.tensor([elem.partition.distance_locs[:-1,:-1].std() for elem in self.quantizations])

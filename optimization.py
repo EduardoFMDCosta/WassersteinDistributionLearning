@@ -97,6 +97,10 @@ def project_to_omega_subspace(
             mid = 0.5 * (low + high)
             final_y = torch.clamp(w - mid, min=lower, max=upper)
 
+
+    assert abs(final_y.sum() - 1.0) <= tol
+    assert (final_y >= lower).all() & (final_y <= upper).all() 
+
     return final_y
 
 def project_to_gamma_subspace(
@@ -282,9 +286,6 @@ def max_oracle_gradient_descent(
         w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
         w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
 
-        assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
-        assert (w>=lower).all() & (w<=upper).all()
-
     result["final_w"] = best_w
     result["objective_value"] = best_objective * (-1) # as we solve for f = -h
 
@@ -361,9 +362,6 @@ def nested_gradient_descent(
         # Projection
         with torch.no_grad():
             w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
-
-            assert abs(w.sum() - 1.0) <= TOL
-            assert (w>=lower).all() & (w<=upper).all()
 
         # Check convergence
         with torch.no_grad():

@@ -4,12 +4,12 @@ import numpy as np
 from scipy.optimize import linprog
 import ot
 
-TOL = 1e-6
 
 def o_maximization(
         cost: torch.Tensor,
         lower: torch.Tensor,
-        upper: torch.Tensor
+        upper: torch.Tensor, 
+        tol: float = 1e-6
 ):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
@@ -26,8 +26,8 @@ def o_maximization(
             p[o] += rem_state
             break
 
-    assert 1.0 - TOL <= p.sum() <= 1.0 + TOL
-    assert (p >= lower - TOL).all() & (p <= upper + TOL).all()
+    assert (p.sum() - 1.0).abs() <= tol
+    assert (p >= lower - tol).all() & (p <= upper + tol).all()
 
     result = torch.einsum('i,i->', cost, p)
     return result, p
@@ -36,7 +36,7 @@ def project_to_omega_subspace(
         w: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
-        tol: float = 1e-10,
+        tol: float = 1e-8,
         max_iter: int = 1000
 ):
     """Project a vector onto the capped probability simplex.
@@ -66,38 +66,50 @@ def project_to_omega_subspace(
     y = torch.clamp(w, min=lower, max=upper)
     s = y.sum().item()
     if abs(s - 1.0) <= tol:
-        return y
+        final_y = y
+    else:
+        # Establish bisection interval [low, high] for λ.
+        # Let low = min_i (w_i - upper_i). Then for every i: w_i - low >= upper_i, so after clipping y = upper and S(low)=sum(upper).
+        # Let high = max_i (w_i - lower_i). Then for every i: w_i - high <= lower_i, so after clipping y = lower and S(high)=sum(lower).
+        # Feasibility (sum(lower) <= 1 <= sum(upper)) guarantees the root λ* with S(λ*)=1 lies in [low, high].
+        low = float(torch.min(w - upper).item())   # yields S(low) = sum(upper)
+        high = float(torch.max(w - lower).item())  # yields S(high) = sum(lower)
+        final_y = None
 
-    # Establish bisection interval [low, high] for λ.
-    # Let low = min_i (w_i - upper_i). Then for every i: w_i - low >= upper_i, so after clipping y = upper and S(low)=sum(upper).
-    # Let high = max_i (w_i - lower_i). Then for every i: w_i - high <= lower_i, so after clipping y = lower and S(high)=sum(lower).
-    # Feasibility (sum(lower) <= 1 <= sum(upper)) guarantees the root λ* with S(λ*)=1 lies in [low, high].
-    low = float(torch.min(w - upper).item())   # yields S(low) = sum(upper)
-    high = float(torch.max(w - lower).item())  # yields S(high) = sum(lower)
+        # Bisection on S(λ) - 1 = 0. S decreases with λ.
+        for _ in range(max_iter):
+            mid = 0.5 * (low + high)
+            y = torch.clamp(w - mid, min=lower, max=upper)
+            s = y.sum().item()
 
-    # Bisection on S(λ) - 1 = 0. S decreases with λ.
-    for _ in range(max_iter):
-        mid = 0.5 * (low + high)
-        y = torch.clamp(w - mid, min=lower, max=upper)
-        s = y.sum().item()
+            if abs(s - 1.0) <= tol:
+                final_y = y
+                break
+            if s > 1.0:
+                # Current sum too large ⇒ λ too small (need larger λ) ⇒ move lower bound up.
+                low = mid
+            else:
+                # Current sum too small ⇒ λ too large ⇒ move upper bound down.
+                high = mid
 
-        if abs(s - 1.0) <= tol:
-            return y
-        if s > 1.0:
-            # Current sum too large ⇒ λ too small (need larger λ) ⇒ move lower bound up.
-            low = mid
-        else:
-            # Current sum too small ⇒ λ too large ⇒ move upper bound down.
-            high = mid
+        # Fallback (max_iter reached): last midpoint approximation if not yet assigned.
+        if final_y is None:
+            mid = 0.5 * (low + high)
+            final_y = torch.clamp(w - mid, min=lower, max=upper)
 
-    # Fallback (max_iter reached): return last approximation.
-    return torch.clamp(w - 0.5 * (low + high), min=lower, max=upper)
 
-def project_to_gamma_subspace(Pi: torch.Tensor,
-                        w: torch.Tensor,
-                        empirical_marginal: torch.Tensor,
-                        max_iters: int = 100,
-                        tol: float = 1e-9) -> torch.Tensor:
+    assert abs(final_y.sum() - 1.0) <= tol
+    assert (final_y >= lower).all() & (final_y <= upper).all() 
+
+    return final_y
+
+def project_to_gamma_subspace(
+        Pi: torch.Tensor,
+        w: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        max_iters: int = 100,
+        tol: float = 1e-8
+) -> torch.Tensor:
 
     n = Pi.shape[0]
 
@@ -117,6 +129,11 @@ def project_to_gamma_subspace(Pi: torch.Tensor,
             break
 
     Pi = torch.diag(u) @ K @ torch.diag(v)
+
+    assert (Pi >= 0).all(), "Projection failed: negative entries found."
+    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total proability mass not equal to one"
+    assert torch.isclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
+
     return Pi
 
 
@@ -137,8 +154,7 @@ def ot_lp_solver(
         cost: torch.Tensor,
         w: torch.Tensor,
         empirical_distribution: torch.Tensor,
-        method: str = "highs",
-        tol: float = 1e-9
+        method: str = "highs"
 ):
 
     n = cost.shape[0]
@@ -246,7 +262,6 @@ def max_oracle_gradient_descent(
         empirical_marginal: torch.Tensor,
         num_steps: int,
         lr: float,
-        tol: float,
         ot_solver: Callable
 ):
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
@@ -258,24 +273,22 @@ def max_oracle_gradient_descent(
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
     result["initial_w"] = w
 
-    best_objective, best_w = None, None
-
     for step in range(num_steps):
         # Solve for primal and dual (lines 2 and 3)
         Pi, objective, duals = ot_solver(cost, w, empirical_marginal)
         alpha, beta = duals
 
         # Check for best value
-        if step >= 1 and (best_objective is None or objective < best_objective):
+        if step == 0:
+            best_objective = objective
+            best_w = w.clone()
+        elif objective < best_objective:
             best_objective = objective
             best_w = w.clone()
 
         # Gradient step (line 4)
         w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
         w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
-
-        assert 1.0 - TOL <= w.sum() <= 1.0 + TOL
-        assert (w>=lower).all() & (w<=upper).all()
 
     result["final_w"] = best_w
     result["objective_value"] = best_objective * (-1) # as we solve for f = -h
@@ -298,7 +311,7 @@ def nested_gradient_descent(
         empirical_marginal: torch.Tensor,
         num_steps: int,
         lr: float,
-        tol: float
+        tol: float = 1e-8
 ):
     # See Algorithm 2 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
@@ -317,7 +330,7 @@ def nested_gradient_descent(
     lambd_optimizer = torch.optim.Adam([lambd], lr=lr)
     w_optimizer = torch.optim.Adam([w], lr=lr)
 
-    previous_loss = None
+    previous_loss = None  # For stopping criterion based on successive loss differences
 
     for step in range(num_steps):
 
@@ -332,10 +345,6 @@ def nested_gradient_descent(
             with torch.no_grad():
                 projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
                 Pi.copy_(projected)
-
-                assert (Pi >= 0).all()
-                assert abs(Pi.sum() - 1.0) <= TOL
-                assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
 
         # Phase 2: Gradient descent for lambd
         for _ in range(10):
@@ -354,11 +363,9 @@ def nested_gradient_descent(
         with torch.no_grad():
             w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
 
-            assert abs(w.sum() - 1.0) <= TOL
-            assert (w>=lower).all() & (w<=upper).all()
-
         # Check convergence
         with torch.no_grad():
+            # Stopping criterion: absolute change in objective below threshold
             if previous_loss is not None and abs((loss.item() - previous_loss)) < tol:
                 print(f"Gradient ascent-descent converged after {step + 1} iterations.")
                 break
@@ -375,10 +382,6 @@ def nested_gradient_descent(
             projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
             Pi.copy_(projected)
 
-            assert (Pi >= 0).all()
-            assert abs(Pi.sum() - 1.0) <= TOL
-            assert (abs(Pi.sum(dim=0) - empirical_marginal) <= TOL).all()
-
     # Compute exact value
     result["final_w"] = w
     result["objective_value"] = -f(Pi=Pi, cost=cost) # as we solve for f = -h
@@ -392,37 +395,39 @@ def max_min_lp(
         empirical_marginal: torch.Tensor,
         method: str,
         num_steps=1000,
-        lr=1e-3,
-        tol=1e-8
+        lr=1e-3
 ):
     if method == 'stackelberg_equilibrium':
-        result = max_oracle_gradient_descent(cost=cost,
-                                           lower=lower,
-                                           upper=upper,
-                                           empirical_marginal=empirical_marginal,
-                                           num_steps=num_steps,
-                                           lr=lr,
-                                           tol=tol,
-                                           ot_solver=ot_lp_solver)
+        result = max_oracle_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal,
+            num_steps=num_steps,
+            lr=lr,
+            ot_solver=ot_lp_solver
+        )
         return result["objective_value"]
     elif method == 'nested_gradient_descent':
-        result = nested_gradient_descent(cost=cost,
-                                         lower=lower,
-                                         upper=upper,
-                                         empirical_marginal=empirical_marginal,
-                                         num_steps=num_steps,
-                                         lr=lr,
-                                         tol=tol)
+        result = nested_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal,
+            num_steps=num_steps,
+            lr=lr
+        )
         return result["objective_value"]
     elif method == 'sinkhorn':
-        result = max_oracle_gradient_descent(cost=cost,
-                                           lower=lower,
-                                           upper=upper,
-                                           empirical_marginal=empirical_marginal,
-                                           num_steps=num_steps,
-                                           lr=lr,
-                                           tol=tol,
-                                           ot_solver=ot_sinkhorn_solver)
+        result = max_oracle_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal,
+            num_steps=num_steps,
+            lr=lr,
+            ot_solver=ot_sinkhorn_solver
+        )
         return result["objective_value"]
     else:
         raise ValueError('Unknown optimization method.')

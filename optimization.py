@@ -4,12 +4,12 @@ import numpy as np
 from scipy.optimize import linprog
 import ot
 
-TOL = 1e-6
 
 def o_maximization(
         cost: torch.Tensor,
         lower: torch.Tensor,
-        upper: torch.Tensor
+        upper: torch.Tensor, 
+        tol: float = 1e-8
 ):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
@@ -26,8 +26,8 @@ def o_maximization(
             p[o] += rem_state
             break
 
-    assert 1.0 - TOL <= p.sum() <= 1.0 + TOL
-    assert (p >= lower - TOL).all() & (p <= upper + TOL).all()
+    assert 1.0 - tol <= p.sum() <= 1.0 + tol
+    assert (p >= lower - tol).all() & (p <= upper + tol).all()
 
     result = torch.einsum('i,i->', cost, p)
     return result, p
@@ -36,7 +36,7 @@ def project_to_omega_subspace(
         w: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
-        tol: float = 1e-10,
+        tol: float = 1e-8,
         max_iter: int = 1000
 ):
     """Project a vector onto the capped probability simplex.
@@ -108,7 +108,7 @@ def project_to_gamma_subspace(
         w: torch.Tensor,
         empirical_marginal: torch.Tensor,
         max_iters: int = 100,
-        tol: float = 1e-9
+        tol: float = 1e-8
 ) -> torch.Tensor:
 
     n = Pi.shape[0]
@@ -154,8 +154,7 @@ def ot_lp_solver(
         cost: torch.Tensor,
         w: torch.Tensor,
         empirical_distribution: torch.Tensor,
-        method: str = "highs",
-        tol: float = 1e-9
+        method: str = "highs"
 ):
 
     n = cost.shape[0]
@@ -263,7 +262,6 @@ def max_oracle_gradient_descent(
         empirical_marginal: torch.Tensor,
         num_steps: int,
         lr: float,
-        tol: float,
         ot_solver: Callable
 ):
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
@@ -313,7 +311,7 @@ def nested_gradient_descent(
         empirical_marginal: torch.Tensor,
         num_steps: int,
         lr: float,
-        tol: float
+        tol: float = 1e-8
 ):
     # See Algorithm 2 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
@@ -332,7 +330,7 @@ def nested_gradient_descent(
     lambd_optimizer = torch.optim.Adam([lambd], lr=lr)
     w_optimizer = torch.optim.Adam([w], lr=lr)
 
-    previous_loss = None
+    previous_loss = None  # For stopping criterion based on successive loss differences
 
     for step in range(num_steps):
 
@@ -367,6 +365,7 @@ def nested_gradient_descent(
 
         # Check convergence
         with torch.no_grad():
+            # Stopping criterion: absolute change in objective below threshold
             if previous_loss is not None and abs((loss.item() - previous_loss)) < tol:
                 print(f"Gradient ascent-descent converged after {step + 1} iterations.")
                 break
@@ -396,8 +395,7 @@ def max_min_lp(
         empirical_marginal: torch.Tensor,
         method: str,
         num_steps=1000,
-        lr=1e-3,
-        tol=1e-8
+        lr=1e-3
 ):
     if method == 'stackelberg_equilibrium':
         result = max_oracle_gradient_descent(cost=cost,
@@ -406,7 +404,6 @@ def max_min_lp(
                                            empirical_marginal=empirical_marginal,
                                            num_steps=num_steps,
                                            lr=lr,
-                                           tol=tol,
                                            ot_solver=ot_lp_solver)
         return result["objective_value"]
     elif method == 'nested_gradient_descent':
@@ -415,8 +412,8 @@ def max_min_lp(
                                          upper=upper,
                                          empirical_marginal=empirical_marginal,
                                          num_steps=num_steps,
-                                         lr=lr,
-                                         tol=tol)
+                                         lr=lr
+                                         )
         return result["objective_value"]
     elif method == 'sinkhorn':
         result = max_oracle_gradient_descent(cost=cost,
@@ -425,7 +422,6 @@ def max_min_lp(
                                            empirical_marginal=empirical_marginal,
                                            num_steps=num_steps,
                                            lr=lr,
-                                           tol=tol,
                                            ot_solver=ot_sinkhorn_solver)
         return result["objective_value"]
     else:

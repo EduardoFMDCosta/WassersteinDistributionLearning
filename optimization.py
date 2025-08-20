@@ -93,11 +93,13 @@ def project_to_omega_subspace(
     # Fallback (max_iter reached): return last approximation.
     return torch.clamp(w - 0.5 * (low + high), min=lower, max=upper)
 
-def project_to_gamma_subspace(Pi: torch.Tensor,
-                        w: torch.Tensor,
-                        empirical_marginal: torch.Tensor,
-                        max_iters: int = 100,
-                        tol: float = 1e-9) -> torch.Tensor:
+def project_to_gamma_subspace(
+        Pi: torch.Tensor,
+        w: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        max_iters: int = 100,
+        tol: float = 1e-9
+) -> torch.Tensor:
 
     n = Pi.shape[0]
 

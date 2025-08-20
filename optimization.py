@@ -184,6 +184,10 @@ def ot_lp_solver(
     p_np = w.detach().cpu().double().numpy()
     q_np = empirical_distribution.detach().cpu().double().numpy()
 
+    # normalize
+    p_np /= p_np.sum()
+    q_np /= q_np.sum()
+
     # Decision variable is vec(T) of length n*n in row-major order
     c = C_np.reshape(-1)
 
@@ -210,7 +214,7 @@ def ot_lp_solver(
     b_eq = np.array(b_eq, dtype=float)
 
     # Bounds: T[i,j] >= 0 (no upper bound)
-    bounds = [(0.0, None)] * (n*n)
+    bounds = [(-tol, None)] * (n*n)
 
     # Solve LP
     res = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method=method)

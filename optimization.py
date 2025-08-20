@@ -26,7 +26,7 @@ def o_maximization(
             p[o] += rem_state
             break
 
-    assert 1.0 - tol <= p.sum() <= 1.0 + tol
+    assert (p.sum() - 1.0).abs() <= tol
     assert (p >= lower - tol).all() & (p <= upper + tol).all()
 
     result = torch.einsum('i,i->', cost, p)

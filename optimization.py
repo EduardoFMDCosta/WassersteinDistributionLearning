@@ -398,31 +398,36 @@ def max_min_lp(
         lr=1e-3
 ):
     if method == 'stackelberg_equilibrium':
-        result = max_oracle_gradient_descent(cost=cost,
-                                           lower=lower,
-                                           upper=upper,
-                                           empirical_marginal=empirical_marginal,
-                                           num_steps=num_steps,
-                                           lr=lr,
-                                           ot_solver=ot_lp_solver)
+        result = max_oracle_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal,
+            num_steps=num_steps,
+            lr=lr,
+            ot_solver=ot_lp_solver
+        )
         return result["objective_value"]
     elif method == 'nested_gradient_descent':
-        result = nested_gradient_descent(cost=cost,
-                                         lower=lower,
-                                         upper=upper,
-                                         empirical_marginal=empirical_marginal,
-                                         num_steps=num_steps,
-                                         lr=lr
-                                         )
+        result = nested_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal,
+            num_steps=num_steps,
+            lr=lr
+        )
         return result["objective_value"]
     elif method == 'sinkhorn':
-        result = max_oracle_gradient_descent(cost=cost,
-                                           lower=lower,
-                                           upper=upper,
-                                           empirical_marginal=empirical_marginal,
-                                           num_steps=num_steps,
-                                           lr=lr,
-                                           ot_solver=ot_sinkhorn_solver)
+        result = max_oracle_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal,
+            num_steps=num_steps,
+            lr=lr,
+            ot_solver=ot_sinkhorn_solver
+        )
         return result["objective_value"]
     else:
         raise ValueError('Unknown optimization method.')

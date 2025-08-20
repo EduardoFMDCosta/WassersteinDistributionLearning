@@ -29,15 +29,24 @@ def bound_discrete(
 
 
 class DataDrivenRadius:
-    def __init__(self, quantization: UncertainQuantization, method: str):
-        self.moment_bound = bound_moment(quantization=quantization)
-        self.discrete_bound = bound_discrete(quantization=quantization, method=method)
+    def __init__(
+            self, 
+            quantization: UncertainQuantization, 
+            method: str, 
+            compute_moment_bound: bool = True,
+            compute_discrete_bound: bool = True
+        ):
+        self.moment_bound = bound_moment(quantization=quantization) if compute_moment_bound else None
+        self.discrete_bound = bound_discrete(quantization=quantization, method=method) if compute_discrete_bound else None
 
         self.lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 
     @property
     def radius(self):
-        return self.moment_bound + self.discrete_bound
+        if self.moment_bound is None or self.discrete_bound is None:
+            return float('nan')
+        else:
+            return self.moment_bound + self.discrete_bound
     
     def lower_bound(self):
         return self.moment_bound

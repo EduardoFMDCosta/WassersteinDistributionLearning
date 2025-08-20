@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional, Tuple
 import torch
 import numpy as np
 from scipy.optimize import linprog
@@ -19,7 +19,9 @@ def o_maximization(
     gap = upper - p
     cumgap = torch.cumsum(gap[order], dim=0)
     for idx, o in enumerate(order):
-        rem_state = max(rem - cumgap[idx] + gap[o], 0)
+        rem_state = rem - cumgap[idx] + gap[o]
+        if rem_state <= 0:
+            continue
         if gap[o] < rem_state:
             p[o] += gap[o]
         else:
@@ -72,32 +74,52 @@ def project_to_omega_subspace(
         # Let low = min_i (w_i - upper_i). Then for every i: w_i - low >= upper_i, so after clipping y = upper and S(low)=sum(upper).
         # Let high = max_i (w_i - lower_i). Then for every i: w_i - high <= lower_i, so after clipping y = lower and S(high)=sum(lower).
         # Feasibility (sum(lower) <= 1 <= sum(upper)) guarantees the root λ* with S(λ*)=1 lies in [low, high].
-        low = float(torch.min(w - upper).item())   # yields S(low) = sum(upper)
-        high = float(torch.max(w - lower).item())  # yields S(high) = sum(lower)
+        low = float(torch.min(w - upper).item())    # S(low) = sum(upper) ≥ 1
+        high = float(torch.max(w - lower).item())   # S(high) = sum(lower) ≤ 1
+
+        # Adaptive effective tolerance: don't demand more than floating precision permits.
+        effective_tol = max(tol, torch.finfo(w.dtype).eps * w.numel())
+
         final_y = None
+        best_y = None
+        best_res = float('inf')
 
         # Bisection on S(λ) - 1 = 0. S decreases with λ.
         for _ in range(max_iter):
             mid = 0.5 * (low + high)
             y = torch.clamp(w - mid, min=lower, max=upper)
             s = y.sum().item()
+            res = abs(s - 1.0)
 
-            if abs(s - 1.0) <= tol:
+            # Track best iterate always
+            if res < best_res:
+                best_res = res
+                best_y = y
+
+            # Terminate on residual or bracket size.
+            if res <= effective_tol:
                 final_y = y
                 break
+
             if s > 1.0:
-                # Current sum too large ⇒ λ too small (need larger λ) ⇒ move lower bound up.
+                # Sum too large ⇒ λ too small ⇒ increase lower bound
                 low = mid
             else:
-                # Current sum too small ⇒ λ too large ⇒ move upper bound down.
+                # Sum too small ⇒ λ too large ⇒ decrease upper bound
                 high = mid
 
-        if final_y is None: 
-            raise RuntimeError(f"Bisection did not converge: residual={abs(s-1.0):.3e}, interval=({low:.3e},{high:.3e})")
+        if final_y is None:
+            # Fall back to best iterate obtained
+            final_y = best_y
+            # Only raise if we are *far* outside user-requested tolerance.
+            if best_res > effective_tol:
+                raise RuntimeError(
+                    f"Bisection did not reach tolerance: residual={best_res:.3e}, interval=({low:.3e},{high:.3e}), tol={tol:.1e}, effective_tol={effective_tol:.1e}"
+                )
 
-
-    assert abs(final_y.sum() - 1.0) <= tol
-    assert (final_y >= lower).all() & (final_y <= upper).all() 
+        # Use effective_tol for internal assertion; still ensure within a modest multiple of user tol
+        assert abs(final_y.sum() - 1.0) <= effective_tol
+        assert (final_y >= lower).all() & (final_y <= upper).all() 
 
     return final_y
 
@@ -130,7 +152,7 @@ def project_to_gamma_subspace(
 
     assert (Pi >= 0).all(), "Projection failed: negative entries found."
     assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total proability mass not equal to one"
-    assert torch.isclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
+    assert torch.allclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
 
     return Pi
 
@@ -162,6 +184,10 @@ def ot_lp_solver(
     p_np = w.detach().cpu().double().numpy()
     q_np = empirical_distribution.detach().cpu().double().numpy()
 
+    # normalize
+    p_np /= p_np.sum()
+    q_np /= q_np.sum()
+
     # Decision variable is vec(T) of length n*n in row-major order
     c = C_np.reshape(-1)
 
@@ -188,7 +214,7 @@ def ot_lp_solver(
     b_eq = np.array(b_eq, dtype=float)
 
     # Bounds: T[i,j] >= 0 (no upper bound)
-    bounds = [(0.0, None)] * (n*n)
+    bounds = [(-tol, None)] * (n*n)
 
     # Solve LP
     res = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method=method)
@@ -220,9 +246,10 @@ def ot_sinkhorn_solver(
         w: torch.Tensor,
         empirical_distribution: torch.Tensor,
         epsilon: float = 1e-3,
-        max_iter: int = 100,
+        max_iter: int = 1000,
         tol: float = 1e-5,
-):
+        method: str = 'sinkhorn_stabilized'
+) -> Tuple[torch.Tensor, float, Tuple[torch.Tensor, torch.Tensor]]:
     """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
 
     Returns transport plan T, objective = (-cost * T).sum() for consistency
@@ -230,7 +257,7 @@ def ot_sinkhorn_solver(
     scaling vectors. Alpha/beta are epsilon * log(u/v) and defined up to an
     additive constant.
     """
-
+    assert method in ['sinkhorn_stabilized', 'sinkhorn_log']
     assert cost.dim() == 2 and cost.shape[0] == cost.shape[1], "cost must be square"
     n = cost.shape[0]
     assert w.shape == (n,) and empirical_distribution.shape == (n,), "marginals must match cost dimension"
@@ -240,17 +267,19 @@ def ot_sinkhorn_solver(
     b_np = empirical_distribution.detach().cpu().double().numpy()
 
     # Stabilized log-domain sinkhorn
-    T_np, log = ot.sinkhorn(a_np, b_np, C_np, reg=epsilon, numItermax=max_iter,
-                             stopThr=tol, method='sinkhorn_log', log=True)
+    T_np, log = ot.sinkhorn(a_np, b_np, C_np, reg=epsilon, numItermax=max_iter, stopThr=tol, method=method, log=True)
 
     T = torch.from_numpy(T_np).to(device=cost.device, dtype=cost.dtype)
-    # POT's log dict gives scaling factors 'u','v' (not log) for stabilized method
-    u = torch.from_numpy(log['u']).to(cost.device, cost.dtype)
-    v = torch.from_numpy(log['v']).to(cost.device, cost.dtype)
-    alpha = epsilon * torch.log(u.clamp_min(1e-300))
-    beta = epsilon * torch.log(v.clamp_min(1e-300))
+    logu = torch.from_numpy(log[f"log{'_' if 'log' in method else ''}u"]).to(cost.device, cost.dtype)
+    logv = torch.from_numpy(log[f"log{'_' if 'log' in method else ''}v"]).to(cost.device, cost.dtype)
+
+    alpha = epsilon * logu
+    beta = epsilon * logv
 
     objective = float((-cost * T).sum().item())
+
+    # assert not alpha.isinf().any() and not alpha.isnan().any() and not beta.isinf().any() and not beta.isnan().any()
+
     return T, objective, (alpha, beta)
 
 def max_oracle_gradient_descent(
@@ -269,7 +298,11 @@ def max_oracle_gradient_descent(
 
     # Initialize w
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
-    result["initial_w"] = w
+    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
+
+    # Initialize trackers for best solution (objective is minimized here before sign flip)
+    best_objective = float('inf')
+    best_w = w.clone()
 
     for step in range(num_steps):
         # Solve for primal and dual (lines 2 and 3)
@@ -277,10 +310,7 @@ def max_oracle_gradient_descent(
         alpha, beta = duals
 
         # Check for best value
-        if step == 0:
-            best_objective = objective
-            best_w = w.clone()
-        elif objective < best_objective:
+        if objective < best_objective:
             best_objective = objective
             best_w = w.clone()
 

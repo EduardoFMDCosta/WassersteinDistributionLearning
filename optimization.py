@@ -19,7 +19,9 @@ def o_maximization(
     gap = upper - p
     cumgap = torch.cumsum(gap[order], dim=0)
     for idx, o in enumerate(order):
-        rem_state = max(rem - cumgap[idx] + gap[o], 0)
+        rem_state = rem - cumgap[idx] + gap[o]
+        if rem_state <= 0:
+            continue
         if gap[o] < rem_state:
             p[o] += gap[o]
         else:

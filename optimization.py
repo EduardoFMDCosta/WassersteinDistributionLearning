@@ -275,15 +275,16 @@ def max_oracle_gradient_descent(
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
     result["initial_w"] = w
 
-    best_objective, best_w = None, None
-
     for step in range(num_steps):
         # Solve for primal and dual (lines 2 and 3)
         Pi, objective, duals = ot_solver(cost, w, empirical_marginal)
         alpha, beta = duals
 
         # Check for best value
-        if step >= 1 and (best_objective is None or objective < best_objective):
+        if step == 0:
+            best_objective = objective
+            best_w = w.clone()
+        elif objective < best_objective:
             best_objective = objective
             best_w = w.clone()
 

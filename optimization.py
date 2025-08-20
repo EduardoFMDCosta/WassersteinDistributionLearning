@@ -66,32 +66,38 @@ def project_to_omega_subspace(
     y = torch.clamp(w, min=lower, max=upper)
     s = y.sum().item()
     if abs(s - 1.0) <= tol:
-        return y
+        final_y = y
+    else:
+        # Establish bisection interval [low, high] for λ.
+        # Let low = min_i (w_i - upper_i). Then for every i: w_i - low >= upper_i, so after clipping y = upper and S(low)=sum(upper).
+        # Let high = max_i (w_i - lower_i). Then for every i: w_i - high <= lower_i, so after clipping y = lower and S(high)=sum(lower).
+        # Feasibility (sum(lower) <= 1 <= sum(upper)) guarantees the root λ* with S(λ*)=1 lies in [low, high].
+        low = float(torch.min(w - upper).item())   # yields S(low) = sum(upper)
+        high = float(torch.max(w - lower).item())  # yields S(high) = sum(lower)
+        final_y = None
 
-    # Establish bisection interval [low, high] for λ.
-    # Let low = min_i (w_i - upper_i). Then for every i: w_i - low >= upper_i, so after clipping y = upper and S(low)=sum(upper).
-    # Let high = max_i (w_i - lower_i). Then for every i: w_i - high <= lower_i, so after clipping y = lower and S(high)=sum(lower).
-    # Feasibility (sum(lower) <= 1 <= sum(upper)) guarantees the root λ* with S(λ*)=1 lies in [low, high].
-    low = float(torch.min(w - upper).item())   # yields S(low) = sum(upper)
-    high = float(torch.max(w - lower).item())  # yields S(high) = sum(lower)
+        # Bisection on S(λ) - 1 = 0. S decreases with λ.
+        for _ in range(max_iter):
+            mid = 0.5 * (low + high)
+            y = torch.clamp(w - mid, min=lower, max=upper)
+            s = y.sum().item()
 
-    # Bisection on S(λ) - 1 = 0. S decreases with λ.
-    for _ in range(max_iter):
-        mid = 0.5 * (low + high)
-        y = torch.clamp(w - mid, min=lower, max=upper)
-        s = y.sum().item()
+            if abs(s - 1.0) <= tol:
+                final_y = y
+                break
+            if s > 1.0:
+                # Current sum too large ⇒ λ too small (need larger λ) ⇒ move lower bound up.
+                low = mid
+            else:
+                # Current sum too small ⇒ λ too large ⇒ move upper bound down.
+                high = mid
 
-        if abs(s - 1.0) <= tol:
-            return y
-        if s > 1.0:
-            # Current sum too large ⇒ λ too small (need larger λ) ⇒ move lower bound up.
-            low = mid
-        else:
-            # Current sum too small ⇒ λ too large ⇒ move upper bound down.
-            high = mid
+        # Fallback (max_iter reached): last midpoint approximation if not yet assigned.
+        if final_y is None:
+            mid = 0.5 * (low + high)
+            final_y = torch.clamp(w - mid, min=lower, max=upper)
 
-    # Fallback (max_iter reached): return last approximation.
-    return torch.clamp(w - 0.5 * (low + high), min=lower, max=upper)
+    return final_y
 
 def project_to_gamma_subspace(
         Pi: torch.Tensor,

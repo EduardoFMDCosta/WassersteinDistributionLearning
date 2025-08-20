@@ -9,7 +9,7 @@ def o_maximization(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor, 
-        tol: float = 1e-8
+        tol: float = 1e-6
 ):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration

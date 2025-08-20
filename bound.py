@@ -36,17 +36,24 @@ class DataDrivenRadius:
             compute_moment_bound: bool = True,
             compute_discrete_bound: bool = True
         ):
-        self.moment_bound = bound_moment(quantization=quantization) if compute_moment_bound else None
-        self.discrete_bound = bound_discrete(quantization=quantization, method=method) if compute_discrete_bound else None
+        self.moment_bound = bound_moment(quantization=quantization) if compute_moment_bound else float('nan')
+        self.discrete_bound = bound_discrete(quantization=quantization, method=method) if compute_discrete_bound else float('nan')
 
         self.lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 
+    # @property
+    # def moment_bound_available(self):
+    #     return self.moment_bound is not None
+    
+    # def discrete_bound_available(self):
+    #     return self.discrete_bound is not None
+
     @property
     def radius(self):
-        if self.moment_bound is None or self.discrete_bound is None:
-            return float('nan')
-        else:
-            return self.moment_bound + self.discrete_bound
+        # if self.moment_bound is None or self.discrete_bound is None:
+        #     return float('nan')
+        # else:
+        return self.moment_bound + self.discrete_bound
     
     def lower_bound(self):
         return self.moment_bound

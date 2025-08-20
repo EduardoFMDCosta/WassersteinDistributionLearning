@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                          lower=lower,
                                          upper=upper,
                                          empirical_marginal=empirical_marginal,
-                                         num_steps=10000,
+                                         num_steps=1000,
                                          lr=0.01,
                                          tol=1e-6)
         print(f"Final w (Algorithm 2) = {result['final_w']}")

@@ -174,7 +174,8 @@ def ot_lp_solver(
         cost: torch.Tensor,
         w: torch.Tensor,
         empirical_distribution: torch.Tensor,
-        method: str = "highs"
+        method: str = "highs",
+        tol: float = 1e-8
 ):
 
     n = cost.shape[0]

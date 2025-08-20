@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 import torch
 from torch_kmeans import KMeans
 
@@ -45,6 +45,7 @@ class Partition:
             support: HyperRectangle,
             cluster_centers: torch.Tensor,
             cluster_radii: torch.Tensor,
+            distance_locs: Optional[torch.Tensor] = None
         ):
         assert cluster_centers.size(0) == cluster_radii.size(0), "All tensors must have the same number of elements"
 
@@ -54,8 +55,8 @@ class Partition:
         self.cluster_centers = cluster_centers
         self.cluster_radii = cluster_radii
         self.outer_loc = support.center.unsqueeze(0)
-        
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+
+        self.distance_locs = torch.cdist(self.locs, self.locs, p=2) if distance_locs is None else distance_locs
 
     def __len__(self):
         return self.locs.size(0)
@@ -75,7 +76,7 @@ class BoundedVoronoiPartition(Partition):
             support: HyperRectangle, 
             samples: torch.Tensor, 
             M: int, 
-            radius_scale_factor: float = 1.2, 
+            radius_scale_factor: float = 10.5, 
             use_voronoi_radii: bool = True
         ):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
@@ -104,6 +105,11 @@ class BoundedVoronoiPartition(Partition):
         else:
             locs = samples
             radii = torch.zeros(nsamples)
+
+
+        distance_locs = torch.cdist(locs, locs, p=2)
+        distance_closest_neighbor = torch.topk(distance_locs, 2, dim=1, largest=False).values[:, 1]
+        radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)
 
         super().__init__(support, locs, radii)
 

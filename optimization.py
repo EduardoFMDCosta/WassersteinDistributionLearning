@@ -9,7 +9,7 @@ def o_maximization(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor, 
-        tol: float = 1e-6
+        tol: float = 1e-8
 ):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
@@ -128,7 +128,7 @@ def project_to_gamma_subspace(
         w: torch.Tensor,
         empirical_marginal: torch.Tensor,
         max_iters: int = 100,
-        tol: float = 1e-8
+        tol: float = 1e-6
 ) -> torch.Tensor:
 
     n = Pi.shape[0]
@@ -151,7 +151,7 @@ def project_to_gamma_subspace(
     Pi = torch.diag(u) @ K @ torch.diag(v)
 
     assert (Pi >= 0).all(), "Projection failed: negative entries found."
-    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total proability mass not equal to one"
+    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total probability mass not equal to one"
     assert torch.allclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
 
     return Pi
@@ -413,7 +413,8 @@ def nested_gradient_descent(
 
     # Compute exact value
     result["final_w"] = w
-    result["objective_value"] = -f(Pi=Pi, cost=cost) # as we solve for f = -h
+    objective = -f(Pi=Pi, cost=cost)
+    result["objective_value"] = objective.item() # as we solve for f = -h
 
     return result
 
@@ -426,7 +427,7 @@ def max_min_lp(
         num_steps=1000,
         lr=1e-3
 ):
-    if method == 'stackelberg_equilibrium':
+    if method == 'max_oracle_lp_solver':
         result = max_oracle_gradient_descent(
             cost=cost,
             lower=lower,
@@ -447,7 +448,7 @@ def max_min_lp(
             lr=lr
         )
         return result["objective_value"]
-    elif method == 'sinkhorn':
+    elif method == 'max_oracle_sinkhorn':
         result = max_oracle_gradient_descent(
             cost=cost,
             lower=lower,

@@ -1,6 +1,6 @@
 import math
 from quantization import UncertainQuantization
-from sets import Partition, HyperRectangle
+from sets import HyperRectangle
 from quantization import UncertainQuantization
 from optimization import o_maximization, max_min_lp
 

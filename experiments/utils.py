@@ -30,6 +30,18 @@ class UncertainQuantizationStatistics:
         self.quantizations = quantizations
 
     @property
+    def outer_counts(self):
+        return torch.tensor([elem.outer_counts for elem in self.quantizations])
+    
+    @property
+    def cluster_counts_avg(self):
+        return torch.tensor([elem.cluster_counts.float().mean() for elem in self.quantizations])
+
+    @property
+    def cluster_counts_std(self):
+        return torch.tensor([elem.cluster_counts.float().std() for elem in self.quantizations])
+
+    @property
     def lower_probs_avg(self):
         return torch.tensor([elem.lower_probs.mean() for elem in self.quantizations])
 

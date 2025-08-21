@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 import torch
 from torch_kmeans import KMeans
 
@@ -39,23 +39,56 @@ class HyperRectangle:
         lower, upper = x - eps, x + eps
         return HyperRectangle(lower, upper)
 
-class Partition:
+
+class BoundedVoronoiPartition:
     def __init__(
             self, 
-            support: HyperRectangle,
-            cluster_centers: torch.Tensor,
-            cluster_radii: torch.Tensor,
+            support: HyperRectangle, 
+            samples: torch.Tensor, 
+            M: int, 
+            radius_scale_factor: float = 1.5, 
+            use_voronoi_radii: bool = False
         ):
-        assert cluster_centers.size(0) == cluster_radii.size(0), "All tensors must have the same number of elements"
+        assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
+        assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
+
+        nsamples = samples.size(0)
+
+        if nsamples > M:
+            kmeans_torch = KMeans(n_clusters=M)
+            cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
+
+            cluster_centers = cluster_result.centers.squeeze(0)
+            labels = cluster_result.labels.squeeze(0)
+
+            max_sample_distances = compute_inner_cluster_max_radii(samples, cluster_centers, labels)    
+        else:
+            cluster_centers = samples
+            max_sample_distances = torch.zeros(M)
 
         self.support = support
         self.ndim = support.ndim
-        
         self.cluster_centers = cluster_centers
-        self.cluster_radii = cluster_radii
         self.outer_loc = support.center.unsqueeze(0)
+
+        self.distance_locs = torch.cdist(cluster_centers, cluster_centers, p=2)
+
+        # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
+        # For unbounded cells, the diameter will be infinite.
+        if use_voronoi_radii:
+            radii = compute_voronoi_radius(cluster_centers)
+        else:
+            radii = torch.full((M,), torch.inf)
+
+        radii.clamp_(max=radius_scale_factor * max_sample_distances)
+
+        if not use_voronoi_radii:
+            num_neigh = max(int(M*0.05), 10)
+            distance_closest_neighbor = torch.topk(self.distance_locs, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
+            radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)
         
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.cluster_radii = radii
+        
 
     def __len__(self):
         return self.locs.size(0)
@@ -69,46 +102,7 @@ class Partition:
         return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
 
 
-class BoundedVoronoiPartition(Partition):
-    def __init__(
-            self, 
-            support: HyperRectangle, 
-            samples: torch.Tensor, 
-            M: int, 
-            radius_scale_factor: float = 1.2, 
-            use_voronoi_radii: bool = True
-        ):
-        assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
-        assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
-
-        nsamples = samples.size(0)
-
-        if nsamples > M:
-            kmeans_torch = KMeans(n_clusters=M)
-            cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
-
-            locs = cluster_result.centers.squeeze(0)
-            labels = cluster_result.labels.squeeze(0)
-
-            # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
-            # For unbounded cells, the diameter will be infinite.
-            if use_voronoi_radii:
-                radii = compute_voronoi_radius(locs)
-            else:
-                radii = torch.full((M,), torch.inf)
-
-            # Compute the max sample to center distance for each cluster in one operation
-            max_sample_distances = compute_cluster_radii(samples, locs, labels)
-            
-            radii.clamp_(max=radius_scale_factor * max_sample_distances)
-        else:
-            locs = samples
-            radii = torch.zeros(nsamples)
-
-        super().__init__(support, locs, radii)
-
-
-def compute_cluster_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def compute_inner_cluster_max_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
     """
     Compute the maximum distance from samples to their assigned cluster centers.
     

@@ -30,8 +30,7 @@ def num_samples(args, M, N_options):
         partition = BoundedVoronoiPartition(
             support=support_assumption, 
             samples=samples_partition, 
-            M=M,
-            use_voronoi_radii=False # set to false to speed up
+            M=M
         )
         quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
@@ -67,10 +66,13 @@ def num_clusters(args, N, M_options):
         partition = BoundedVoronoiPartition(
             support=support_assumption, 
             samples=samples_partition, 
-            M=M,
-            use_voronoi_radii=False # set to false to speed up
+            M=M
         )
-        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
+        quantization = UncertainQuantization(
+            partition=partition, 
+            samples=samples_quantization, 
+            beta=args.beta
+        )
 
         # Plot samples and clusterized distribution
         if args.plot:
@@ -121,7 +123,7 @@ if __name__ == '__main__':
     quantization_stats = UncertainQuantizationStatistics(quantizations=quantizations)
 
     with torch.no_grad():
-        fig, ax = plt.subplots(4, 1, figsize=(10, 16), constrained_layout=True)
+        fig, ax = plt.subplots(4, 1, figsize=(8, 12), constrained_layout=True)
 
         ax[0].plot(options, radii_stats.radius, label='w2', marker='o')
         ax[0].plot(options, radii_stats.moment_bound, label='e1', linestyle='--')
@@ -156,16 +158,28 @@ if __name__ == '__main__':
         # ax[2].set_xscale('log')
         ax[2].legend(loc='best')
 
-        ax[3].plot(options, quantization_stats.distances_locs_avg, label='avg distances', color='black')
+        # ax[3].plot(options, quantization_stats.distances_locs_avg, label='avg distances', color='black')
+        # ax[3].fill_between(
+        #     options,
+        #     quantization_stats.distances_locs_avg - quantization_stats.distances_locs_std,
+        #     quantization_stats.distances_locs_avg + quantization_stats.distances_locs_std,
+        #     color='black',
+        #     alpha=0.2,
+        #     label='std dev'
+        # )
+        # # ax[3].set_xscale('log')
+        # ax[3].legend(loc='best')
+
+        ax[3].plot(options, quantization_stats.outer_counts, label='outer counts', marker='o', color='red')
+        ax[3].plot(options, quantization_stats.cluster_counts_avg, label='avg cluster counts', marker='o', color='blue')
         ax[3].fill_between(
             options,
-            quantization_stats.distances_locs_avg - quantization_stats.distances_locs_std,
-            quantization_stats.distances_locs_avg + quantization_stats.distances_locs_std,
-            color='black',
+            quantization_stats.cluster_counts_avg - quantization_stats.cluster_counts_std,
+            quantization_stats.cluster_counts_avg + quantization_stats.cluster_counts_std,
+            color='blue',
             alpha=0.2,
             label='std dev'
         )
-        # ax[3].set_xscale('log')
         ax[3].legend(loc='best')
 
         tag = f"convergence_{args.distribution}_setting={args.setting}"

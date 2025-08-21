@@ -15,10 +15,10 @@ class Quantization:
         self.nsamples = samples.size(0)
 
         centers_to_samples_distance = torch.cdist(partition.cluster_centers, samples, p=2)
+        mask = centers_to_samples_distance > partition.cluster_radii.unsqueeze(1)
+        in_outer = mask.all(dim=0)
+        centers_to_samples_distance[mask] = torch.inf
         labels = torch.argmin(centers_to_samples_distance, dim=0)
-
-        sample_to_center_distance = torch.norm(samples - partition.cluster_centers[labels], dim=-1)
-        in_outer = sample_to_center_distance > partition.cluster_radii[labels]
 
         self.cluster_counts = torch.bincount(labels[~in_outer], minlength=len(partition) - 1)
 

@@ -350,6 +350,7 @@ def nested_gradient_descent(
 
     # Initialize w and Pi
     w = torch.distributions.Dirichlet(torch.ones(M)).sample()
+    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
     result["initial_w"] = w
     Pi = torch.outer(w, empirical_marginal).clone().requires_grad_(True)
     lambd = torch.randn(M, requires_grad=True)

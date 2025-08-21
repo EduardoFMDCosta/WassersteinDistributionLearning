@@ -43,12 +43,12 @@ def generate_empirical(n):
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    n = 10
+    n = 2
     cost = generate_symmetric_cost(n=n, low=0.1, high=0.5)
     empirical_marginal = generate_empirical(n=n)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
 
-    for i in range(3):
+    for i in range(5):
         # Max oracle with LP solver
         start = time.time()
         result = max_oracle_gradient_descent(cost=cost,

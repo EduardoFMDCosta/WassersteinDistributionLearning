@@ -46,7 +46,7 @@ class BoundedVoronoiPartition:
             support: HyperRectangle, 
             samples: torch.Tensor, 
             M: int, 
-            radius_scale_factor: float = 1., 
+            radius_scale_factor: float = 1.5, 
             use_voronoi_radii: bool = False
         ):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"

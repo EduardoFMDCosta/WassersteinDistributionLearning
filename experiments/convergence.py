@@ -30,8 +30,7 @@ def num_samples(args, M, N_options):
         partition = BoundedVoronoiPartition(
             support=support_assumption, 
             samples=samples_partition, 
-            M=M,
-            use_voronoi_radii=False # set to false to speed up
+            M=M
         )
         quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
@@ -67,10 +66,13 @@ def num_clusters(args, N, M_options):
         partition = BoundedVoronoiPartition(
             support=support_assumption, 
             samples=samples_partition, 
-            M=M,
-            use_voronoi_radii=False # set to false to speed up
+            M=M
         )
-        quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
+        quantization = UncertainQuantization(
+            partition=partition, 
+            samples=samples_quantization, 
+            beta=args.beta
+        )
 
         # Plot samples and clusterized distribution
         if args.plot:

@@ -43,8 +43,8 @@ def generate_empirical(n):
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    n = 2
-    cost = generate_symmetric_cost(n=n, low=0.1, high=2.0)
+    n = 10
+    cost = generate_symmetric_cost(n=n, low=0.1, high=0.5)
     empirical_marginal = generate_empirical(n=n)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
                                             lower=lower,
                                             upper=upper,
                                             empirical_marginal=empirical_marginal,
-                                            num_steps=10,
+                                            num_steps=1000,
                                             lr=0.001,
                                             ot_solver=ot_lp_solver)
         elapsed_lp = time.time() - start
@@ -73,7 +73,7 @@ if __name__ == '__main__':
                                             lower=lower,
                                             upper=upper,
                                             empirical_marginal=empirical_marginal,
-                                            num_steps=10,
+                                            num_steps=1000,
                                             lr=0.001,
                                             ot_solver=ot_sinkhorn_solver)
         elapsed_sinkhorn = time.time() - start
@@ -90,8 +90,8 @@ if __name__ == '__main__':
                                          lower=lower,
                                          upper=upper,
                                          empirical_marginal=empirical_marginal,
-                                         num_steps=10,
-                                         lr=0.01,
+                                         num_steps=1000,
+                                         lr=0.001,
                                          tol=1e-8)
         elapsed_nested = time.time() - start
 

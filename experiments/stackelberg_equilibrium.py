@@ -61,7 +61,7 @@ if __name__ == '__main__':
     # Evaluate f
     f_vals = []
     for w_candidate in w:
-        f_val = ot_lp_solver(-cost, w_candidate, empirical_marginal)[1]
+        f_val = ot_lp_solver(cost, w_candidate, empirical_marginal)[1]
         f_vals.append(f_val)
 
     # Plot
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     plt.ylabel(r"$V(\omega)$")
     plt.show()
 
-    for i in range(0):
+    for i in range(3):
         # Max oracle with LP solver
         result = max_oracle_gradient_descent(cost=cost,
                                             lower=lower,

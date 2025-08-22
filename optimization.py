@@ -9,7 +9,7 @@ def o_maximization(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor, 
-        tol: float = 1e-6
+        tol: float = 1e-8
 ):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
@@ -128,7 +128,7 @@ def project_to_gamma_subspace(
         w: torch.Tensor,
         empirical_marginal: torch.Tensor,
         max_iters: int = 100,
-        tol: float = 1e-8
+        tol: float = 1e-6
 ) -> torch.Tensor:
 
     n = Pi.shape[0]
@@ -151,7 +151,7 @@ def project_to_gamma_subspace(
     Pi = torch.diag(u) @ K @ torch.diag(v)
 
     assert (Pi >= 0).all(), "Projection failed: negative entries found."
-    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total proability mass not equal to one"
+    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total probability mass not equal to one"
     assert torch.allclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
 
     return Pi
@@ -228,7 +228,7 @@ def ot_lp_solver(
 
     # Convert back to torch on original device/dtype
     T = torch.tensor(T_np)
-    obj = float((-cost * T).sum().item())
+    obj = float((cost * T).sum().item())
 
     # Try to return dual potentials (u for rows, v for cols) if provided
     u = v = None
@@ -277,7 +277,7 @@ def ot_sinkhorn_solver(
     alpha = epsilon * logu
     beta = epsilon * logv
 
-    objective = float((-cost * T).sum().item())
+    objective = float((cost * T).sum().item())
 
     # assert not alpha.isinf().any() and not alpha.isnan().any() and not beta.isinf().any() and not beta.isnan().any()
 
@@ -301,31 +301,23 @@ def max_oracle_gradient_descent(
     w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
     w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
-    # Initialize trackers for best solution (objective is minimized here before sign flip)
-    best_objective = float('inf')
-    best_w = w.clone()
-
     for step in range(num_steps):
         # Solve for primal and dual (lines 2 and 3)
         Pi, objective, duals = ot_solver(cost, w, empirical_marginal)
         alpha, beta = duals
 
-        # Check for best value
-        if objective < best_objective:
-            best_objective = objective
-            best_w = w.clone()
-
         # Gradient step (line 4)
         w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
         w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
 
-    result["final_w"] = best_w
-    result["objective_value"] = best_objective * (-1) # as we solve for f = -h
+    Pi, objective, duals = ot_lp_solver(cost, w, empirical_marginal)
+    result["final_w"] = w
+    result["objective_value"] = objective
 
     return result
 
 def f(Pi: torch.Tensor, cost: torch.Tensor):
-    return -(cost * Pi).sum()
+    return (cost * Pi).sum()
 
 def g(w: torch.Tensor, Pi: torch.Tensor):
     return Pi.sum(dim=1) - w
@@ -350,6 +342,7 @@ def nested_gradient_descent(
 
     # Initialize w and Pi
     w = torch.distributions.Dirichlet(torch.ones(M)).sample()
+    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
     result["initial_w"] = w
     Pi = torch.outer(w, empirical_marginal).clone().requires_grad_(True)
     lambd = torch.randn(M, requires_grad=True)
@@ -363,29 +356,27 @@ def nested_gradient_descent(
 
     for step in range(num_steps):
 
-        # Phase 1: Gradient ascent for Pi
-        for _ in range(10):
-            Pi_optimizer.zero_grad()
-            loss = f(Pi=Pi, cost=cost)
-            (-loss).backward()
-            Pi_optimizer.step()
+        # Phase 1: Gradient descent for Pi
+        Pi_optimizer.zero_grad()
+        loss = f(Pi=Pi, cost=cost)
+        loss.backward()
+        Pi_optimizer.step()
 
-            # Projection
-            with torch.no_grad():
-                projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
-                Pi.copy_(projected)
+        # Projection
+        with torch.no_grad():
+            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
+            Pi.copy_(projected)
 
-        # Phase 2: Gradient descent for lambd
-        for _ in range(10):
-            lambd_optimizer.zero_grad()
-            loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-            loss.backward()
-            lambd_optimizer.step()
+        # Phase 2: Gradient ascent for lambd
+        lambd_optimizer.zero_grad()
+        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
+        (-loss).backward()
+        lambd_optimizer.step()
 
-        # Phase 3: Gradient descent for w
+        # Phase 3: Gradient ascent for w
         w_optimizer.zero_grad()
         loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        loss.backward()
+        (-loss).backward()
         w_optimizer.step()
 
         # Projection
@@ -400,20 +391,11 @@ def nested_gradient_descent(
                 break
             previous_loss = loss.item()
 
-    for _ in range(1000):
-        Pi_optimizer.zero_grad()
-        loss = f(Pi=Pi, cost=cost)
-        (-loss).backward()
-        Pi_optimizer.step()
-
-        # Projection
-        with torch.no_grad():
-            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
-            Pi.copy_(projected)
+    Pi, objective, duals = ot_lp_solver(cost, w, empirical_marginal)
 
     # Compute exact value
     result["final_w"] = w
-    result["objective_value"] = -f(Pi=Pi, cost=cost) # as we solve for f = -h
+    result["objective_value"] = objective
 
     return result
 
@@ -426,7 +408,7 @@ def max_min_lp(
         num_steps=1000,
         lr=1e-3
 ):
-    if method == 'stackelberg_equilibrium':
+    if method == 'max_oracle_lp_solver':
         result = max_oracle_gradient_descent(
             cost=cost,
             lower=lower,
@@ -447,7 +429,7 @@ def max_min_lp(
             lr=lr
         )
         return result["objective_value"]
-    elif method == 'sinkhorn':
+    elif method == 'max_oracle_sinkhorn':
         result = max_oracle_gradient_descent(
             cost=cost,
             lower=lower,

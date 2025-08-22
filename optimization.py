@@ -298,7 +298,7 @@ def max_oracle_gradient_descent(
     result = {}
 
     # Initialize w
-    w = torch.distributions.Dirichlet(torch.ones(cost.shape[0])).sample()
+    w = torch.randn(cost.shape[0])
     w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
     for step in range(num_steps):
@@ -341,7 +341,7 @@ def nested_gradient_descent(
     M = cost.shape[0]
 
     # Initialize w and Pi
-    w = torch.distributions.Dirichlet(torch.ones(M)).sample()
+    w = torch.randn(cost.shape[0])
     w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
     result["initial_w"] = w
     Pi = torch.outer(w, empirical_marginal).clone().requires_grad_(True)

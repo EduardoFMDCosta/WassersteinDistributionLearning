@@ -38,19 +38,40 @@ def generate_lower_upper(empirical):
     return lower, upper
 
 def generate_empirical(n):
-    return torch.distributions.Dirichlet(torch.ones(n)).sample()
+    return torch.distributions.Dirichlet(0.8 * torch.ones(n)).sample()
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
+    torch.manual_seed(100)
 
     n = 2
-    cost = generate_symmetric_cost(n=n, low=0.1, high=0.5)
+    cost = generate_symmetric_cost(n=n, low=0.1, high=1.5)
     empirical_marginal = generate_empirical(n=n)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
 
-    for i in range(5):
+    # Plot surface
+    # Feasible interval for w1
+    w1_min = max(lower[0].item(), 1 - upper[1].item())
+    w1_max = min(upper[0].item(), 1 - lower[1].item())
+
+    # Sample points
+    w1_vals = torch.linspace(w1_min, w1_max, 200)
+    w2_vals = 1 - w1_vals
+    w = torch.stack([w1_vals, w2_vals], dim=-1)
+
+    # Evaluate f
+    f_vals = []
+    for w_candidate in w:
+        f_val = ot_lp_solver(-cost, w_candidate, empirical_marginal)[1]
+        f_vals.append(f_val)
+
+    # Plot
+    plt.plot(w1_vals, f_vals)
+    plt.xlabel(r"$\omega_1$")
+    plt.ylabel(r"$V(\omega)$")
+    plt.show()
+
+    for i in range(0):
         # Max oracle with LP solver
-        start = time.time()
         result = max_oracle_gradient_descent(cost=cost,
                                             lower=lower,
                                             upper=upper,
@@ -58,7 +79,6 @@ if __name__ == '__main__':
                                             num_steps=1000,
                                             lr=0.001,
                                             ot_solver=ot_lp_solver)
-        elapsed_lp = time.time() - start
 
         w_lp = result['final_w']
         obj_lp = result['objective_value']
@@ -68,7 +88,6 @@ if __name__ == '__main__':
         print(f"Value (LP solver) = {obj_lp} \n")
 
         # Max oracle with Sinkhorn algorithm
-        start = time.time()
         result = max_oracle_gradient_descent(cost=cost,
                                             lower=lower,
                                             upper=upper,
@@ -76,7 +95,6 @@ if __name__ == '__main__':
                                             num_steps=1000,
                                             lr=0.001,
                                             ot_solver=ot_sinkhorn_solver)
-        elapsed_sinkhorn = time.time() - start
 
         w_sinkhorn = result['final_w']
         obj_sinkhorn = result['objective_value']
@@ -85,7 +103,6 @@ if __name__ == '__main__':
         print(f"Value (Sinkhorn) = {obj_sinkhorn} \n")
 
         # Gradient descent-ascent
-        start = time.time()
         result = nested_gradient_descent(cost=cost,
                                          lower=lower,
                                          upper=upper,
@@ -93,7 +110,6 @@ if __name__ == '__main__':
                                          num_steps=1000,
                                          lr=0.001,
                                          tol=1e-8)
-        elapsed_nested = time.time() - start
 
         w_nested = result['final_w']
         obj_nested = result['objective_value']
@@ -126,12 +142,3 @@ if __name__ == '__main__':
 
         plt.tight_layout()
         plt.show()
-
-    # Plot elapsed time (for last iteration)
-    fig, ax = plt.subplots(figsize=(8, 6))
-    times = [elapsed_lp, elapsed_sinkhorn, elapsed_nested]
-    labels = ["LP", "Sinkhorn", "Nested"]
-    ax.bar(labels, times, color=["C0", "C1", "C2"])
-    ax.set_ylabel("Time (seconds)")
-    plt.tight_layout()
-    plt.show()

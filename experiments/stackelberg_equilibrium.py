@@ -42,10 +42,10 @@ def generate_empirical(n):
     return torch.distributions.Dirichlet(0.8 * torch.ones(n)).sample()
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
+    torch.manual_seed(10)
 
-    n = 3
-    cost = generate_symmetric_cost(n=n, low=0.5, high=0.9)
+    n = 5
+    cost = generate_symmetric_cost(n=n, low=0.5, high=1.5)
     empirical_marginal = generate_empirical(n=n)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         plt.ylabel(r"$V(\omega)$")
         plt.show()
 
-    for i in range(3):
+    for i in range(6):
         # Max oracle with LP solver
         result = cutting_plane(cost=cost,
                                lower=lower,

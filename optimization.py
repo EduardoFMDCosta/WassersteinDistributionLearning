@@ -399,7 +399,7 @@ def nested_gradient_descent(
 
     return result
 
-def cutting_plane(
+def greedy(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
@@ -482,8 +482,8 @@ def max_min_lp(
             ot_solver=ot_sinkhorn_solver
         )
         return result["objective_value"]
-    elif method == 'cutting_plane':
-        result = cutting_plane(
+    elif method == 'greedy':
+        result = greedy(
             cost=cost,
             lower=lower,
             upper=upper,

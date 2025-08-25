@@ -416,28 +416,27 @@ def greedy(
     w = torch.randn(cost.shape[0])
     w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
-    optimal_dual_value = -float('inf')
-
     for step in range(num_steps):
         # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
         Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
         alpha, beta = duals
 
-        # O-maximization (w^{(k+1)})
-        _, w_next = o_maximization(cost=alpha.float(), lower=lower, upper=upper)
+        alpha = alpha.float()
+        beta = beta.float()
 
-        # Test for optimality condition
-        dual_value = torch.einsum('i,i->', alpha.float(), w_next) + torch.einsum('i,i->', beta.float(), empirical_marginal)
-        if dual_value <= optimal_dual_value:
+        # O-maximization (w^{(k+1)})
+        _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
+
+        epsilon = torch.einsum('i,i->', alpha, w_next - w)
+        if epsilon < 1e-5:
             print(f"Cutting plane method converged after {step + 1} iterations.")
             break
 
         # Update w
         w = w_next
-        optimal_dual_value = dual_value
 
     result["final_w"] = w
-    result["objective_value"] = optimal_dual_value
+    result["objective_value"] = objective
 
     return result
 

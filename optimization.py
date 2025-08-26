@@ -270,7 +270,7 @@ def ot_sinkhorn_solver(
 
     return T, objective, (alpha, beta)
 
-def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor):
+def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor, tol: float = 1e-7):
     M = lower.shape[0]
     vertices = []
 
@@ -291,7 +291,8 @@ def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor):
 
             # Check feasibility
             if lower[free_idx] <= w[free_idx] <= upper[free_idx]:
-                vertices.append(w)
+                if abs(w.sum() - 1.0) <= tol and (w >= lower - tol).all() and (w <= upper + tol).all():
+                    vertices.append(w)
 
     if vertices:
         return torch.stack(vertices, dim=0)

@@ -1,14 +1,23 @@
 import torch
-import seaborn as sns
+import numpy as np
 from matplotlib import pyplot as plt
-from optimization import max_oracle_gradient_descent, nested_gradient_descent, ot_lp_solver, ot_sinkhorn_solver, \
-    greedy
+from optimization import ot_lp_solver, get_omega_space_vertices, cutting_plane, full_search
 
 plt.rcParams.update({
     'font.size': 12,
     'text.usetex': True,
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
+
+def sample_feasible_points(lower, upper, n_samples=100):
+    dim = len(lower)
+    points = []
+    while len(points) < n_samples:
+        # sample from Dirichlet (uniform on simplex)
+        x = np.random.dirichlet(np.ones(dim))
+        if np.all(x >= lower.numpy()) and np.all(x <= upper.numpy()):
+            points.append(x)
+    return points
 
 def generate_symmetric_cost(n, low, high):
     upper = (high - low) * torch.rand((n, n)) + low
@@ -19,7 +28,6 @@ def generate_symmetric_cost(n, low, high):
     return cost
 
 def generate_lower_upper(empirical):
-
     # Generate perturbations for empirical
     rand_lower = torch.rand_like(empirical) * 0.05
     rand_upper = torch.rand_like(empirical) * 0.05
@@ -40,19 +48,101 @@ def generate_empirical(n):
     return torch.distributions.Dirichlet(0.8 * torch.ones(n)).sample()
 
 if __name__ == '__main__':
-    torch.manual_seed(10)
+    torch.manual_seed(0)
 
-    n = 2
-    cost = generate_symmetric_cost(n=n, low=0.5, high=1.5)
-    empirical_marginal = generate_empirical(n=n)
+    M = 6
+    cost = generate_symmetric_cost(n=M, low=0.5, high=1.5)
+    empirical_marginal = generate_empirical(n=M)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
+
+    plot = True
 
     print(f"Empirical = {empirical_marginal}")
     print(f"Lower = {lower}")
-    print(f"Upper = {upper}")
+    print(f"Upper = {upper} \n")
 
-    # Analysis 1: show that V is convex on \omega
-    if n == 2:
+    # Analysis 1: If M = 3, plot simplex vertices and linear pieces
+    if M == 3 and plot:
+        vertices = get_omega_space_vertices(lower, upper)
+
+        # compute f
+        f_vals, alphas = [], []
+        for v in vertices:
+            Pi, objective, duals = ot_lp_solver(cost=cost, w=v, empirical_distribution=empirical_marginal)
+            alpha, beta = duals
+            f_vals.append(objective)
+            alphas.append(alpha / 100) # rescale for visualization
+
+        # plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        verts_np = np.array([v for v in vertices])
+        ax.scatter(verts_np[:, 0], verts_np[:, 1], verts_np[:, 2],
+                   c=f_vals, cmap='viridis', s=10, label="Vertices")
+
+        # annotate vertices with f values
+        for v, val in zip(vertices, f_vals):
+            ax.text(v[0].item(), v[1].item(), v[2].item(), f"{val:.4f}", fontsize=8)
+
+        # plot alpha vectors from each vertex
+        for v, alpha in zip(vertices, alphas):
+            v_np = np.array(v)
+            alpha_np = np.array(alpha)
+            ax.quiver(
+                v_np[0], v_np[1], v_np[2],
+                alpha_np[0], alpha_np[1], alpha_np[2],
+                color='black', arrow_length_ratio=0.1, linewidth=1.5
+            )
+
+        ax.set_xlabel(r"$\omega_1$")
+        ax.set_ylabel(r"$\omega_2$")
+        ax.set_zlabel(r"$\omega_3$")
+        ax.view_init(elev=35.26, azim=45)
+        plt.show()
+
+        # sample random points inside feasible region
+        rand_points = sample_feasible_points(lower, upper, n_samples=3000)
+
+        # compute f
+        rand_vals, rand_alphas = [], []
+        for v in rand_points:
+            Pi, objective, duals = ot_lp_solver(cost=cost, w=torch.tensor(v), empirical_distribution=empirical_marginal)
+            alpha, beta = duals
+
+            rand_vals.append(objective)
+            rand_alphas.append(alpha / 100) # rescale for visualization
+
+        # Merge lists
+        vertices = [row for row in vertices.numpy()]  # Convert to numpy for compatibility
+        vertices = vertices + rand_points
+        f_vals = f_vals + rand_vals
+        alphas = alphas + rand_alphas
+
+        # Convert to numpy
+        points = np.array(vertices)
+        alphas = np.array(alphas)
+
+        # Find unique alphas and map each to an index
+        unique_alphas, inverse_indices = np.unique(alphas, axis=0, return_inverse=True)
+
+        # Assign colors to each unique alpha
+        cmap = plt.get_cmap("tab10")  # or any colormap
+        colors = cmap(inverse_indices % cmap.N)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=colors, s=10)
+
+        ax.set_xlabel(r"$\omega_1$")
+        ax.set_ylabel(r"$\omega_2$")
+        ax.set_zlabel(r"$\omega_3$")
+        ax.view_init(elev=35.26, azim=45)
+        plt.show()
+        plt.show()
+
+
+    # Analysis 2: show that V is convex on w
+    if M == 2 and plot:
         # Plot surface
         # Feasible interval for w1
         w1_min = max(lower[0].item(), 1 - upper[1].item())
@@ -75,55 +165,11 @@ if __name__ == '__main__':
         plt.ylabel(r"$V(\omega)$")
         plt.show()
 
-    for i in range(5):
-        # Max oracle with LP solver
-        result = max_oracle_gradient_descent(cost=cost,
-                                             lower=lower,
-                                             upper=upper,
-                                             empirical_marginal=empirical_marginal,
-                                             num_steps=1000,
-                                             lr=0.001,
-                                             ot_solver=ot_lp_solver)
 
-        w_lp = result['final_w']
-        obj_lp = result['objective_value']
-
-        print(f"-------------Iteration {i+1}-------------")
-        print(f"Final w (LP solver) = {w_lp}")
-        print(f"Value (LP solver) = {obj_lp} \n")
-
-        # Max oracle with Sinkhorn algorithm
-        result = max_oracle_gradient_descent(cost=cost,
-                                             lower=lower,
-                                             upper=upper,
-                                             empirical_marginal=empirical_marginal,
-                                             num_steps=1000,
-                                             lr=0.001,
-                                             ot_solver=ot_sinkhorn_solver)
-
-        w_sinkhorn = result['final_w']
-        obj_sinkhorn = result['objective_value']
-
-        print(f"Final w (Sinkhorn) = {w_sinkhorn}")
-        print(f"Value (Sinkhorn) = {obj_sinkhorn} \n")
-
-        # Gradient descent-ascent
-        result = nested_gradient_descent(cost=cost,
-                                         lower=lower,
-                                         upper=upper,
-                                         empirical_marginal=empirical_marginal,
-                                         num_steps=10,
-                                         lr=0.001,
-                                         tol=1e-8)
-
-        w_nested = result['final_w']
-        obj_nested = result['objective_value']
-
-        print(f"Final w (Descent-ascent) = {w_nested}")
-        print(f"Value (Descent-ascent) = {obj_nested} \n")
-
-        # Greedy LP solver
-        result = greedy(cost=cost,
+    # Analysis 3: Compute optima for different starting points (if applicable)
+    for i in range(1):
+        # Cutting plane LP solver
+        result = cutting_plane(cost=cost,
                         lower=lower,
                         upper=upper,
                         empirical_marginal=empirical_marginal,
@@ -131,32 +177,16 @@ if __name__ == '__main__':
                         lr=0.001,
                         ot_solver=ot_lp_solver)
 
-        w_greedy = result['final_w']
-        obj_greedy = result['objective_value']
+        print(f"Final w (Cutting plane) = {result['w_opt']}")
+        print(f"Value (Cutting plane) = {result['objective_opt']} \n")
 
-        # Plotting
-        sns.set_style("whitegrid")
-        sns.set_context("talk")
-        sns.set_palette("deep")
-        fig, axes = plt.subplots(1, 2, figsize=(20, 8))
+        result = full_search(cost=cost,
+                        lower=lower,
+                        upper=upper,
+                        empirical_marginal=empirical_marginal,
+                        num_steps=1000,
+                        lr=0.001,
+                        ot_solver=ot_lp_solver)
 
-        # --- Scatter plot of w's ---
-        axes[0].scatter(w_lp[0], w_lp[1], label="LP", marker="o", s=80)
-        axes[0].scatter(w_sinkhorn[0], w_sinkhorn[1], label="Sinkhorn", marker="s", s=80)
-        axes[0].scatter(w_nested[0], w_nested[1], label="Nested", marker="^", s=80)
-        axes[0].scatter(w_greedy[0], w_greedy[1], label="Greedy", marker="^", s=80)
-        axes[0].set_xlabel(r"$\omega_1$")
-        axes[0].set_ylabel(r"$\omega_2$")
-        axes[0].set_xlim(0, 1)
-        axes[0].set_ylim(0, 1)
-        axes[0].set_aspect("equal")
-        axes[0].legend()
-
-        # --- Bar plot of objectives ---
-        objs = [obj_lp, obj_sinkhorn, obj_nested, obj_greedy]
-        labels = ["LP", "Sinkhorn", "Nested", "Greedy"]
-        axes[1].bar(labels, objs, color=["C0", "C1", "C2", "C3"])
-        axes[1].set_ylabel("Objective")
-
-        plt.tight_layout()
-        plt.show()
+        print(f"Final w (Full search) = {result['w_opt']}")
+        print(f"Value (Full search) = {result['objective_opt']} \n")

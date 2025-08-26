@@ -382,6 +382,29 @@ def cutting_plane(
     result["objective_opt"] = objective_opt
     return result
 
+def plain_vanilla_upperbound(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor
+):
+    # See Corollary 6.2 in
+
+    # Store quantities of interest
+    result = {}
+
+    upper_diff = upper - empirical_marginal
+    lower_diff = empirical_marginal - lower
+
+    max_prob_diff = torch.max(upper_diff, lower_diff)
+    max_dist, _ = torch.max(cost, dim=1)
+
+    result["w_opt"] = None
+    result["objective_opt"] = torch.einsum('i,i->', max_dist, max_prob_diff)
+    return result
+
+
+
 def max_min_lp(
         cost: torch.Tensor,
         lower: torch.Tensor,
@@ -411,6 +434,14 @@ def max_min_lp(
             num_steps=num_steps,
             lr=lr,
             ot_solver=ot_lp_solver
+        )
+        return result["objective_opt"]
+    elif method == 'plain_vanilla':
+        result = plain_vanilla_upperbound(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal
         )
         return result["objective_opt"]
     else:

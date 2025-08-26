@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
-from optimization import ot_lp_solver, get_omega_space_vertices, cutting_plane, full_search
+from optimization import ot_lp_solver, get_omega_space_vertices, cutting_plane, full_search, plain_vanilla_upperbound
 
 plt.rcParams.update({
     'font.size': 12,
@@ -190,3 +190,11 @@ if __name__ == '__main__':
 
         print(f"Final w (Full search) = {result['w_opt']}")
         print(f"Value (Full search) = {result['objective_opt']} \n")
+
+        result = plain_vanilla_upperbound(cost=cost,
+                        lower=lower,
+                        upper=upper,
+                        empirical_marginal=empirical_marginal)
+
+        print(f"Final w (Plain vanilla) = {result['w_opt']}")
+        print(f"Value (Plain vanilla) = {result['objective_opt']} \n")

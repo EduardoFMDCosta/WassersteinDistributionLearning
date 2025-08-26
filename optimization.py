@@ -1,3 +1,4 @@
+import itertools
 from typing import Callable, Optional, Tuple
 import torch
 import numpy as np
@@ -9,7 +10,7 @@ def o_maximization(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor, 
-        tol: float = 1e-8
+        tol: float = 1e-6
 ):
 
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
@@ -156,20 +157,6 @@ def project_to_gamma_subspace(
 
     return Pi
 
-
-def gradient_step(
-        w: torch.Tensor,
-        alpha: torch.Tensor,
-        iteration: int,
-        lr: float,
-        **kwargs
-):
-
-    #learning_rate = lr / (iteration + 1) # square-summable but not summable
-    learning_rate = lr # TODO: IMPROVE GRADIENT STEP SIZE
-
-    return w + learning_rate * alpha
-
 def ot_lp_solver(
         cost: torch.Tensor,
         w: torch.Tensor,
@@ -283,7 +270,75 @@ def ot_sinkhorn_solver(
 
     return T, objective, (alpha, beta)
 
-def max_oracle_gradient_descent(
+def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor):
+    n = len(lower)
+    vertices = []
+
+    # -1 = free, 0 = lower bound, 1 = upper bound
+    for fixed in itertools.product([-1, 0, 1], repeat=n):
+        if fixed.count(-1) > 1:
+            continue  # too many free variables, underdetermined
+        if fixed.count(-1) == 0 and fixed.count(0)+fixed.count(1) < n:
+            continue  # invalid combination
+
+        w = torch.zeros(n)
+
+        # assign fixed bounds
+        for i in range(n):
+            if fixed[i] == 0:
+                w[i] = lower[i]
+            elif fixed[i] == 1:
+                w[i] = upper[i]
+
+        if fixed.count(-1) == 1:
+            # solve for the free variable
+            free_idx = fixed.index(-1)
+            w[free_idx] = 1 - torch.sum(w)
+            if not (lower[free_idx] - 1e-9 <= w[free_idx] <= upper[free_idx] + 1e-9):
+                continue
+
+        # check feasibility
+        if torch.all(w >= lower - 1e-9) and torch.all(w <= upper + 1e-9):
+            if abs(torch.sum(w) - 1) < 1e-8:
+                vertices.append(w.clone())
+
+    # remove duplicates
+    uniq = []
+    for v in vertices:
+        if not any(torch.allclose(v,u,atol=1e-6) for u in uniq):
+            uniq.append(v)
+    return uniq
+
+def full_search(cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        num_steps: int,
+        lr: float,
+        ot_solver: Callable):
+
+    # Store quantities of interest
+    result = {}
+
+    vertices = get_omega_space_vertices(lower=lower, upper=upper)
+
+    objective_opt = -float("inf")
+    w_opt = None
+
+    for w in vertices:
+        Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+
+        # Update highest objective
+        if objective_opt < objective:
+            objective_opt = objective
+            w_opt = w
+
+    result["w_opt"] = w_opt
+    result["objective_opt"] = objective_opt
+    return result
+
+
+def cutting_plane(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
@@ -292,152 +347,49 @@ def max_oracle_gradient_descent(
         lr: float,
         ot_solver: Callable
 ):
-    # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
-
-    # Store quantities of interest
-    result = {}
-
-    # Initialize w
-    w = torch.randn(cost.shape[0])
-    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
-
-    for step in range(num_steps):
-        # Solve for primal and dual (lines 2 and 3)
-        Pi, objective, duals = ot_solver(cost, w, empirical_marginal)
-        alpha, beta = duals
-
-        # Gradient step (line 4)
-        w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
-        w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
-
-    Pi, objective, duals = ot_lp_solver(cost, w, empirical_marginal)
-    result["final_w"] = w
-    result["objective_value"] = objective
-
-    return result
-
-def f(Pi: torch.Tensor, cost: torch.Tensor):
-    return (cost * Pi).sum()
-
-def g(w: torch.Tensor, Pi: torch.Tensor):
-    return Pi.sum(dim=1) - w
-
-def lagrangian(w: torch.Tensor, Pi: torch.Tensor, lambd: torch.Tensor, cost: torch.Tensor):
-    return f(Pi=Pi, cost=cost) + torch.dot(lambd, g(w=w, Pi=Pi))
-
-def nested_gradient_descent(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        num_steps: int,
-        lr: float,
-        tol: float = 1e-8
-):
-    # See Algorithm 2 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Store quantities of interest
     result = {}
     M = cost.shape[0]
+    delta = 1e-3
 
-    # Initialize w and Pi
-    w = torch.randn(cost.shape[0])
-    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
-    result["initial_w"] = w
-    Pi = torch.outer(w, empirical_marginal).clone().requires_grad_(True)
-    lambd = torch.randn(M, requires_grad=True)
+    objective_opt = -float("inf")
+    w_opt = None
 
-    # Optimizers for each variable
-    Pi_optimizer = torch.optim.Adam([Pi], lr=lr)
-    lambd_optimizer = torch.optim.Adam([lambd], lr=lr)
-    w_optimizer = torch.optim.Adam([w], lr=lr)
+    for d in range(M):
+        for direction in [-1, 1]:
+            # Initialize w
+            w = empirical_marginal.clone()
+            w[d] = w[d] + direction * delta
+            w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
-    previous_loss = None  # For stopping criterion based on successive loss differences
+            for step in range(num_steps):
+                # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
+                Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+                alpha, beta = duals
 
-    for step in range(num_steps):
+                alpha = alpha.float()
+                beta = beta.float()
 
-        # Phase 1: Gradient descent for Pi
-        Pi_optimizer.zero_grad()
-        loss = f(Pi=Pi, cost=cost)
-        loss.backward()
-        Pi_optimizer.step()
+                # O-maximization (w^{(k+1)})
+                _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
 
-        # Projection
-        with torch.no_grad():
-            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
-            Pi.copy_(projected)
+                epsilon = torch.einsum('i,i->', alpha, w_next - w)
+                if epsilon < 1e-5:
+                    #print(f"Cutting plane method converged after {step + 1} iterations.")
+                    break
 
-        # Phase 2: Gradient ascent for lambd
-        lambd_optimizer.zero_grad()
-        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-loss).backward()
-        lambd_optimizer.step()
+                # Update w
+                w = w_next
 
-        # Phase 3: Gradient ascent for w
-        w_optimizer.zero_grad()
-        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-loss).backward()
-        w_optimizer.step()
+            #Update highest objective
+            if objective_opt < objective:
+                objective_opt = objective
+                w_opt = w
 
-        # Projection
-        with torch.no_grad():
-            w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
 
-        # Check convergence
-        with torch.no_grad():
-            # Stopping criterion: absolute change in objective below threshold
-            if previous_loss is not None and abs((loss.item() - previous_loss)) < tol:
-                print(f"Gradient ascent-descent converged after {step + 1} iterations.")
-                break
-            previous_loss = loss.item()
-
-    Pi, objective, duals = ot_lp_solver(cost, w, empirical_marginal)
-
-    # Compute exact value
-    result["final_w"] = w
-    result["objective_value"] = objective
-
-    return result
-
-def greedy(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        num_steps: int,
-        lr: float,
-        ot_solver: Callable
-):
-
-    # Store quantities of interest
-    result = {}
-
-    # Initialize w
-    w = torch.randn(cost.shape[0])
-    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
-
-    for step in range(num_steps):
-        # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
-        Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
-        alpha, beta = duals
-
-        alpha = alpha.float()
-        beta = beta.float()
-
-        # O-maximization (w^{(k+1)})
-        _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
-
-        epsilon = torch.einsum('i,i->', alpha, w_next - w)
-        if epsilon < 1e-5:
-            print(f"Cutting plane method converged after {step + 1} iterations.")
-            break
-
-        # Update w
-        w = w_next
-
-    result["final_w"] = w
-    result["objective_value"] = objective
-
+    result["w_opt"] = w_opt
+    result["objective_opt"] = objective_opt
     return result
 
 def max_min_lp(
@@ -449,8 +401,8 @@ def max_min_lp(
         num_steps=1000,
         lr=1e-3
 ):
-    if method == 'max_oracle_lp_solver':
-        result = max_oracle_gradient_descent(
+    if method == 'full_search':
+        result = full_search(
             cost=cost,
             lower=lower,
             upper=upper,
@@ -459,30 +411,9 @@ def max_min_lp(
             lr=lr,
             ot_solver=ot_lp_solver
         )
-        return result["objective_value"]
-    elif method == 'nested_gradient_descent':
-        result = nested_gradient_descent(
-            cost=cost,
-            lower=lower,
-            upper=upper,
-            empirical_marginal=empirical_marginal,
-            num_steps=num_steps,
-            lr=lr
-        )
-        return result["objective_value"]
-    elif method == 'max_oracle_sinkhorn':
-        result = max_oracle_gradient_descent(
-            cost=cost,
-            lower=lower,
-            upper=upper,
-            empirical_marginal=empirical_marginal,
-            num_steps=num_steps,
-            lr=lr,
-            ot_solver=ot_sinkhorn_solver
-        )
-        return result["objective_value"]
-    elif method == 'greedy':
-        result = greedy(
+        return result["objective_opt"]
+    elif method == 'cutting_plane':
+        result = cutting_plane(
             cost=cost,
             lower=lower,
             upper=upper,
@@ -491,6 +422,6 @@ def max_min_lp(
             lr=lr,
             ot_solver=ot_lp_solver
         )
-        return result["objective_value"]
+        return result["objective_opt"]
     else:
         raise ValueError('Unknown optimization method.')

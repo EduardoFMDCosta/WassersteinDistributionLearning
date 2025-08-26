@@ -1,9 +1,10 @@
-import itertools
-from typing import Callable, Optional, Tuple
 import torch
-import numpy as np
-from scipy.optimize import linprog
 import ot
+import itertools
+import numpy as np
+import cvxpy as cp
+from scipy.optimize import linprog
+from typing import Callable, Tuple
 
 
 def o_maximization(
@@ -349,7 +350,7 @@ def cutting_plane(
     result["objective_opt"] = objective_opt
     return result
 
-def plain_vanilla_upperbound(
+def plain_vanilla(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
@@ -370,7 +371,55 @@ def plain_vanilla_upperbound(
     result["objective_opt"] = torch.einsum('i,i->', max_dist, max_prob_diff)
     return result
 
+def lp_maximization(
+        cost: torch.Tensor,
+        empirical_distribution: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor
+):
+    n = cost.shape[0]
 
+    # Decision variables
+    Pi = cp.Variable((n, n), nonneg=True)
+    w = cp.Variable(n)
+
+    objective = cp.Maximize(cp.sum(cp.multiply(cost, Pi)))
+
+    constraints = [
+        cp.sum(Pi, axis=0) == empirical_distribution,
+        cp.sum(Pi, axis=1) == w,
+        w >= lower, w <= upper,
+        cp.sum(w) == 1
+    ]
+
+    for i in range(n):
+        constraints.append(Pi[i, i] >= lower[i])
+
+    # Solve
+    prob = cp.Problem(objective, constraints)
+    prob.solve(solver=cp.SCS)
+
+    if prob.status not in ["optimal", "optimal_inaccurate"]:
+        raise RuntimeError(f"Solver status: {prob.status}")
+
+    return prob.value, w.value
+
+def fixate_transport_plan(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor
+):
+    # See Section 6.1. in
+
+    # Store quantities of interest
+    result = {}
+
+    objective, w = lp_maximization(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper)
+
+    result["w_opt"] = torch.tensor(w)
+    result["objective_opt"] = objective
+    return result
 
 def max_min_lp(
         cost: torch.Tensor,
@@ -404,7 +453,15 @@ def max_min_lp(
         )
         return result["objective_opt"]
     elif method == 'plain_vanilla':
-        result = plain_vanilla_upperbound(
+        result = plain_vanilla(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal
+        )
+        return result["objective_opt"]
+    elif method == 'fixate_tp':
+        result = fixate_transport_plan(
             cost=cost,
             lower=lower,
             upper=upper,

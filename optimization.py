@@ -271,8 +271,6 @@ def full_search(cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int,
-        lr: float,
         ot_solver: Callable):
 
     # Store quantities of interest
@@ -284,7 +282,7 @@ def full_search(cost: torch.Tensor,
     w_opt = None
 
     for w in vertices:
-        Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+        Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
 
         # Update highest objective
         if objective_opt < objective:
@@ -302,7 +300,6 @@ def cutting_plane(
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
         num_steps: int,
-        lr: float,
         ot_solver: Callable
 ):
 
@@ -397,7 +394,7 @@ def lp_maximization(
 
     # Solve
     prob = cp.Problem(objective, constraints)
-    prob.solve(solver=cp.SCS)
+    prob.solve(solver=cp.CVXOPT)
 
     if prob.status not in ["optimal", "optimal_inaccurate"]:
         raise RuntimeError(f"Solver status: {prob.status}")
@@ -436,8 +433,6 @@ def max_min_lp(
             lower=lower,
             upper=upper,
             empirical_marginal=empirical_marginal,
-            num_steps=num_steps,
-            lr=lr,
             ot_solver=ot_lp_solver
         )
         return result["objective_opt"]
@@ -448,7 +443,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal,
             num_steps=num_steps,
-            lr=lr,
             ot_solver=ot_lp_solver
         )
         return result["objective_opt"]

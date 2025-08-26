@@ -175,7 +175,6 @@ if __name__ == '__main__':
                         upper=upper,
                         empirical_marginal=empirical_marginal,
                         num_steps=1000,
-                        lr=0.001,
                         ot_solver=ot_lp_solver)
 
         print(f"Final w (Cutting plane) = {result['w_opt']}")
@@ -185,8 +184,6 @@ if __name__ == '__main__':
                         lower=lower,
                         upper=upper,
                         empirical_marginal=empirical_marginal,
-                        num_steps=1000,
-                        lr=0.001,
                         ot_solver=ot_lp_solver)
 
         print(f"Final w (Full search) = {result['w_opt']}")

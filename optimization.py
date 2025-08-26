@@ -124,39 +124,6 @@ def project_to_omega_subspace(
 
     return final_y
 
-def project_to_gamma_subspace(
-        Pi: torch.Tensor,
-        w: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        max_iters: int = 100,
-        tol: float = 1e-6
-) -> torch.Tensor:
-
-    n = Pi.shape[0]
-
-    # Ensure strictly positive entries to avoid division by 0
-    K = Pi.clamp_min(1e-12)
-
-    u = torch.ones(n)
-    v = torch.ones(n)
-
-    for _ in range(max_iters):
-        u_prev = u
-        u = w / (K @ v)
-        v = empirical_marginal / (K.t() @ u)
-
-        # check convergence on rows
-        if torch.max(torch.abs(u - u_prev)) < tol:
-            break
-
-    Pi = torch.diag(u) @ K @ torch.diag(v)
-
-    assert (Pi >= 0).all(), "Projection failed: negative entries found."
-    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total probability mass not equal to one"
-    assert torch.allclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
-
-    return Pi
-
 def ot_lp_solver(
         cost: torch.Tensor,
         w: torch.Tensor,

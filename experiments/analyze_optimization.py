@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
-from optimization import ot_lp_solver, get_omega_space_vertices, cutting_plane, full_search, plain_vanilla_upperbound
+from optimization import ot_lp_solver, get_omega_space_vertices, cutting_plane, full_search, plain_vanilla, \
+    fixate_transport_plan
 
 plt.rcParams.update({
     'font.size': 12,
@@ -191,10 +192,18 @@ if __name__ == '__main__':
         print(f"Final w (Full search) = {result['w_opt']}")
         print(f"Value (Full search) = {result['objective_opt']} \n")
 
-        result = plain_vanilla_upperbound(cost=cost,
+        result = plain_vanilla(cost=cost,
                         lower=lower,
                         upper=upper,
                         empirical_marginal=empirical_marginal)
 
         print(f"Final w (Plain vanilla) = {result['w_opt']}")
         print(f"Value (Plain vanilla) = {result['objective_opt']} \n")
+
+        result = fixate_transport_plan(cost=cost,
+                                       lower=lower,
+                                       upper=upper,
+                                       empirical_marginal=empirical_marginal)
+
+        print(f"Final w (Fixate TP) = {result['w_opt']}")
+        print(f"Value (Fixate TP) = {result['objective_opt']} \n")

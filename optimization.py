@@ -271,43 +271,32 @@ def ot_sinkhorn_solver(
     return T, objective, (alpha, beta)
 
 def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor):
-    n = len(lower)
+    M = lower.shape[0]
     vertices = []
 
-    # -1 = free, 0 = lower bound, 1 = upper bound
-    for fixed in itertools.product([-1, 0, 1], repeat=n):
-        if fixed.count(-1) > 1:
-            continue  # too many free variables, underdetermined
-        if fixed.count(-1) == 0 and fixed.count(0)+fixed.count(1) < n:
-            continue  # invalid combination
+    # Loop: choose which coordinate is solved from the sum constraint
+    for free_idx in range(M):
+        # All others are clamped to either lower or upper
+        fixed_indices = [i for i in range(M) if i != free_idx]
+        for pattern in itertools.product([0, 1], repeat=M - 1):  # 0 -> lower, 1 -> upper
+            w = torch.empty(M, dtype=lower.dtype)
 
-        w = torch.zeros(n)
+            # Assign bounds to fixed coords
+            for idx, choice in zip(fixed_indices, pattern):
+                w[idx] = lower[idx] if choice == 0 else upper[idx]
 
-        # assign fixed bounds
-        for i in range(n):
-            if fixed[i] == 0:
-                w[i] = lower[i]
-            elif fixed[i] == 1:
-                w[i] = upper[i]
+            # Solve for the free coordinate
+            remaining = 1.0 - w[fixed_indices].sum()
+            w[free_idx] = remaining
 
-        if fixed.count(-1) == 1:
-            # solve for the free variable
-            free_idx = fixed.index(-1)
-            w[free_idx] = 1 - torch.sum(w)
-            if not (lower[free_idx] - 1e-9 <= w[free_idx] <= upper[free_idx] + 1e-9):
-                continue
+            # Check feasibility
+            if lower[free_idx] <= w[free_idx] <= upper[free_idx]:
+                vertices.append(w)
 
-        # check feasibility
-        if torch.all(w >= lower - 1e-9) and torch.all(w <= upper + 1e-9):
-            if abs(torch.sum(w) - 1) < 1e-8:
-                vertices.append(w.clone())
-
-    # remove duplicates
-    uniq = []
-    for v in vertices:
-        if not any(torch.allclose(v,u,atol=1e-6) for u in uniq):
-            uniq.append(v)
-    return uniq
+    if vertices:
+        return torch.stack(vertices, dim=0)
+    else:
+        return torch.empty((0, M), dtype=lower.dtype)
 
 def full_search(cost: torch.Tensor,
         lower: torch.Tensor,
@@ -351,7 +340,7 @@ def cutting_plane(
     # Store quantities of interest
     result = {}
     M = cost.shape[0]
-    delta = 1e-3
+    delta = 1e-2
 
     objective_opt = -float("inf")
     w_opt = None
@@ -376,7 +365,7 @@ def cutting_plane(
 
                 epsilon = torch.einsum('i,i->', alpha, w_next - w)
                 if epsilon < 1e-5:
-                    #print(f"Cutting plane method converged after {step + 1} iterations.")
+                    print(f"Cutting plane converged after {step + 1} iterations.")
                     break
 
                 # Update w

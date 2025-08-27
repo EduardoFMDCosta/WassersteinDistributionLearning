@@ -15,14 +15,14 @@ if __name__ == '__main__':
         distribution="Gaussian",
         dimension=2,
         setting=0,
-        num_samples=5000,
+        num_samples=1000,
         num_clusters=10,
         beta=1e-4,
         plot=False
     )
 
     beta = args.beta
-    method = 'full_search'
+    method = 'cutting_plane'
     support_assumption = get_support_assumption(**vars(args))
     # M = args.num_clusters
     N = args.num_samples
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     samples_quantization = distribution.sample((N,))
 
     moment_bounds, discrete_bounds = list(), list()
-    M_options = [10, 20, 30]
+    M_options = [10, 15, 30, 100]
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
         partition = BoundedVoronoiPartition(
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         ax.plot(M_options, total_bounds, color='black', linewidth=1)
 
         # Labels and legend
-        ax.set_xlabel(r"$\log M$")
+        ax.set_xlabel(r"$M$")
         ax.set_ylabel("Bound")
         ax.legend()
         plt.tight_layout()

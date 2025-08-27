@@ -401,6 +401,50 @@ def lp_maximization(
 
     return prob.value, w.value
 
+
+def solve_milp_min_diagonal(cost, empirical_distribution, lower, upper):
+    n = len(empirical_distribution)
+
+    # Decision variables
+    Pi = cp.Variable((n, n), nonneg=True)
+    w = cp.Variable(n)
+    m = cp.Variable(n)
+    b = cp.Variable(n, boolean=True)
+
+    objective = cp.Maximize(cp.sum(cp.multiply(cost, Pi)))
+    constraints = []
+
+    # Column sums
+    for j in range(n):
+        constraints.append(cp.sum(Pi[:, j]) == empirical_distribution[j])
+
+    # Row sums
+    for i in range(n):
+        constraints.append(cp.sum(Pi[i, :]) == w[i])
+
+    # Bounds on w
+    constraints += [w >= lower, w <= upper]
+
+    # Big-M linearization for min(w[i], empirical_distribution[i])
+    M = upper - lower  # tight big-M
+    for i in range(n):
+        constraints.append(m[i] <= w[i])
+        constraints.append(m[i] <= empirical_distribution[i])
+        constraints.append(m[i] >= w[i] - M[i] * (1 - b[i]))
+        constraints.append(m[i] >= empirical_distribution[i] - M[i] * b[i])
+
+        # Pi[i,i] constraint
+        constraints.append(Pi[i, i] >= m[i])
+
+    # w sums to 1
+    constraints.append(cp.sum(w) == 1)
+
+    # Solve MILP
+    prob = cp.Problem(objective, constraints)
+    prob.solve(solver=cp.GLPK_MI)
+
+    return prob.value, w.value
+
 def fixate_transport_plan(
         cost: torch.Tensor,
         lower: torch.Tensor,
@@ -412,7 +456,7 @@ def fixate_transport_plan(
     # Store quantities of interest
     result = {}
 
-    objective, w = lp_maximization(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper)
+    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper)
 
     result["w_opt"] = torch.tensor(w)
     result["objective_opt"] = objective

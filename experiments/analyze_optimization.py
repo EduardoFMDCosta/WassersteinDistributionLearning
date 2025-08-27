@@ -20,14 +20,6 @@ def sample_feasible_points(lower, upper, n_samples=100):
             points.append(x)
     return points
 
-def generate_symmetric_cost(n, low, high):
-    upper = (high - low) * torch.rand((n, n)) + low
-    upper = torch.triu(upper, diagonal=1)
-
-    cost = upper + upper.T # enforce symmetry
-    cost.fill_diagonal_(0) # make diagonal zero
-    return cost
-
 def generate_lower_upper(empirical):
     # Generate perturbations for empirical
     rand_lower = torch.rand_like(empirical) * 0.05
@@ -45,15 +37,17 @@ def generate_lower_upper(empirical):
 
     return lower, upper
 
-def generate_empirical(n):
-    return torch.distributions.Dirichlet(0.8 * torch.ones(n)).sample()
+def generate_empirical(M):
+    return torch.distributions.Dirichlet(0.8 * torch.ones(M)).sample()
 
 if __name__ == '__main__':
     torch.manual_seed(0)
 
     M = 6
-    cost = generate_symmetric_cost(n=M, low=0.5, high=1.5)
-    empirical_marginal = generate_empirical(n=M)
+    d = 3
+    locs = torch.randn(M, d)
+    cost = torch.cdist(locs, locs, p=2) ** 2
+    empirical_marginal = generate_empirical(M=M)
     lower, upper = generate_lower_upper(empirical=empirical_marginal)
 
     plot = True

@@ -71,7 +71,7 @@ class BoundedVoronoiPartition:
         self.cluster_centers = cluster_centers
         self.outer_loc = support.center.unsqueeze(0)
 
-        self.distance_locs = torch.cdist(cluster_centers, cluster_centers, p=2)
+        distance_locs = torch.cdist(cluster_centers, cluster_centers, p=2)
 
         # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
         # For unbounded cells, the diameter will be infinite.
@@ -84,10 +84,11 @@ class BoundedVoronoiPartition:
 
         if not use_voronoi_radii:
             num_neigh = max(int(M*0.05), 10)
-            distance_closest_neighbor = torch.topk(self.distance_locs, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
+            distance_closest_neighbor = torch.topk(distance_locs, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
             radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)
         
         self.cluster_radii = radii
+        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
         
 
     def __len__(self):

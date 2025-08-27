@@ -1,5 +1,6 @@
 import torch
 import ot
+import warnings
 import itertools
 import numpy as np
 import cvxpy as cp
@@ -238,7 +239,11 @@ def ot_sinkhorn_solver(
 
     return T, objective, (alpha, beta)
 
-def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor, tol: float = 1e-7):
+def get_vertices(lower: torch.Tensor,
+                 upper: torch.Tensor,
+                 max_vertices: int = 1000,
+                 tol: float = 1e-7):
+
     M = lower.shape[0]
     vertices = []
 
@@ -261,11 +266,22 @@ def get_omega_space_vertices(lower: torch.Tensor, upper: torch.Tensor, tol: floa
             if lower[free_idx] <= w[free_idx] <= upper[free_idx]:
                 if abs(w.sum() - 1.0) <= tol and (w >= lower - tol).all() and (w <= upper + tol).all():
                     vertices.append(w)
+                if len(vertices) > max_vertices:
+                    warnings.warn("Maximum number of vertices reached. Full Search will return a lower bound.", UserWarning)
+                    return vertices
 
+    return vertices
+
+def get_omega_space_vertices(lower: torch.Tensor,
+                             upper: torch.Tensor,
+                             max_vertices: int = 1000,
+                             tol: float = 1e-7):
+
+    vertices = get_vertices(lower, upper, max_vertices, tol)
     if vertices:
         return torch.stack(vertices, dim=0)
     else:
-        return torch.empty((0, M), dtype=lower.dtype)
+        return torch.empty((0, lower.shape[0]), dtype=lower.dtype)
 
 def full_search(cost: torch.Tensor,
         lower: torch.Tensor,

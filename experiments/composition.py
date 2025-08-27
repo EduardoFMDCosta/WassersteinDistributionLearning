@@ -12,7 +12,7 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="GaussianMixture",
+        distribution="Gaussian",
         dimension=2,
         setting=0,
         num_samples=5000,
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     )
 
     beta = args.beta
-    method = 'stackelberg_equilibrium'
+    method = 'full_search'
     support_assumption = get_support_assumption(**vars(args))
     # M = args.num_clusters
     N = args.num_samples
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     samples_quantization = distribution.sample((N,))
 
     moment_bounds, discrete_bounds = list(), list()
-    M_options = [10, 20, 50, 70, 100, 150, 200, 500, 1000]
+    M_options = [10, 20, 30]
     for M in M_options:
         # Clusterize samples (obtaining \hat{P}_M)
         partition = BoundedVoronoiPartition(

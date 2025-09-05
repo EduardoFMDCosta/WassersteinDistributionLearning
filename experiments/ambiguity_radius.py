@@ -25,7 +25,7 @@ if __name__ == '__main__':
     M = args.num_clusters
     N = args.num_samples
     beta = args.beta
-    method = 'stackelberg_equilibrium'
+    method = 'full_search'
     support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability

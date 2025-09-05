@@ -1,17 +1,27 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple, Optional
+
 import torch
-import numpy as np
-from scipy.optimize import linprog
 import ot
+import warnings
+import itertools
+import numpy as np
+
+import cvxpy as cp
+from gurobipy import GRB
+from scipy.optimize import linprog
+
+try:
+    import gurobipy as gp
+except:
+    gp = None
 
 
 def o_maximization(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor, 
-        tol: float = 1e-8
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor, 
+    tol: float = 1e-6
 ):
-
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
     order = torch.argsort(-cost)
     p = lower.clone()
@@ -35,11 +45,11 @@ def o_maximization(
     return result, p
 
 def project_to_omega_subspace(
-        w: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        tol: float = 1e-8,
-        max_iter: int = 1000
+    w: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    tol: float = 1e-8,
+    max_iter: int = 1000
 ):
     """Project a vector onto the capped probability simplex.
 
@@ -123,61 +133,13 @@ def project_to_omega_subspace(
 
     return final_y
 
-def project_to_gamma_subspace(
-        Pi: torch.Tensor,
-        w: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        max_iters: int = 100,
-        tol: float = 1e-6
-) -> torch.Tensor:
-
-    n = Pi.shape[0]
-
-    # Ensure strictly positive entries to avoid division by 0
-    K = Pi.clamp_min(1e-12)
-
-    u = torch.ones(n)
-    v = torch.ones(n)
-
-    for _ in range(max_iters):
-        u_prev = u
-        u = w / (K @ v)
-        v = empirical_marginal / (K.t() @ u)
-
-        # check convergence on rows
-        if torch.max(torch.abs(u - u_prev)) < tol:
-            break
-
-    Pi = torch.diag(u) @ K @ torch.diag(v)
-
-    assert (Pi >= 0).all(), "Projection failed: negative entries found."
-    assert abs(Pi.sum() - 1.0) <= tol, "Projection failed: total probability mass not equal to one"
-    assert torch.allclose(Pi.sum(dim=0), empirical_marginal, atol=tol), "Projection failed: marginal mismatch."
-
-    return Pi
-
-
-def gradient_step(
-        w: torch.Tensor,
-        alpha: torch.Tensor,
-        iteration: int,
-        lr: float,
-        **kwargs
-):
-
-    #learning_rate = lr / (iteration + 1) # square-summable but not summable
-    learning_rate = lr # TODO: IMPROVE GRADIENT STEP SIZE
-
-    return w + learning_rate * alpha
-
 def ot_lp_solver(
-        cost: torch.Tensor,
-        w: torch.Tensor,
-        empirical_distribution: torch.Tensor,
-        method: str = "highs",
-        tol: float = 1e-8
+    cost: torch.Tensor,
+    w: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    method: str = "highs",
+    tol: float = 1e-8
 ):
-
     n = cost.shape[0]
 
     # Move to CPU/NumPy for the solver
@@ -243,13 +205,13 @@ def ot_lp_solver(
     return T, obj, (u, v) if (u is not None and v is not None) else None
 
 def ot_sinkhorn_solver(
-        cost: torch.Tensor,
-        w: torch.Tensor,
-        empirical_distribution: torch.Tensor,
-        epsilon: float = 1e-3,
-        max_iter: int = 1000,
-        tol: float = 1e-5,
-        method: str = 'sinkhorn_stabilized'
+    cost: torch.Tensor,
+    w: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    epsilon: float = 1e-3,
+    max_iter: int = 1000,
+    tol: float = 1e-5,
+    method: str = 'sinkhorn_stabilized'
 ) -> Tuple[torch.Tensor, float, Tuple[torch.Tensor, torch.Tensor]]:
     """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
 
@@ -283,121 +245,340 @@ def ot_sinkhorn_solver(
 
     return T, objective, (alpha, beta)
 
-def max_oracle_gradient_descent(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        num_steps: int,
-        lr: float,
-        ot_solver: Callable
+def get_vertices(
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    max_vertices: int = 1000,
+    tol: float = 1e-7
 ):
-    # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
+    M = lower.shape[0]
+    vertices = []
 
+    # Loop: choose which coordinate is solved from the sum constraint
+    for free_idx in range(M):
+        # All others are clamped to either lower or upper
+        fixed_indices = [i for i in range(M) if i != free_idx]
+        for pattern in itertools.product([0, 1], repeat=M - 1):  # 0 -> lower, 1 -> upper
+            w = torch.empty(M, dtype=lower.dtype)
+
+            # Assign bounds to fixed coords
+            for idx, choice in zip(fixed_indices, pattern):
+                w[idx] = lower[idx] if choice == 0 else upper[idx]
+
+            # Solve for the free coordinate
+            remaining = 1.0 - w[fixed_indices].sum()
+            w[free_idx] = remaining
+
+            # Check feasibility
+            if lower[free_idx] <= w[free_idx] <= upper[free_idx]:
+                if abs(w.sum() - 1.0) <= tol and (w >= lower - tol).all() and (w <= upper + tol).all():
+                    vertices.append(w)
+                if len(vertices) > max_vertices:
+                    warnings.warn("Maximum number of vertices reached. Full Search will return a lower bound.", UserWarning)
+                    return vertices
+
+    return vertices
+
+def get_omega_space_vertices(
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    max_vertices: int = 1000,
+    tol: float = 1e-7
+):
+    vertices = get_vertices(lower, upper, max_vertices, tol)
+    if vertices:
+        return torch.stack(vertices, dim=0)
+    else:
+        return torch.empty((0, lower.shape[0]), dtype=lower.dtype)
+
+def full_search(
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    empirical_marginal: torch.Tensor,
+    ot_solver: Callable
+):
     # Store quantities of interest
     result = {}
 
-    # Initialize w
-    w = torch.randn(cost.shape[0])
-    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
+    vertices = get_omega_space_vertices(lower=lower, upper=upper)
 
-    for step in range(num_steps):
-        # Solve for primal and dual (lines 2 and 3)
-        Pi, objective, duals = ot_solver(cost, w, empirical_marginal)
-        alpha, beta = duals
+    objective_opt = -float("inf")
+    w_opt = None
 
-        # Gradient step (line 4)
-        w = gradient_step(w=w, alpha=alpha, iteration=step, lr=lr)
-        w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
+    for w in vertices:
+        Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
 
-    Pi, objective, duals = ot_lp_solver(cost, w, empirical_marginal)
-    result["final_w"] = w
-    result["objective_value"] = objective
+        # Update highest objective
+        if objective_opt < objective:
+            objective_opt = objective
+            w_opt = w
 
+    result["w_opt"] = w_opt
+    result["objective_opt"] = objective_opt
     return result
 
-def f(Pi: torch.Tensor, cost: torch.Tensor):
-    return (cost * Pi).sum()
 
-def g(w: torch.Tensor, Pi: torch.Tensor):
-    return Pi.sum(dim=1) - w
-
-def lagrangian(w: torch.Tensor, Pi: torch.Tensor, lambd: torch.Tensor, cost: torch.Tensor):
-    return f(Pi=Pi, cost=cost) + torch.dot(lambd, g(w=w, Pi=Pi))
-
-def nested_gradient_descent(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        num_steps: int,
-        lr: float,
-        tol: float = 1e-8
+def cutting_plane(
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    empirical_marginal: torch.Tensor,
+    num_steps: int,
+    ot_solver: Callable
 ):
-    # See Algorithm 2 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
-
-    # Store quantities of interest
-    result = {}
     M = cost.shape[0]
+    delta = 1e-2
 
-    # Initialize w and Pi
-    w = torch.randn(cost.shape[0])
-    w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
-    result["initial_w"] = w
-    Pi = torch.outer(w, empirical_marginal).clone().requires_grad_(True)
-    lambd = torch.randn(M, requires_grad=True)
+    objective_opt = -float("inf")
+    w_opt = None
 
-    # Optimizers for each variable
-    Pi_optimizer = torch.optim.Adam([Pi], lr=lr)
-    lambd_optimizer = torch.optim.Adam([lambd], lr=lr)
-    w_optimizer = torch.optim.Adam([w], lr=lr)
+    for d in range(M):
+        for direction in [-1, 1]:
+            # Initialize w
+            w = empirical_marginal.clone()
+            w[d] = w[d] + direction * delta
+            w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
-    previous_loss = None  # For stopping criterion based on successive loss differences
+            for step in range(num_steps):
+                # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
+                Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+                alpha, beta = duals
 
-    for step in range(num_steps):
+                alpha = alpha.float()
+                beta = beta.float()
 
-        # Phase 1: Gradient descent for Pi
-        Pi_optimizer.zero_grad()
-        loss = f(Pi=Pi, cost=cost)
-        loss.backward()
-        Pi_optimizer.step()
+                # O-maximization (w^{(k+1)})
+                _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
 
-        # Projection
-        with torch.no_grad():
-            projected = project_to_gamma_subspace(Pi=Pi, w=w, empirical_marginal=empirical_marginal)
-            Pi.copy_(projected)
+                epsilon = torch.einsum('i,i->', alpha, w_next - w)
+                if epsilon < 1e-5:
+                    print(f"Cutting plane converged after {step + 1} iterations.")
+                    break
 
-        # Phase 2: Gradient ascent for lambd
-        lambd_optimizer.zero_grad()
-        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-loss).backward()
-        lambd_optimizer.step()
+                # Update w
+                w = w_next
 
-        # Phase 3: Gradient ascent for w
-        w_optimizer.zero_grad()
-        loss = lagrangian(w=w, Pi=Pi, lambd=lambd, cost=cost)
-        (-loss).backward()
-        w_optimizer.step()
+            #Update highest objective
+            if objective_opt < objective:
+                objective_opt = objective
+                w_opt = w
 
-        # Projection
-        with torch.no_grad():
-            w = project_to_omega_subspace(w=w, lower=lower, upper=upper)
+    return dict(
+        w_opt=w_opt,
+        objective_opt=objective_opt
+    )
 
-        # Check convergence
-        with torch.no_grad():
-            # Stopping criterion: absolute change in objective below threshold
-            if previous_loss is not None and abs((loss.item() - previous_loss)) < tol:
-                print(f"Gradient ascent-descent converged after {step + 1} iterations.")
-                break
-            previous_loss = loss.item()
+def plain_vanilla(
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    empirical_marginal: torch.Tensor
+):
+    # See Corollary 6.2 in
 
-    Pi, objective, duals = ot_lp_solver(cost, w, empirical_marginal)
+    upper_diff = upper - empirical_marginal
+    lower_diff = empirical_marginal - lower
 
-    # Compute exact value
-    result["final_w"] = w
-    result["objective_value"] = objective
+    max_prob_diff = torch.max(upper_diff, lower_diff)
+    max_dist, _ = torch.max(cost, dim=1)
 
-    return result
+    return dict(
+        w_opt=None, 
+        objective_opt=torch.einsum('i,i->', max_dist, max_prob_diff)
+    )
+
+def lp_maximization(
+    cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor
+):
+    n = cost.shape[0]
+
+    # Decision variables
+    Pi = cp.Variable((n, n), nonneg=True)
+    w = cp.Variable(n)
+
+    objective = cp.Maximize(cp.sum(cp.multiply(cost, Pi)))
+
+    constraints = [
+        cp.sum(Pi, axis=0) == empirical_distribution,
+        cp.sum(Pi, axis=1) == w,
+        w >= lower, w <= upper,
+        cp.sum(w) == 1
+    ]
+
+    for i in range(n):
+        constraints.append(Pi[i, i] >= lower[i])
+
+    # Solve
+    prob = cp.Problem(objective, constraints)
+    prob.solve(solver=cp.CVXOPT)
+
+    if prob.status not in ["optimal", "optimal_inaccurate"]:
+        raise RuntimeError(f"Solver status: {prob.status}")
+
+    return prob.value, w.value
+
+
+def solve_milp_min_diagonal_cvxpy(
+    cost: torch.Tensor, 
+    empirical_distribution: torch.Tensor, 
+    lower: torch.Tensor, 
+    upper: torch.Tensor
+):
+    n = len(empirical_distribution)
+
+    # Decision variables
+    Pi = cp.Variable((n, n), nonneg=True)
+    w = cp.Variable(n)
+    m = cp.Variable(n)
+    b = cp.Variable(n, boolean=True)
+
+    objective = cp.Maximize(cp.sum(cp.multiply(cost, Pi)))
+    constraints = []
+
+    # Column sums
+    for j in range(n):
+        constraints.append(cp.sum(Pi[:, j]) == empirical_distribution[j])
+
+    # Row sums
+    for i in range(n):
+        constraints.append(cp.sum(Pi[i, :]) == w[i])
+
+    # Bounds on w
+    constraints += [w >= lower, w <= upper]
+
+    # Big-M linearization for min(w[i], empirical_distribution[i])
+    M = upper - lower  # tight big-M
+    for i in range(n):
+        constraints.append(m[i] <= w[i])
+        constraints.append(m[i] <= empirical_distribution[i])
+        constraints.append(m[i] >= w[i] - M[i] * (1 - b[i]))
+        constraints.append(m[i] >= empirical_distribution[i] - M[i] * b[i])
+
+        # Pi[i,i] constraint
+        constraints.append(Pi[i, i] >= m[i])
+
+    # w sums to 1
+    constraints.append(cp.sum(w) == 1)
+
+    # Solve MILP
+    prob = cp.Problem(objective, constraints)
+    prob.solve(solver=cp.GLPK_MI)
+
+    return prob.value, w.value
+
+def solve_milp_min_diagonal_gurobi(
+    cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    *,
+    time_limit: Optional[float] = None,
+    mip_gap: Optional[float] = None,
+    verbose: bool = False,
+) -> Tuple[float, torch.Tensor]:
+    device, dtype = cost.device, cost.dtype
+
+    # Convert to NumPy for Gurobi
+    c = cost.detach().cpu().numpy()
+    p = empirical_distribution.detach().cpu().numpy()
+    lo = lower.detach().cpu().numpy()
+    up = upper.detach().cpu().numpy()
+
+    n = int(p.size)
+    if c.shape != (n, n):
+        raise ValueError(f"cost must be (n,n); got {c.shape}")
+    if lo.shape != (n,) or up.shape != (n,):
+        raise ValueError("lower/upper must be 1D of length n")
+    M = up - lo
+    if (M < 0).any():
+        raise ValueError("upper must be >= lower componentwise")
+
+    m = gp.Model("min_diagonal_milp")
+    if not verbose:
+        m.setParam("OutputFlag", 0)
+    if time_limit is not None:
+        m.setParam("TimeLimit", float(time_limit))
+    if mip_gap is not None:
+        m.setParam("MIPGap", float(mip_gap))
+
+    # Variables
+    Pi = m.addVars(n, n, lb=0.0, vtype=GRB.CONTINUOUS, name="Pi")
+    w  = m.addVars(n, lb=lo, ub=up, vtype=GRB.CONTINUOUS, name="w")
+    mm = m.addVars(n, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="m")
+    b  = m.addVars(n, vtype=GRB.BINARY, name="b")
+
+    # Objective: sum_{i,j} c[i,j] * Pi[i,j]
+    m.setObjective(gp.quicksum(c[i, j] * Pi[i, j] for i in range(n) for j in range(n)), GRB.MAXIMIZE)
+
+    # Column sums: sum_i Pi[i,j] == p[j]
+    m.addConstrs(
+        (gp.quicksum(Pi[i, j] for i in range(n)) == float(p[j]) for j in range(n)),
+        name="col_sums"
+    )
+
+    # Row sums: sum_j Pi[i,j] == w[i]
+    m.addConstrs(
+        (gp.quicksum(Pi[i, j] for j in range(n)) == w[i] for i in range(n)),
+        name="row_sums"
+    )
+
+    # Big-M min linearization (elementwise)
+    m.addConstrs((mm[i] <= w[i] for i in range(n)), name="m_le_w")
+    m.addConstrs((mm[i] <= float(p[i]) for i in range(n)), name="m_le_p")
+    m.addConstrs((mm[i] >= w[i] - float(M[i]) * (1 - b[i]) for i in range(n)), name="m_ge_w_minus_M")
+    m.addConstrs((mm[i] >= float(p[i]) - float(M[i]) * b[i] for i in range(n)), name="m_ge_p_minus_Mb")
+
+    # Diagonal constraint: Pi[i,i] >= mm[i]
+    m.addConstrs((Pi[i, i] >= mm[i] for i in range(n)), name="diag_ge_m")
+
+    # Sum w == 1
+    m.addConstr(gp.quicksum(w[i] for i in range(n)) == 1.0, name="sum_w_eq_1")
+
+    # Optimize
+    m.optimize()
+    if m.Status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
+        raise RuntimeError(f"Gurobi ended with status {m.Status}")
+
+    obj_val = float(m.ObjVal)
+
+    # Extract w as a torch tensor on the original device/dtype
+    w_sol_np = [w[i].X for i in range(n)]
+    w_sol = torch.tensor(w_sol_np, device=device, dtype=dtype)
+
+    return obj_val, w_sol
+
+def solve_milp_min_diagonal(
+    cost: torch.Tensor, 
+    empirical_distribution: torch.Tensor, 
+    lower: torch.Tensor, 
+    upper: torch.Tensor, 
+    **kwargs
+):
+    if gp is None:
+        return solve_milp_min_diagonal_cvxpy(cost, empirical_distribution, lower, upper)
+    else:
+        return solve_milp_min_diagonal_gurobi(cost, empirical_distribution, lower, upper, **kwargs)
+    
+
+def fixate_transport_plan(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor, 
+        **kwargs
+):
+    # See Section 6.1. in
+
+    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
+
+    return dict(
+        w_opt=torch.tensor(w),
+        objective_opt=objective
+    )
 
 def max_min_lp(
         cost: torch.Tensor,
@@ -408,37 +589,40 @@ def max_min_lp(
         num_steps=1000,
         lr=1e-3
 ):
-    if method == 'max_oracle_lp_solver':
-        result = max_oracle_gradient_descent(
+    if method == 'full_search':
+        result = full_search(
             cost=cost,
             lower=lower,
             upper=upper,
             empirical_marginal=empirical_marginal,
-            num_steps=num_steps,
-            lr=lr,
             ot_solver=ot_lp_solver
         )
-        return result["objective_value"]
-    elif method == 'nested_gradient_descent':
-        result = nested_gradient_descent(
+        return result["objective_opt"]
+    elif method == 'cutting_plane':
+        result = cutting_plane(
             cost=cost,
             lower=lower,
             upper=upper,
             empirical_marginal=empirical_marginal,
             num_steps=num_steps,
-            lr=lr
+            ot_solver=ot_lp_solver
         )
-        return result["objective_value"]
-    elif method == 'max_oracle_sinkhorn':
-        result = max_oracle_gradient_descent(
+        return result["objective_opt"]
+    elif method == 'plain_vanilla':
+        result = plain_vanilla(
             cost=cost,
             lower=lower,
             upper=upper,
-            empirical_marginal=empirical_marginal,
-            num_steps=num_steps,
-            lr=lr,
-            ot_solver=ot_sinkhorn_solver
+            empirical_marginal=empirical_marginal
         )
-        return result["objective_value"]
+        return result["objective_opt"]
+    elif method == 'fixate_tp':
+        result = fixate_transport_plan(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal
+        )
+        return result["objective_opt"]
     else:
         raise ValueError('Unknown optimization method.')

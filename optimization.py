@@ -1,20 +1,27 @@
+from typing import Callable, Tuple, Optional
+
 import torch
 import ot
 import warnings
 import itertools
 import numpy as np
+
 import cvxpy as cp
+from gurobipy import GRB
 from scipy.optimize import linprog
-from typing import Callable, Tuple
+
+try:
+    import gurobipy as gp
+except:
+    gp = None
 
 
 def o_maximization(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor, 
-        tol: float = 1e-6
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor, 
+    tol: float = 1e-6
 ):
-
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
     order = torch.argsort(-cost)
     p = lower.clone()
@@ -38,11 +45,11 @@ def o_maximization(
     return result, p
 
 def project_to_omega_subspace(
-        w: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        tol: float = 1e-8,
-        max_iter: int = 1000
+    w: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    tol: float = 1e-8,
+    max_iter: int = 1000
 ):
     """Project a vector onto the capped probability simplex.
 
@@ -127,13 +134,12 @@ def project_to_omega_subspace(
     return final_y
 
 def ot_lp_solver(
-        cost: torch.Tensor,
-        w: torch.Tensor,
-        empirical_distribution: torch.Tensor,
-        method: str = "highs",
-        tol: float = 1e-8
+    cost: torch.Tensor,
+    w: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    method: str = "highs",
+    tol: float = 1e-8
 ):
-
     n = cost.shape[0]
 
     # Move to CPU/NumPy for the solver
@@ -199,13 +205,13 @@ def ot_lp_solver(
     return T, obj, (u, v) if (u is not None and v is not None) else None
 
 def ot_sinkhorn_solver(
-        cost: torch.Tensor,
-        w: torch.Tensor,
-        empirical_distribution: torch.Tensor,
-        epsilon: float = 1e-3,
-        max_iter: int = 1000,
-        tol: float = 1e-5,
-        method: str = 'sinkhorn_stabilized'
+    cost: torch.Tensor,
+    w: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    epsilon: float = 1e-3,
+    max_iter: int = 1000,
+    tol: float = 1e-5,
+    method: str = 'sinkhorn_stabilized'
 ) -> Tuple[torch.Tensor, float, Tuple[torch.Tensor, torch.Tensor]]:
     """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
 
@@ -239,11 +245,12 @@ def ot_sinkhorn_solver(
 
     return T, objective, (alpha, beta)
 
-def get_vertices(lower: torch.Tensor,
-                 upper: torch.Tensor,
-                 max_vertices: int = 1000,
-                 tol: float = 1e-7):
-
+def get_vertices(
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    max_vertices: int = 1000,
+    tol: float = 1e-7
+):
     M = lower.shape[0]
     vertices = []
 
@@ -272,23 +279,25 @@ def get_vertices(lower: torch.Tensor,
 
     return vertices
 
-def get_omega_space_vertices(lower: torch.Tensor,
-                             upper: torch.Tensor,
-                             max_vertices: int = 1000,
-                             tol: float = 1e-7):
-
+def get_omega_space_vertices(
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    max_vertices: int = 1000,
+    tol: float = 1e-7
+):
     vertices = get_vertices(lower, upper, max_vertices, tol)
     if vertices:
         return torch.stack(vertices, dim=0)
     else:
         return torch.empty((0, lower.shape[0]), dtype=lower.dtype)
 
-def full_search(cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        ot_solver: Callable):
-
+def full_search(
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    empirical_marginal: torch.Tensor,
+    ot_solver: Callable
+):
     # Store quantities of interest
     result = {}
 
@@ -311,16 +320,13 @@ def full_search(cost: torch.Tensor,
 
 
 def cutting_plane(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
-        num_steps: int,
-        ot_solver: Callable
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    empirical_marginal: torch.Tensor,
+    num_steps: int,
+    ot_solver: Callable
 ):
-
-    # Store quantities of interest
-    result = {}
     M = cost.shape[0]
     delta = 1e-2
 
@@ -358,21 +364,18 @@ def cutting_plane(
                 objective_opt = objective
                 w_opt = w
 
-
-    result["w_opt"] = w_opt
-    result["objective_opt"] = objective_opt
-    return result
+    return dict(
+        w_opt=w_opt,
+        objective_opt=objective_opt
+    )
 
 def plain_vanilla(
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    empirical_marginal: torch.Tensor
 ):
     # See Corollary 6.2 in
-
-    # Store quantities of interest
-    result = {}
 
     upper_diff = upper - empirical_marginal
     lower_diff = empirical_marginal - lower
@@ -380,15 +383,16 @@ def plain_vanilla(
     max_prob_diff = torch.max(upper_diff, lower_diff)
     max_dist, _ = torch.max(cost, dim=1)
 
-    result["w_opt"] = None
-    result["objective_opt"] = torch.einsum('i,i->', max_dist, max_prob_diff)
-    return result
+    return dict(
+        w_opt=None, 
+        objective_opt=torch.einsum('i,i->', max_dist, max_prob_diff)
+    )
 
 def lp_maximization(
-        cost: torch.Tensor,
-        empirical_distribution: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor
+    cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor
 ):
     n = cost.shape[0]
 
@@ -418,7 +422,12 @@ def lp_maximization(
     return prob.value, w.value
 
 
-def solve_milp_min_diagonal(cost, empirical_distribution, lower, upper):
+def solve_milp_min_diagonal_cvxpy(
+    cost: torch.Tensor, 
+    empirical_distribution: torch.Tensor, 
+    lower: torch.Tensor, 
+    upper: torch.Tensor
+):
     n = len(empirical_distribution)
 
     # Decision variables
@@ -461,22 +470,115 @@ def solve_milp_min_diagonal(cost, empirical_distribution, lower, upper):
 
     return prob.value, w.value
 
+def solve_milp_min_diagonal_gurobi(
+    cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    *,
+    time_limit: Optional[float] = None,
+    mip_gap: Optional[float] = None,
+    verbose: bool = False,
+) -> Tuple[float, torch.Tensor]:
+    device, dtype = cost.device, cost.dtype
+
+    # Convert to NumPy for Gurobi
+    c = cost.detach().cpu().numpy()
+    p = empirical_distribution.detach().cpu().numpy()
+    lo = lower.detach().cpu().numpy()
+    up = upper.detach().cpu().numpy()
+
+    n = int(p.size)
+    if c.shape != (n, n):
+        raise ValueError(f"cost must be (n,n); got {c.shape}")
+    if lo.shape != (n,) or up.shape != (n,):
+        raise ValueError("lower/upper must be 1D of length n")
+    M = up - lo
+    if (M < 0).any():
+        raise ValueError("upper must be >= lower componentwise")
+
+    m = gp.Model("min_diagonal_milp")
+    if not verbose:
+        m.setParam("OutputFlag", 0)
+    if time_limit is not None:
+        m.setParam("TimeLimit", float(time_limit))
+    if mip_gap is not None:
+        m.setParam("MIPGap", float(mip_gap))
+
+    # Variables
+    Pi = m.addVars(n, n, lb=0.0, vtype=GRB.CONTINUOUS, name="Pi")
+    w  = m.addVars(n, lb=lo, ub=up, vtype=GRB.CONTINUOUS, name="w")
+    mm = m.addVars(n, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="m")
+    b  = m.addVars(n, vtype=GRB.BINARY, name="b")
+
+    # Objective: sum_{i,j} c[i,j] * Pi[i,j]
+    m.setObjective(gp.quicksum(c[i, j] * Pi[i, j] for i in range(n) for j in range(n)), GRB.MAXIMIZE)
+
+    # Column sums: sum_i Pi[i,j] == p[j]
+    m.addConstrs(
+        (gp.quicksum(Pi[i, j] for i in range(n)) == float(p[j]) for j in range(n)),
+        name="col_sums"
+    )
+
+    # Row sums: sum_j Pi[i,j] == w[i]
+    m.addConstrs(
+        (gp.quicksum(Pi[i, j] for j in range(n)) == w[i] for i in range(n)),
+        name="row_sums"
+    )
+
+    # Big-M min linearization (elementwise)
+    m.addConstrs((mm[i] <= w[i] for i in range(n)), name="m_le_w")
+    m.addConstrs((mm[i] <= float(p[i]) for i in range(n)), name="m_le_p")
+    m.addConstrs((mm[i] >= w[i] - float(M[i]) * (1 - b[i]) for i in range(n)), name="m_ge_w_minus_M")
+    m.addConstrs((mm[i] >= float(p[i]) - float(M[i]) * b[i] for i in range(n)), name="m_ge_p_minus_Mb")
+
+    # Diagonal constraint: Pi[i,i] >= mm[i]
+    m.addConstrs((Pi[i, i] >= mm[i] for i in range(n)), name="diag_ge_m")
+
+    # Sum w == 1
+    m.addConstr(gp.quicksum(w[i] for i in range(n)) == 1.0, name="sum_w_eq_1")
+
+    # Optimize
+    m.optimize()
+    if m.Status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
+        raise RuntimeError(f"Gurobi ended with status {m.Status}")
+
+    obj_val = float(m.ObjVal)
+
+    # Extract w as a torch tensor on the original device/dtype
+    w_sol_np = [w[i].X for i in range(n)]
+    w_sol = torch.tensor(w_sol_np, device=device, dtype=dtype)
+
+    return obj_val, w_sol
+
+def solve_milp_min_diagonal(
+    cost: torch.Tensor, 
+    empirical_distribution: torch.Tensor, 
+    lower: torch.Tensor, 
+    upper: torch.Tensor, 
+    **kwargs
+):
+    if gp is None:
+        return solve_milp_min_diagonal_cvxpy(cost, empirical_distribution, lower, upper)
+    else:
+        return solve_milp_min_diagonal_gurobi(cost, empirical_distribution, lower, upper, **kwargs)
+    
+
 def fixate_transport_plan(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
-        empirical_marginal: torch.Tensor
+        empirical_marginal: torch.Tensor, 
+        **kwargs
 ):
     # See Section 6.1. in
 
-    # Store quantities of interest
-    result = {}
+    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
-    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper)
-
-    result["w_opt"] = torch.tensor(w)
-    result["objective_opt"] = objective
-    return result
+    return dict(
+        w_opt=torch.tensor(w),
+        objective_opt=objective
+    )
 
 def max_min_lp(
         cost: torch.Tensor,

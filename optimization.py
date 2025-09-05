@@ -1,11 +1,19 @@
+from typing import Callable, Tuple, Optional
+
 import torch
 import ot
 import warnings
 import itertools
 import numpy as np
+
 import cvxpy as cp
+from gurobipy import GRB
 from scipy.optimize import linprog
-from typing import Callable, Tuple
+
+try:
+    import gurobipy as gp
+except:
+    gp = None
 
 
 def o_maximization(
@@ -418,7 +426,12 @@ def lp_maximization(
     return prob.value, w.value
 
 
-def solve_milp_min_diagonal(cost, empirical_distribution, lower, upper):
+def solve_milp_min_diagonal_cvxpy(
+        cost: torch.Tensor, 
+        empirical_distribution: torch.Tensor, 
+        lower: torch.Tensor, 
+        upper: torch.Tensor
+):
     n = len(empirical_distribution)
 
     # Decision variables
@@ -461,22 +474,115 @@ def solve_milp_min_diagonal(cost, empirical_distribution, lower, upper):
 
     return prob.value, w.value
 
+def solve_milp_min_diagonal_gurobi(
+    cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    *,
+    time_limit: Optional[float] = None,
+    mip_gap: Optional[float] = None,
+    verbose: bool = False,
+) -> Tuple[float, torch.Tensor]:
+    device, dtype = cost.device, cost.dtype
+
+    # Convert to NumPy for Gurobi
+    c = cost.detach().cpu().numpy()
+    p = empirical_distribution.detach().cpu().numpy()
+    lo = lower.detach().cpu().numpy()
+    up = upper.detach().cpu().numpy()
+
+    n = int(p.size)
+    if c.shape != (n, n):
+        raise ValueError(f"cost must be (n,n); got {c.shape}")
+    if lo.shape != (n,) or up.shape != (n,):
+        raise ValueError("lower/upper must be 1D of length n")
+    M = up - lo
+    if (M < 0).any():
+        raise ValueError("upper must be >= lower componentwise")
+
+    m = gp.Model("min_diagonal_milp")
+    if not verbose:
+        m.setParam("OutputFlag", 0)
+    if time_limit is not None:
+        m.setParam("TimeLimit", float(time_limit))
+    if mip_gap is not None:
+        m.setParam("MIPGap", float(mip_gap))
+
+    # Variables
+    Pi = m.addVars(n, n, lb=0.0, vtype=GRB.CONTINUOUS, name="Pi")
+    w  = m.addVars(n, lb=lo, ub=up, vtype=GRB.CONTINUOUS, name="w")
+    mm = m.addVars(n, lb=-GRB.INFINITY, vtype=GRB.CONTINUOUS, name="m")
+    b  = m.addVars(n, vtype=GRB.BINARY, name="b")
+
+    # Objective: sum_{i,j} c[i,j] * Pi[i,j]
+    m.setObjective(gp.quicksum(c[i, j] * Pi[i, j] for i in range(n) for j in range(n)), GRB.MAXIMIZE)
+
+    # Column sums: sum_i Pi[i,j] == p[j]
+    m.addConstrs(
+        (gp.quicksum(Pi[i, j] for i in range(n)) == float(p[j]) for j in range(n)),
+        name="col_sums"
+    )
+
+    # Row sums: sum_j Pi[i,j] == w[i]
+    m.addConstrs(
+        (gp.quicksum(Pi[i, j] for j in range(n)) == w[i] for i in range(n)),
+        name="row_sums"
+    )
+
+    # Big-M min linearization (elementwise)
+    m.addConstrs((mm[i] <= w[i] for i in range(n)), name="m_le_w")
+    m.addConstrs((mm[i] <= float(p[i]) for i in range(n)), name="m_le_p")
+    m.addConstrs((mm[i] >= w[i] - float(M[i]) * (1 - b[i]) for i in range(n)), name="m_ge_w_minus_M")
+    m.addConstrs((mm[i] >= float(p[i]) - float(M[i]) * b[i] for i in range(n)), name="m_ge_p_minus_Mb")
+
+    # Diagonal constraint: Pi[i,i] >= mm[i]
+    m.addConstrs((Pi[i, i] >= mm[i] for i in range(n)), name="diag_ge_m")
+
+    # Sum w == 1
+    m.addConstr(gp.quicksum(w[i] for i in range(n)) == 1.0, name="sum_w_eq_1")
+
+    # Optimize
+    m.optimize()
+    if m.Status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
+        raise RuntimeError(f"Gurobi ended with status {m.Status}")
+
+    obj_val = float(m.ObjVal)
+
+    # Extract w as a torch tensor on the original device/dtype
+    w_sol_np = [w[i].X for i in range(n)]
+    w_sol = torch.tensor(w_sol_np, device=device, dtype=dtype)
+
+    return obj_val, w_sol
+
+def solve_milp_min_diagonal(
+    cost: torch.Tensor, 
+    empirical_distribution: torch.Tensor, 
+    lower: torch.Tensor, 
+    upper: torch.Tensor, 
+    **kwargs
+):
+    if gp is None:
+        return solve_milp_min_diagonal_cvxpy(cost, empirical_distribution, lower, upper)
+    else:
+        return solve_milp_min_diagonal_gurobi(cost, empirical_distribution, lower, upper, **kwargs)
+    
+
 def fixate_transport_plan(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
-        empirical_marginal: torch.Tensor
+        empirical_marginal: torch.Tensor, 
+        **kwargs
 ):
     # See Section 6.1. in
 
-    # Store quantities of interest
-    result = {}
+    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
-    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper)
-
-    result["w_opt"] = torch.tensor(w)
-    result["objective_opt"] = objective
-    return result
+    return dict(
+        w_opt=torch.tensor(w),
+        objective_opt=objective
+    )
 
 def max_min_lp(
         cost: torch.Tensor,

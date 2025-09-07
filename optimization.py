@@ -2,6 +2,7 @@ from typing import Callable, Tuple, Optional
 
 import torch
 import ot
+from tqdm import tqdm
 import warnings
 import itertools
 import numpy as np
@@ -333,8 +334,16 @@ def cutting_plane(
     objective_opt = -float("inf")
     w_opt = None
 
+
+    total_outer = M * 2
+    pbar = tqdm(total=total_outer, desc="Cutting Plane Outer Loop")
+
     for d in range(M):
         for direction in [-1, 1]:
+            outer_iter = (d * 2) + (1 if direction == 1 else 0) + 1
+            msg = f"[CuttingPlane] d={d}, direction={'+' if direction==1 else '-'}"
+            pbar.set_postfix_str(msg)
+
             # Initialize w
             w = empirical_marginal.clone()
             w[d] = w[d] + direction * delta
@@ -352,8 +361,11 @@ def cutting_plane(
                 _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
 
                 epsilon = torch.einsum('i,i->', alpha, w_next - w)
+                msg_inner = f"[Inner] step={step+1}, epsilon={epsilon:.2e}, objective={objective:.4f}"
+                pbar.set_postfix_str(msg + ", " + msg_inner)
+
                 if epsilon < 1e-5:
-                    print(f"Cutting plane converged after {step + 1} iterations.")
+                    pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
                     break
 
                 # Update w
@@ -363,6 +375,10 @@ def cutting_plane(
             if objective_opt < objective:
                 objective_opt = objective
                 w_opt = w
+
+            pbar.update(1)
+
+    pbar.close()
 
     return dict(
         w_opt=w_opt,
@@ -576,7 +592,7 @@ def fixate_transport_plan(
     objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
     return dict(
-        w_opt=torch.tensor(w),
+        w_opt=torch.as_tensor(w),
         objective_opt=objective
     )
 

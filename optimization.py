@@ -576,7 +576,7 @@ def diagonal_constrained_tp(
     objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
     return dict(
-        w_opt=torch.tensor(w),
+        w_opt=w,
         objective_opt=objective
     )
 

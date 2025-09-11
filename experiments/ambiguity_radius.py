@@ -6,8 +6,6 @@ from configs.handlers import parse_arguments
 from bound import DataDrivenRadius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
 
-from configs.handlers import parse_arguments
-
 if __name__ == '__main__':
     torch.manual_seed(0)
 
@@ -15,6 +13,7 @@ if __name__ == '__main__':
         distribution="Gaussian",
         dimension=2,
         setting=0,
+        num_samples_training=1000,
         num_samples=1000,
         num_clusters=10,
         beta=1e-4,
@@ -22,17 +21,18 @@ if __name__ == '__main__':
     )
 
     # Set parameters
+    N_training = args.num_samples_training
     M = args.num_clusters
     N = args.num_samples
     beta = args.beta
-    method = 'full_search'
+    method = 'diagonal_constrained_tp'
     support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability
     distribution = get_distribution(**vars(args))
 
     # Generate Partitions
-    samples_partition = distribution.sample((N,))
+    samples_partition = distribution.sample((N_training,))
     partition = BoundedVoronoiPartition(
         support=support_assumption, 
         samples=samples_partition, 

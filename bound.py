@@ -7,7 +7,7 @@ from optimization import o_maximization, max_min_lp
 def bound_moment(
         quantization: UncertainQuantization,
 ):
-    bound, _ = o_maximization(quantization.partition.radii, quantization.lower_probs, quantization.upper_probs)
+    bound, _ = o_maximization(quantization.partition.radii ** 2, quantization.lower_probs, quantization.upper_probs)
     return bound ** 0.5
 
 
@@ -39,7 +39,7 @@ class DataDrivenRadius:
         self.moment_bound = bound_moment(quantization=quantization) if compute_moment_bound else float('nan')
         self.discrete_bound = bound_discrete(quantization=quantization, method=method) if compute_discrete_bound else float('nan')
 
-        self.lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
+        self.lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm().pow(2) / 2)).sqrt()
 
     # @property
     # def moment_bound_available(self):

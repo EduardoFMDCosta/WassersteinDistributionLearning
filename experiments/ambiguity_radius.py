@@ -6,33 +6,33 @@ from configs.handlers import parse_arguments
 from bound import DataDrivenRadius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
 
-from configs.handlers import parse_arguments
-
 if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=2,
+        dimension=3,
         setting=0,
+        num_samples_training=1000,
         num_samples=1000,
-        num_clusters=10,
+        num_clusters=25,
         beta=1e-4,
         plot=True
     )
 
     # Set parameters
+    N_training = args.num_samples_training
     M = args.num_clusters
     N = args.num_samples
     beta = args.beta
-    method = 'full_search'
+    method = 'diagonal_constrained_tp'
     support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability
     distribution = get_distribution(**vars(args))
 
     # Generate Partitions
-    samples_partition = distribution.sample((N,))
+    samples_partition = distribution.sample((N_training,))
     partition = BoundedVoronoiPartition(
         support=support_assumption, 
         samples=samples_partition, 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         plot_quantization(quantization=quantization, title=f"M={M}, N={N}")
 
     # Compute bounds
-    fournier_bound = fournier_radius(support=partition.support, nsamples=N, beta=beta)
+    fournier_bound = fournier_radius(support=partition.support, nsamples=N+N_training, beta=beta)
     data_driven_output = DataDrivenRadius(quantization=quantization, method=method)
 
     print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"

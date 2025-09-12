@@ -7,7 +7,7 @@ from optimization import o_maximization, max_min_lp
 def bound_moment(
         quantization: UncertainQuantization,
 ):
-    bound, _ = o_maximization(quantization.partition.radii, quantization.lower_probs, quantization.upper_probs)
+    bound, _ = o_maximization(quantization.partition.radii ** 2, quantization.lower_probs, quantization.upper_probs)
     return bound ** 0.5
 
 

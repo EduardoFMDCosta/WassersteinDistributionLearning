@@ -564,7 +564,7 @@ def solve_milp_min_diagonal(
         return solve_milp_min_diagonal_gurobi(cost, empirical_distribution, lower, upper, **kwargs)
     
 
-def fixate_transport_plan(
+def diagonal_constrained_tp(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
@@ -576,7 +576,7 @@ def fixate_transport_plan(
     objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
     return dict(
-        w_opt=torch.tensor(w),
+        w_opt=w,
         objective_opt=objective
     )
 
@@ -616,8 +616,8 @@ def max_min_lp(
             empirical_marginal=empirical_marginal
         )
         return result["objective_opt"]
-    elif method == 'fixate_tp':
-        result = fixate_transport_plan(
+    elif method == 'diagonal_constrained_tp':
+        result = diagonal_constrained_tp(
             cost=cost,
             lower=lower,
             upper=upper,

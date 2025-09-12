@@ -26,6 +26,7 @@ def parse_arguments(
         distribution,
         dimension,
         setting,
+        num_samples_training,
         num_samples,
         num_clusters,
         beta,
@@ -44,6 +45,10 @@ def parse_arguments(
                         type=int,
                         default=setting,
                         help='Experiment setting.')
+    parser.add_argument('--num_samples_training',
+                        type=int,
+                        default=num_samples_training,
+                        help='Number of samples for training (i.e. defining clustering).')
     parser.add_argument('--num_samples',
                         type=int,
                         default=num_samples,

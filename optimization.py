@@ -366,7 +366,8 @@ def cutting_plane(
 
     return dict(
         w_opt=w_opt,
-        objective_opt=objective_opt
+        objective_opt=objective_opt,
+        alpha=alpha
     )
 
 def plain_vanilla(
@@ -580,6 +581,116 @@ def diagonal_constrained_tp(
         objective_opt=objective
     )
 
+def project_alpha_beta(alpha0, beta0, C, verbose=False):
+    alpha0 = np.asarray(alpha0)
+    beta0 = np.asarray(beta0)
+    C = np.asarray(C)
+
+    n, m = C.shape
+    assert alpha0.shape == (n,)
+    assert beta0.shape == (m,)
+
+    # Variables
+    alpha = cp.Variable(n)
+    beta = cp.Variable(m)
+
+    # Objective: minimize squared distance
+    obj = 0.5 * cp.sum_squares(alpha - alpha0) + 0.5 * cp.sum_squares(beta - beta0)
+
+    # Constraints: alpha_i + beta_j <= C_ij for all (i,j)
+    constraints = [alpha[i] + beta[j] <= C[i, j] for i in range(n) for j in range(m)]
+
+    constraints += [beta[0] == 0]
+
+    # Problem
+    prob = cp.Problem(cp.Minimize(obj), constraints)
+    prob.solve(solver=cp.GUROBI, verbose=verbose)
+
+    if prob.status not in ["optimal", "optimal_inaccurate"]:
+        raise ValueError(f"Projection failed, solver status: {prob.status}")
+
+    return torch.tensor(alpha.value), torch.tensor(beta.value)
+
+def inner_lp_maximization(
+    alpha: torch.Tensor,
+    beta: torch.Tensor,
+    empirical_marginal: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor
+):
+    M = lower.shape[0]
+
+    # Variables
+    lam = cp.Variable()  # scalar λ
+    mu = cp.Variable(M, nonneg=True)  # vector μ ≥ 0
+    nu = cp.Variable(M, nonneg=True)  # vector ν ≥ 0
+
+    a = lower.detach().cpu().numpy()
+    b = upper.detach().cpu().numpy()
+
+    # Constraint λ*1 + μ - ν ≥ α
+    ones = np.ones(M)
+    constraint = lam * ones + mu - nu >= alpha
+
+    # Problem
+    objective = cp.Maximize(-lam - b @ mu + a @ nu)
+    prob = cp.Problem(objective, [constraint, mu >= 0, nu >= 0])
+    prob.solve()
+
+    objective_value = prob.value - torch.dot(beta.float(), empirical_marginal.float())
+    dual_vector = constraint.dual_value
+
+    return objective_value, dual_vector
+
+def max_oracle_gradient_descent(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        num_steps: int = 10000,
+        tol: float = 1e-6,
+        **kwargs
+):
+
+    # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
+
+    # Initialize x = (alpha, beta)
+    result = cutting_plane(cost=cost,
+                           lower=lower,
+                           upper=upper,
+                           empirical_marginal=empirical_marginal,
+                           num_steps=1000,
+                           ot_solver=ot_lp_solver)
+
+    alpha = result["alpha"]
+    beta = (cost - alpha[:, None]).min(dim=0).values
+    alpha, beta = project_alpha_beta(alpha, beta, cost)
+
+    previous_obj_value = float("inf")
+
+    for step in range(num_steps):
+        # Solve for primal and dual (lines 2 and 3)
+        objective_value, dual_vector = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
+
+        # Gradient step (line 4)
+        alpha = alpha + 0.01 * dual_vector
+        beta = beta + 0.01 * empirical_marginal
+
+        alpha, beta = project_alpha_beta(alpha, beta, cost)
+
+        if abs(previous_obj_value - objective_value) < tol:
+            break
+        else:
+            previous_obj_value = objective_value
+
+    _, w = o_maximization(alpha, lower, upper)
+    objective_value = (-1) * objective_value # invert sign
+
+    return dict(
+        w_opt=w,
+        objective_opt=objective_value
+    )
+
 def max_min_lp(
         cost: torch.Tensor,
         lower: torch.Tensor,
@@ -618,6 +729,14 @@ def max_min_lp(
         return result["objective_opt"]
     elif method == 'diagonal_constrained_tp':
         result = diagonal_constrained_tp(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal
+        )
+        return result["objective_opt"]
+    elif method == 'max_oracle_gradient_descent':
+        result = max_oracle_gradient_descent(
             cost=cost,
             lower=lower,
             upper=upper,

@@ -353,7 +353,6 @@ def cutting_plane(
 
                 epsilon = torch.einsum('i,i->', alpha, w_next - w)
                 if epsilon < 1e-5:
-                    print(f"Cutting plane converged after {step + 1} iterations.")
                     break
 
                 # Update w
@@ -648,7 +647,7 @@ def max_oracle_gradient_descent(
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
         num_steps: int = 10000,
-        tol: float = 1e-6,
+        tol: float = 1e-8,
         **kwargs
 ):
 
@@ -662,8 +661,7 @@ def max_oracle_gradient_descent(
                            num_steps=1000,
                            ot_solver=ot_lp_solver)
 
-    alpha = result["alpha"]
-    beta = (cost - alpha[:, None]).min(dim=0).values
+    alpha, beta = torch.randn(cost.shape[0]), torch.randn(cost.shape[0])
     alpha, beta = project_alpha_beta(alpha, beta, cost)
 
     previous_obj_value = float("inf")
@@ -673,17 +671,18 @@ def max_oracle_gradient_descent(
         objective_value, dual_vector = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
 
         # Gradient step (line 4)
-        alpha = alpha + 0.01 * dual_vector
-        beta = beta + 0.01 * empirical_marginal
+        alpha = alpha + 0.1 * dual_vector
+        beta = beta + 0.1 * empirical_marginal
 
         alpha, beta = project_alpha_beta(alpha, beta, cost)
 
         if abs(previous_obj_value - objective_value) < tol:
+            print(f"Max oracle gradient descent converged after {step+1} iterations.")
             break
         else:
             previous_obj_value = objective_value
 
-    _, w = o_maximization(alpha, lower, upper)
+    _, w = o_maximization(alpha.float(), lower, upper)
     objective_value = (-1) * objective_value # invert sign
 
     return dict(

@@ -593,7 +593,7 @@ def diagonal_constrained_tp(
     objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
     return dict(
-        w_opt=torch.tensor(w),
+        w_opt=w,
         objective_opt=objective
     )
 
@@ -676,7 +676,7 @@ def max_oracle_gradient_descent(
 
     previous_obj_value = float("inf")
 
-    for step in range(num_steps):
+    for step in tqdm(range(num_steps)):
         # Solve for primal and dual (lines 2 and 3)
         objective_value, dual_vector = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
 

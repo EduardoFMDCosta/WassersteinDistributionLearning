@@ -608,7 +608,7 @@ def project_alpha_beta(alpha0, beta0, C, verbose=False):
     if prob.status not in ["optimal", "optimal_inaccurate"]:
         raise ValueError(f"Projection failed, solver status: {prob.status}")
 
-    return torch.tensor(alpha.value), torch.tensor(beta.value)
+    return torch.tensor(alpha.value, dtype=torch.float32), torch.tensor(beta.value, dtype=torch.float32)
 
 def inner_lp_maximization(
     alpha: torch.Tensor,
@@ -636,7 +636,7 @@ def inner_lp_maximization(
     prob = cp.Problem(objective, [constraint, mu >= 0, nu >= 0])
     prob.solve()
 
-    objective_value = prob.value - torch.dot(beta.float(), empirical_marginal.float())
+    objective_value = prob.value - torch.dot(beta, empirical_marginal)
     dual_vector = constraint.dual_value
 
     return objective_value, dual_vector
@@ -646,7 +646,7 @@ def max_oracle_gradient_descent(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 10000,
+        num_steps: int = 100000,
         tol: float = 1e-8,
         **kwargs
 ):
@@ -654,13 +654,6 @@ def max_oracle_gradient_descent(
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Initialize x = (alpha, beta)
-    result = cutting_plane(cost=cost,
-                           lower=lower,
-                           upper=upper,
-                           empirical_marginal=empirical_marginal,
-                           num_steps=1000,
-                           ot_solver=ot_lp_solver)
-
     alpha, beta = torch.randn(cost.shape[0]), torch.randn(cost.shape[0])
     alpha, beta = project_alpha_beta(alpha, beta, cost)
 
@@ -682,8 +675,8 @@ def max_oracle_gradient_descent(
         else:
             previous_obj_value = objective_value
 
-    _, w = o_maximization(alpha.float(), lower, upper)
-    objective_value = (-1) * objective_value # invert sign
+    _, w = o_maximization(alpha, lower, upper)
+    objective_value = ot_lp_solver(cost, w, empirical_marginal)[1]
 
     return dict(
         w_opt=w,

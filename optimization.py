@@ -11,6 +11,8 @@ import cvxpy as cp
 from gurobipy import GRB
 from scipy.optimize import linprog
 
+from scheduler import PolynomialDecayScheduler, PolyakScheduler, HybridScheduler
+
 try:
     import gurobipy as gp
 except:
@@ -383,7 +385,8 @@ def cutting_plane(
     return dict(
         w_opt=w_opt,
         objective_opt=objective_opt,
-        alpha=alpha
+        alpha=alpha,
+        beta=beta
     )
 
 def plain_vanilla(
@@ -597,6 +600,9 @@ def diagonal_constrained_tp(
         objective_opt=objective
     )
 
+def anchor(alpha, beta):
+    return alpha + beta[0], beta - beta[0]
+
 def project_alpha_beta(alpha0, beta0, C, verbose=False):
     alpha0 = np.asarray(alpha0)
     beta0 = np.asarray(beta0)
@@ -623,7 +629,10 @@ def project_alpha_beta(alpha0, beta0, C, verbose=False):
     if prob.status not in ["optimal", "optimal_inaccurate"]:
         raise ValueError(f"Projection failed, solver status: {prob.status}")
 
-    return torch.tensor(alpha.value, dtype=torch.float32), torch.tensor(beta.value, dtype=torch.float32)
+    alpha = torch.tensor(alpha.value, dtype=torch.float32)
+    beta = torch.tensor(beta.value, dtype=torch.float32)
+
+    return alpha, beta
 
 def inner_lp_maximization(
     alpha: torch.Tensor,
@@ -654,41 +663,59 @@ def inner_lp_maximization(
     objective_value = prob.value - torch.dot(beta, empirical_marginal)
     dual_vector = constraint.dual_value
 
-    return objective_value, dual_vector
+    return objective_value, torch.tensor(dual_vector, dtype=torch.float32)
+
+def compute_residual_max_oracle(s1, s2, alpha, alpha_0, beta, beta_0, empirical_marginal):
+
+    norm_x = torch.norm(alpha - alpha_0) + torch.norm(beta - beta_0)
+    lf = torch.norm(empirical_marginal)
+    lr_sum = s1
+    lr_squared_sum = s2
+
+    residual = (norm_x ** 2 + lf ** 2 * lr_squared_sum) / (2 * lr_sum)
+    return residual.item()
 
 def max_oracle_gradient_descent(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 100000,
-        tol: float = 1e-8,
+        num_steps: int = 1000,
+        tol: float = 1e-3,
         **kwargs
 ):
 
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Initialize x = (alpha, beta)
-    alpha, beta = torch.randn(cost.shape[0]), torch.randn(cost.shape[0])
-    alpha, beta = project_alpha_beta(alpha, beta, cost)
+    alpha_0, beta_0 = torch.randn(cost.shape[0]), torch.randn(cost.shape[0])
+    alpha_0, beta_0 = project_alpha_beta(alpha_0, beta_0, cost)
 
-    previous_obj_value = float("inf")
+    alpha, beta = alpha_0.clone(), beta_0.clone()
+
+    result = cutting_plane(cost=cost,
+                           lower=lower,
+                           upper=upper,
+                           empirical_marginal=empirical_marginal,
+                           num_steps=1000,
+                           ot_solver=ot_lp_solver)
+    scheduler = HybridScheduler(f_star=result['objective_opt'], hessian_factor=10.)
 
     for step in tqdm(range(num_steps)):
         # Solve for primal and dual (lines 2 and 3)
         objective_value, dual_vector = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
 
-        # Gradient step (line 4)
-        alpha = alpha + 0.1 * dual_vector
-        beta = beta + 0.1 * empirical_marginal
+        lr, s1, s2 = scheduler.step(f=objective_value, grad=torch.cat((dual_vector, empirical_marginal), dim=0))
 
+        # Gradient step (line 4)
+        alpha = alpha + lr * dual_vector
+        beta = beta + lr * empirical_marginal
         alpha, beta = project_alpha_beta(alpha, beta, cost)
 
-        if abs(previous_obj_value - objective_value) < tol:
-            print(f"Max oracle gradient descent converged after {step+1} iterations.")
+        residual = compute_residual_max_oracle(s1, s2, alpha, alpha_0, beta, beta_0, empirical_marginal)
+        if residual < tol:
+            print(f"Residual below threshold after {step+1} iterations.")
             break
-        else:
-            previous_obj_value = objective_value
 
     _, w = o_maximization(alpha, lower, upper)
     objective_value, _ = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
@@ -696,7 +723,7 @@ def max_oracle_gradient_descent(
 
     return dict(
         w_opt=w,
-        objective_opt=objective_value
+        objective_opt=objective_value + residual # See Equation (44)
     )
 
 def max_min_lp(

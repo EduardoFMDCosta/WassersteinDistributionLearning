@@ -616,8 +616,6 @@ def project_alpha_beta(alpha0, beta0, C, verbose=False):
     # Constraints: alpha_i + beta_j <= C_ij for all (i,j)
     constraints = [alpha[i] + beta[j] <= C[i, j] for i in range(n) for j in range(m)]
 
-    constraints += [beta[0] == 0]
-
     # Problem
     prob = cp.Problem(cp.Minimize(obj), constraints)
     prob.solve(solver=cp.GUROBI, verbose=verbose)
@@ -693,7 +691,8 @@ def max_oracle_gradient_descent(
             previous_obj_value = objective_value
 
     _, w = o_maximization(alpha, lower, upper)
-    objective_value = ot_lp_solver(cost, w, empirical_marginal)[1]
+    objective_value, _ = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
+    objective_value = -objective_value
 
     return dict(
         w_opt=w,

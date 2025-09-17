@@ -666,19 +666,22 @@ def max_oracle_gradient_descent(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 100000,
+        num_steps: int = 5000,
         tol: float = 1e-3,
         **kwargs
 ):
 
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
+    def c_transform(alpha):
+        return (cost - alpha.unsqueeze(1)).min(dim=0).values
+
     # Initialize x = (alpha, beta)
     alpha_0, beta_0 = project_alpha_beta(torch.randn(cost.shape[0]), torch.randn(cost.shape[0]), cost)
     alpha = alpha_0.clone().detach().requires_grad_(True)
     beta = beta_0.clone().detach().requires_grad_(True)
 
-    optimizer = torch.optim.SGD([alpha, beta], lr=1., momentum=0.9)
+    optimizer = torch.optim.SGD([alpha], lr=0.001, momentum=0.99, weight_decay=1e-4)
 
     for step in tqdm(range(num_steps)):
 
@@ -686,41 +689,24 @@ def max_oracle_gradient_descent(
         y, dual_vector = inner_lp_maximization(alpha.clone().detach(), lower, upper)
         lam, mu, nu = y
 
-        def f(alpha, beta):
+        def f(alpha):
+            beta = c_transform(alpha)
             return -lam - (mu * upper).sum() + (nu * lower).sum() - (beta * empirical_marginal).sum()
 
-        def g(alpha, beta):
+        def g(alpha):
             return -(alpha - lam * torch.ones(alpha.shape[0]) - mu + nu)
 
-        def lagrangian(alpha, beta):
-            return f(alpha, beta) + torch.dot(dual_vector, g(alpha, beta))
-
-        if step % 100 == 0:
-            value = f(alpha, beta)
-            print(f"Before update = {value}")
-
+        def lagrangian(alpha):
+            return f(alpha) + torch.dot(dual_vector, g(alpha))
 
         optimizer.zero_grad()
-        lagrange = lagrangian(alpha, beta)
+        lagrange = lagrangian(alpha)
         lagrange.backward()
         optimizer.step()
 
-        with torch.no_grad():
-            alpha_proj, beta_proj = project_alpha_beta(
-                alpha.detach().cpu().numpy(),
-                beta.detach().cpu().numpy(),
-                cost.detach().cpu().numpy()
-            )
-            alpha.copy_(alpha_proj.to(alpha.device))
-            beta.copy_(beta_proj.to(beta.device))
-
-        if step % 100 == 0:
-            value = f(alpha, beta)
-            print(f"After update = {value}")
-
     #_, w = o_maximization(alpha, lower, upper)
-    w = None
-    objective_value = f(alpha, beta)
+    _, w = o_maximization(alpha, lower, upper)
+    objective_value = -f(alpha)
 
     return dict(
         w_opt=w,

@@ -11,8 +11,6 @@ import cvxpy as cp
 from gurobipy import GRB
 from scipy.optimize import linprog
 
-from scheduler import PolynomialDecayScheduler, PolyakScheduler, HybridScheduler
-
 try:
     import gurobipy as gp
 except:
@@ -636,8 +634,6 @@ def project_alpha_beta(alpha0, beta0, C, verbose=False):
 
 def inner_lp_maximization(
     alpha: torch.Tensor,
-    beta: torch.Tensor,
-    empirical_marginal: torch.Tensor,
     lower: torch.Tensor,
     upper: torch.Tensor
 ):
@@ -653,34 +649,24 @@ def inner_lp_maximization(
 
     # Constraint λ*1 + μ - ν ≥ α
     ones = np.ones(M)
-    constraint = lam * ones + mu - nu >= alpha
+    constraint = alpha - lam * ones - mu + nu <= 0
 
     # Problem
     objective = cp.Maximize(-lam - b @ mu + a @ nu)
     prob = cp.Problem(objective, [constraint, mu >= 0, nu >= 0])
-    prob.solve()
+    prob.solve(solver=cp.GUROBI, verbose=False)
 
-    objective_value = prob.value - torch.dot(beta, empirical_marginal)
-    dual_vector = constraint.dual_value
+    y = (torch.tensor(lam.value, dtype=torch.float32), torch.tensor(mu.value, dtype=torch.float32), torch.tensor(nu.value, dtype=torch.float32))
+    dual_vector = torch.tensor(constraint.dual_value, dtype=torch.float32)
 
-    return objective_value, torch.tensor(dual_vector, dtype=torch.float32)
-
-def compute_residual_max_oracle(s1, s2, alpha, alpha_0, beta, beta_0, empirical_marginal):
-
-    norm_x = torch.norm(alpha - alpha_0) + torch.norm(beta - beta_0)
-    lf = torch.norm(empirical_marginal)
-    lr_sum = s1
-    lr_squared_sum = s2
-
-    residual = (norm_x ** 2 + lf ** 2 * lr_squared_sum) / (2 * lr_sum)
-    return residual.item()
+    return y, dual_vector
 
 def max_oracle_gradient_descent(
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 1000,
+        num_steps: int = 100000,
         tol: float = 1e-3,
         **kwargs
 ):
@@ -688,42 +674,57 @@ def max_oracle_gradient_descent(
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
     # Initialize x = (alpha, beta)
-    alpha_0, beta_0 = torch.randn(cost.shape[0]), torch.randn(cost.shape[0])
-    alpha_0, beta_0 = project_alpha_beta(alpha_0, beta_0, cost)
+    alpha_0, beta_0 = project_alpha_beta(torch.randn(cost.shape[0]), torch.randn(cost.shape[0]), cost)
+    alpha = alpha_0.clone().detach().requires_grad_(True)
+    beta = beta_0.clone().detach().requires_grad_(True)
 
-    alpha, beta = alpha_0.clone(), beta_0.clone()
-
-    result = cutting_plane(cost=cost,
-                           lower=lower,
-                           upper=upper,
-                           empirical_marginal=empirical_marginal,
-                           num_steps=1000,
-                           ot_solver=ot_lp_solver)
-    scheduler = HybridScheduler(f_star=result['objective_opt'], hessian_factor=10.)
+    optimizer = torch.optim.SGD([alpha, beta], lr=1., momentum=0.9)
 
     for step in tqdm(range(num_steps)):
+
         # Solve for primal and dual (lines 2 and 3)
-        objective_value, dual_vector = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
+        y, dual_vector = inner_lp_maximization(alpha.clone().detach(), lower, upper)
+        lam, mu, nu = y
 
-        lr, s1, s2 = scheduler.step(f=objective_value, grad=torch.cat((dual_vector, empirical_marginal), dim=0))
+        def f(alpha, beta):
+            return -lam - (mu * upper).sum() + (nu * lower).sum() - (beta * empirical_marginal).sum()
 
-        # Gradient step (line 4)
-        alpha = alpha + lr * dual_vector
-        beta = beta + lr * empirical_marginal
-        alpha, beta = project_alpha_beta(alpha, beta, cost)
+        def g(alpha, beta):
+            return -(alpha - lam * torch.ones(alpha.shape[0]) - mu + nu)
 
-        residual = compute_residual_max_oracle(s1, s2, alpha, alpha_0, beta, beta_0, empirical_marginal)
-        if residual < tol:
-            print(f"Residual below threshold after {step+1} iterations.")
-            break
+        def lagrangian(alpha, beta):
+            return f(alpha, beta) + torch.dot(dual_vector, g(alpha, beta))
 
-    _, w = o_maximization(alpha, lower, upper)
-    objective_value, _ = inner_lp_maximization(alpha, beta, empirical_marginal, lower, upper)
-    objective_value = -objective_value
+        if step % 100 == 0:
+            value = f(alpha, beta)
+            print(f"Before update = {value}")
+
+
+        optimizer.zero_grad()
+        lagrange = lagrangian(alpha, beta)
+        lagrange.backward()
+        optimizer.step()
+
+        with torch.no_grad():
+            alpha_proj, beta_proj = project_alpha_beta(
+                alpha.detach().cpu().numpy(),
+                beta.detach().cpu().numpy(),
+                cost.detach().cpu().numpy()
+            )
+            alpha.copy_(alpha_proj.to(alpha.device))
+            beta.copy_(beta_proj.to(beta.device))
+
+        if step % 100 == 0:
+            value = f(alpha, beta)
+            print(f"After update = {value}")
+
+    #_, w = o_maximization(alpha, lower, upper)
+    w = None
+    objective_value = f(alpha, beta)
 
     return dict(
         w_opt=w,
-        objective_opt=objective_value + residual # See Equation (44)
+        objective_opt=objective_value
     )
 
 def max_min_lp(

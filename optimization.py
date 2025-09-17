@@ -1,3 +1,4 @@
+import collections
 from typing import Callable, Tuple, Optional
 
 import torch
@@ -681,7 +682,17 @@ def max_oracle_gradient_descent(
     alpha = alpha_0.clone().detach().requires_grad_(True)
     beta = beta_0.clone().detach().requires_grad_(True)
 
-    optimizer = torch.optim.SGD([alpha], lr=0.001, momentum=0.99, weight_decay=1e-4)
+    optimizer = torch.optim.Adam([alpha], lr=0.1, weight_decay=1e-4)
+
+    best = float("inf")
+    history_len = 10
+    recent_values = collections.deque(maxlen=history_len)
+
+    # base noise settings
+    base_noise = 1e-3
+    max_noise = 1e-1
+    noise_scale = base_noise
+    decay_factor = 0.95
 
     for step in tqdm(range(num_steps)):
 
@@ -702,11 +713,29 @@ def max_oracle_gradient_descent(
         optimizer.zero_grad()
         lagrange = lagrangian(alpha)
         lagrange.backward()
+
+        # Randomize gradients
+        alpha.grad += noise_scale * torch.randn_like(alpha.grad)
         optimizer.step()
 
+        value = f(alpha)
+        recent_values.append(value)
+
+        if value < best:
+            best = value
+
+        # detect stagnation
+        if len(recent_values) == history_len:
+            if abs(recent_values[0] - recent_values[-1]) < tol:
+                # Stuck -> increase noise
+                noise_scale = min(noise_scale * 2, max_noise)
+            else:
+                # Progress -> decay back to base noise
+                noise_scale = max(noise_scale * decay_factor, base_noise)
+
+    w = None
     #_, w = o_maximization(alpha, lower, upper)
-    _, w = o_maximization(alpha, lower, upper)
-    objective_value = -f(alpha)
+    objective_value = -best
 
     return dict(
         w_opt=w,

@@ -710,6 +710,13 @@ def max_oracle_gradient_descent(
         def lagrangian(alpha):
             return f(alpha) + torch.dot(dual_vector, g(alpha))
 
+        value = f(alpha)
+        recent_values.append(value)
+
+        if value < best:
+            best = value
+
+
         optimizer.zero_grad()
         lagrange = lagrangian(alpha)
         lagrange.backward()
@@ -717,12 +724,6 @@ def max_oracle_gradient_descent(
         # Randomize gradients
         alpha.grad += noise_scale * torch.randn_like(alpha.grad)
         optimizer.step()
-
-        value = f(alpha)
-        recent_values.append(value)
-
-        if value < best:
-            best = value
 
         # detect stagnation
         if len(recent_values) == history_len:

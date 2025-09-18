@@ -667,7 +667,7 @@ def max_oracle_gradient_descent(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 5000,
+        num_steps: int = 50000,
         tol: float = 1e-3,
         **kwargs
 ):
@@ -682,15 +682,15 @@ def max_oracle_gradient_descent(
     alpha = alpha_0.clone().detach().requires_grad_(True)
     beta = beta_0.clone().detach().requires_grad_(True)
 
-    optimizer = torch.optim.Adam([alpha], lr=0.1, weight_decay=1e-4)
+    optimizer = torch.optim.SGD([alpha], lr=1.0, momentum=0.9, weight_decay=1e-4)
 
     best = float("inf")
     history_len = 10
     recent_values = collections.deque(maxlen=history_len)
 
-    # base noise settings
-    base_noise = 1e-3
-    max_noise = 1e-1
+    # Gradient noise settings
+    base_noise = 1e-4
+    max_noise = 1.0
     noise_scale = base_noise
     decay_factor = 0.95
 
@@ -710,13 +710,6 @@ def max_oracle_gradient_descent(
         def lagrangian(alpha):
             return f(alpha) + torch.dot(dual_vector, g(alpha))
 
-        value = f(alpha)
-        recent_values.append(value)
-
-        if value < best:
-            best = value
-
-
         optimizer.zero_grad()
         lagrange = lagrangian(alpha)
         lagrange.backward()
@@ -725,17 +718,25 @@ def max_oracle_gradient_descent(
         alpha.grad += noise_scale * torch.randn_like(alpha.grad)
         optimizer.step()
 
-        # detect stagnation
+        # Compute current value and store best value
+        # OBS: This provides a lower bound for our value, as we use x^{(t)}, y^{(t-1)}
+        # In theory, we should store before the gradient update. We choose to compute a lower bound to guarantee an upper bound on epsilon_2
+        value = f(alpha)
+        recent_values.append(value)
+
+        if value < best:
+            best = value
+
+        # Detect stagnation
         if len(recent_values) == history_len:
             if abs(recent_values[0] - recent_values[-1]) < tol:
-                # Stuck -> increase noise
+                # Stuck -> increase gradient noise
                 noise_scale = min(noise_scale * 2, max_noise)
             else:
                 # Progress -> decay back to base noise
                 noise_scale = max(noise_scale * decay_factor, base_noise)
 
-    w = None
-    #_, w = o_maximization(alpha, lower, upper)
+    _, w = o_maximization(alpha, lower, upper)
     objective_value = -best
 
     return dict(

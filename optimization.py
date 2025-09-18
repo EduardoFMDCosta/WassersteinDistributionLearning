@@ -1,3 +1,4 @@
+import math
 import collections
 from typing import Callable, Tuple, Optional
 
@@ -11,6 +12,8 @@ import numpy as np
 import cvxpy as cp
 from gurobipy import GRB
 from scipy.optimize import linprog
+
+from plotting.plot import plot_optimization_curves
 
 try:
     import gurobipy as gp
@@ -667,12 +670,15 @@ def max_oracle_gradient_descent(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 50000,
+        num_steps: int = 5000,
         tol: float = 1e-3,
+        plot: bool = True,
         **kwargs
 ):
 
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
+
+    M = cost.shape[0]
 
     def c_transform(alpha):
         return (cost - alpha.unsqueeze(1)).min(dim=0).values
@@ -682,15 +688,22 @@ def max_oracle_gradient_descent(
     alpha = alpha_0.clone().detach().requires_grad_(True)
     beta = beta_0.clone().detach().requires_grad_(True)
 
-    optimizer = torch.optim.SGD([alpha], lr=1.0, momentum=0.9, weight_decay=1e-4)
+    optimizer = torch.optim.SGD([alpha], lr=0.5, momentum=0.9, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.999)
 
     best = float("inf")
     history_len = 10
     recent_values = collections.deque(maxlen=history_len)
 
+    # Logging
+    values = []
+    best_values = []
+    grad_norms = []
+    lr_sizes = []
+
     # Gradient noise settings
-    base_noise = 1e-4
-    max_noise = 1.0
+    base_noise = 0.0
+    max_noise = 0.0 * math.sqrt(M)
     noise_scale = base_noise
     decay_factor = 0.95
 
@@ -710,22 +723,32 @@ def max_oracle_gradient_descent(
         def lagrangian(alpha):
             return f(alpha) + torch.dot(dual_vector, g(alpha))
 
-        optimizer.zero_grad()
-        lagrange = lagrangian(alpha)
-        lagrange.backward()
-
-        # Randomize gradients
-        alpha.grad += noise_scale * torch.randn_like(alpha.grad)
-        optimizer.step()
-
         # Compute current value and store best value
-        # OBS: This provides a lower bound for our value, as we use x^{(t)}, y^{(t-1)}
-        # In theory, we should store before the gradient update. We choose to compute a lower bound to guarantee an upper bound on epsilon_2
-        value = f(alpha)
+        value = f(alpha).detach().item()
+        values.append(value)
         recent_values.append(value)
 
         if value < best:
             best = value
+        best_values.append(best)
+
+        # Gradient step update for x
+        optimizer.zero_grad()
+        lagrange = lagrangian(alpha)
+        lagrange.backward()
+
+
+        # Log gradient norm and lr
+        grad_norm = alpha.grad.detach().norm().item()
+        grad_norms.append(grad_norm)
+
+        eta = optimizer.param_groups[0]['lr']
+        lr_sizes.append(eta)
+
+        # Randomize gradients
+        alpha.grad += noise_scale * torch.randn_like(alpha.grad)
+        optimizer.step()
+        scheduler.step()
 
         # Detect stagnation
         if len(recent_values) == history_len:
@@ -738,6 +761,9 @@ def max_oracle_gradient_descent(
 
     _, w = o_maximization(alpha, lower, upper)
     objective_value = -best
+
+    if plot:
+        plot_optimization_curves(values, best_values, grad_norms, lr_sizes)
 
     return dict(
         w_opt=w,

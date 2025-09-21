@@ -684,9 +684,8 @@ def max_oracle_gradient_descent(
         return (cost - alpha.unsqueeze(1)).min(dim=0).values
 
     # Initialize x = (alpha, beta)
-    alpha_0, beta_0 = project_alpha_beta(torch.randn(cost.shape[0]), torch.randn(cost.shape[0]), cost)
+    alpha_0 = torch.randn(cost.shape[0])
     alpha = alpha_0.clone().detach().requires_grad_(True)
-    beta = beta_0.clone().detach().requires_grad_(True)
 
     optimizer = torch.optim.SGD([alpha], lr=0.5, momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.999)

@@ -13,25 +13,29 @@ def is_convex_inequality(func, n_samples, tol=1e-8):
 
     for _ in range(n_samples):
         x = torch.randn(cost.shape[0])
-        y = torch.randn(cost.shape[0])
-        lam = torch.rand(1)
-        z = lam * x + (1 - lam) * y
+        f_x = func(x)
 
-        lhs = func(z)
+        if f_x.item() < 0.0:
+            y = x + 0.1 * torch.randn(cost.shape[0])
+            lam = torch.rand(1)
+            z = lam * x + (1 - lam) * y
 
-        if lhs.item() < 0.0:
-            rhs = lam * func(x) + (1 - lam) * func(y)
+            lhs = func(z)
+            f_y = func(y)
 
-            if lhs - rhs > tol:
-                print("Function is NOT convex!")
-                print(f"x = {x}")
-                print(f"y = {y}")
-                print(f"lambda = {lam.item():.4f}")
-                print(f"f(lambda*x + (1-lambda)*y) = {lhs.item():.6f}")
-                print(f"lambda*f(x) + (1-lambda)*f(y) = {rhs.item():.6f}")
-                is_convex = False
-            else:
-                print("Test passed for this example.")
+            if lhs.item() < 0.0 and f_y.item() < 0.0:
+                rhs = lam * f_x + (1 - lam) * f_y
+
+                if lhs - rhs > tol:
+                    print("Function is NOT convex!")
+                    print(f"x = {x}")
+                    print(f"y = {y}")
+                    print(f"lambda = {lam.item():.4f}")
+                    print(f"f(lambda*x + (1-lambda)*y) = {lhs.item():.6f}")
+                    print(f"lambda*f(x) + (1-lambda)*f(y) = {rhs.item():.6f}")
+                    is_convex = False
+                else:
+                    print("Test passed for this example.")
     return is_convex
 
 if __name__ == '__main__':
@@ -82,11 +86,25 @@ if __name__ == '__main__':
     upper = quantization.upper_probs
     empirical_marginal = quantization.probs
 
-    def c_transform(alpha):
-        return (cost - alpha.unsqueeze(1)).min(dim=0).values
+
+    def softmin_c_transform(alpha, tau=1e-2):
+        # shape (n, m)
+        logits = -(cost - alpha.unsqueeze(1)) / tau
+        # logsumexp over rows (n)
+        softmin_vals = -tau * torch.logsumexp(logits, dim=0)
+        return softmin_vals  # shape (m,)
+
+
+    def strict_concave_lower_bound(alpha, tau=1e-2, eps=1e-6):
+        f_smooth = softmin_c_transform(alpha, tau)
+        quad = eps * alpha.pow(2).sum()  # scalar
+        return f_smooth - quad  # shape (m,)
+
+    # def c_transform(alpha):
+    #     return (cost - alpha.unsqueeze(1)).min(dim=0).values
 
     def f(alpha):
-        beta = c_transform(alpha)
+        beta = softmin_c_transform(alpha)
         y, dual_vector = inner_lp_maximization(alpha.clone().detach(), lower, upper)
         lam, mu, nu = y
         value = -lam - (mu * upper).sum() + (nu * lower).sum() - (beta * empirical_marginal).sum()

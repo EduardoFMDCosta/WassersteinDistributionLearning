@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=3,
+        dimension=2,
         setting=0,
         num_samples_training=1000,
         num_samples=1000,
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         plot_quantization(quantization=quantization, title=f"M={M}, N={N}")
 
     # Compute bounds
-    fournier_bound = fournier_radius(support=partition.support, nsamples=N+N_training, beta=beta)
+    fournier_bound = fournier_radius(support=partition.support, nsamples=N, beta=beta)
     data_driven_output = DataDrivenRadius(quantization=quantization, method=method)
 
     print(f"Number of clusters (M) / num_samples (N): {M} / {N} \n"

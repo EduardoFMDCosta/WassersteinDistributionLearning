@@ -21,11 +21,11 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=2,
+        dimension=3,
         setting=0,
         num_samples_training=1000,
         num_samples=1000,
-        num_clusters=20,
+        num_clusters=8,
         beta=1e-4,
         plot=False
     )
@@ -67,25 +67,25 @@ if __name__ == '__main__':
 
     # Analysis 3: Compute optima for different starting points (if applicable)
     # Cutting plane LP solver
-    # result = cutting_plane(cost=cost,
-    #                        lower=lower,
-    #                        upper=upper,
-    #                        empirical_marginal=empirical_marginal,
-    #                        num_steps=1000,
-    #                        ot_solver=ot_lp_solver)
-    #
-    # print(f"Final w (Cutting plane) = {result['w_opt']}")
-    # print(f"Value (Cutting plane) = {result['objective_opt']} \n")
-    #
-    # result = full_search(cost=cost,
-    #                      lower=lower,
-    #                      upper=upper,
-    #                      empirical_marginal=empirical_marginal,
-    #                      ot_solver=ot_lp_solver)
-    #
-    # print(f"Final w (Full search) = {result['w_opt']}")
-    # print(f"Value (Full search) = {result['objective_opt']} \n")
-    #
+    result = cutting_plane(cost=cost,
+                           lower=lower,
+                           upper=upper,
+                           empirical_marginal=empirical_marginal,
+                           num_steps=1000,
+                           ot_solver=ot_lp_solver)
+
+    print(f"Final w (Cutting plane) = {result['w_opt']}")
+    print(f"Value (Cutting plane) = {result['objective_opt']} \n")
+
+    result = full_search(cost=cost,
+                         lower=lower,
+                         upper=upper,
+                         empirical_marginal=empirical_marginal,
+                         ot_solver=ot_lp_solver)
+
+    print(f"Final w (Full search) = {result['w_opt']}")
+    print(f"Value (Full search) = {result['objective_opt']} \n")
+
     # result = plain_vanilla(cost=cost,
     #                        lower=lower,
     #                        upper=upper,

@@ -342,45 +342,42 @@ def cutting_plane(
     total_outer = M * 2
     pbar = tqdm(total=total_outer, desc="Cutting Plane Outer Loop")
 
-    for d in range(M):
-        for direction in [-1, 1]:
-            outer_iter = (d * 2) + (1 if direction == 1 else 0) + 1
-            msg = f"[CuttingPlane] d={d}, direction={'+' if direction==1 else '-'}"
-            pbar.set_postfix_str(msg)
+    for d in range(num_steps):
+        msg = f"[CuttingPlane] iteration={d}"
+        pbar.set_postfix_str(msg)
 
-            # Initialize w
-            w = empirical_marginal.clone()
-            w[d] = w[d] + direction * delta
-            w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
+        # Initialize w
+        w = empirical_marginal.clone() + torch.randn_like(empirical_marginal) * delta
+        w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
-            for step in range(num_steps):
-                # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
-                Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
-                alpha, beta = duals
+        for step in range(num_steps):
+            # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
+            Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+            alpha, beta = duals
 
-                alpha = alpha.float()
-                beta = beta.float()
+            alpha = alpha.float()
+            beta = beta.float()
 
-                # O-maximization (w^{(k+1)})
-                _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
+            # O-maximization (w^{(k+1)})
+            _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
 
-                epsilon = torch.einsum('i,i->', alpha, w_next - w)
-                msg_inner = f"[Inner] step={step+1}, epsilon={epsilon:.2e}, objective={objective:.4f}"
-                pbar.set_postfix_str(msg + ", " + msg_inner)
+            epsilon = torch.einsum('i,i->', alpha, w_next - w)
+            msg_inner = f"[Inner] step={step+1}, epsilon={epsilon:.2e}, objective={objective:.4f}"
+            pbar.set_postfix_str(msg + ", " + msg_inner)
 
-                if epsilon < 1e-5:
-                    pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
-                    break
+            if epsilon < 1e-5:
+                pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
+                break
 
-                # Update w
-                w = w_next
+            # Update w
+            w = w_next
 
-            #Update highest objective
-            if objective_opt < objective:
-                objective_opt = objective
-                w_opt = w
+        #Update highest objective
+        if objective_opt < objective:
+            objective_opt = objective
+            w_opt = w
 
-            pbar.update(1)
+        pbar.update(1)
 
     pbar.close()
 

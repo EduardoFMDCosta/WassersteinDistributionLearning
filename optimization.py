@@ -1,3 +1,5 @@
+import math
+import collections
 from typing import Callable, Tuple, Optional
 
 import torch
@@ -10,6 +12,8 @@ import numpy as np
 import cvxpy as cp
 from gurobipy import GRB
 from scipy.optimize import linprog
+
+from plotting.plot import plot_optimization_curves
 
 try:
     import gurobipy as gp
@@ -338,51 +342,50 @@ def cutting_plane(
     total_outer = M * 2
     pbar = tqdm(total=total_outer, desc="Cutting Plane Outer Loop")
 
-    for d in range(M):
-        for direction in [-1, 1]:
-            outer_iter = (d * 2) + (1 if direction == 1 else 0) + 1
-            msg = f"[CuttingPlane] d={d}, direction={'+' if direction==1 else '-'}"
-            pbar.set_postfix_str(msg)
+    for d in range(num_steps):
+        msg = f"[CuttingPlane] iteration={d}"
+        pbar.set_postfix_str(msg)
 
-            # Initialize w
-            w = empirical_marginal.clone()
-            w[d] = w[d] + direction * delta
-            w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
+        # Initialize w
+        w = empirical_marginal.clone() + torch.randn_like(empirical_marginal) * delta
+        w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
-            for step in range(num_steps):
-                # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
-                Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
-                alpha, beta = duals
+        for step in range(num_steps):
+            # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
+            Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+            alpha, beta = duals
 
-                alpha = alpha.float()
-                beta = beta.float()
+            alpha = alpha.float()
+            beta = beta.float()
 
-                # O-maximization (w^{(k+1)})
-                _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
+            # O-maximization (w^{(k+1)})
+            _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
 
-                epsilon = torch.einsum('i,i->', alpha, w_next - w)
-                msg_inner = f"[Inner] step={step+1}, epsilon={epsilon:.2e}, objective={objective:.4f}"
-                pbar.set_postfix_str(msg + ", " + msg_inner)
+            epsilon = torch.einsum('i,i->', alpha, w_next - w)
+            msg_inner = f"[Inner] step={step+1}, epsilon={epsilon:.2e}, objective={objective:.4f}"
+            pbar.set_postfix_str(msg + ", " + msg_inner)
 
-                if epsilon < 1e-5:
-                    pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
-                    break
+            if epsilon < 1e-5:
+                pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
+                break
 
-                # Update w
-                w = w_next
+            # Update w
+            w = w_next
 
-            #Update highest objective
-            if objective_opt < objective:
-                objective_opt = objective
-                w_opt = w
+        #Update highest objective
+        if objective_opt < objective:
+            objective_opt = objective
+            w_opt = w
 
-            pbar.update(1)
+        pbar.update(1)
 
     pbar.close()
 
     return dict(
         w_opt=w_opt,
-        objective_opt=objective_opt
+        objective_opt=objective_opt,
+        alpha=alpha,
+        beta=beta
     )
 
 def plain_vanilla(
@@ -592,9 +595,229 @@ def diagonal_constrained_tp(
     objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
     return dict(
-        w_opt=torch.tensor(w),
+        w_opt=w,
         objective_opt=objective
     )
+
+def anchor(alpha, beta):
+    return alpha + beta[0], beta - beta[0]
+
+def project_alpha_beta(alpha0, beta0, C, verbose=False):
+    alpha0 = np.asarray(alpha0)
+    beta0 = np.asarray(beta0)
+    C = np.asarray(C)
+
+    n, m = C.shape
+    assert alpha0.shape == (n,)
+    assert beta0.shape == (m,)
+
+    # Variables
+    alpha = cp.Variable(n)
+    beta = cp.Variable(m)
+
+    # Objective: minimize squared distance
+    obj = 0.5 * cp.sum_squares(alpha - alpha0) + 0.5 * cp.sum_squares(beta - beta0)
+
+    # Constraints: alpha_i + beta_j <= C_ij for all (i,j)
+    constraints = [alpha[i] + beta[j] <= C[i, j] for i in range(n) for j in range(m)]
+
+    # Problem
+    prob = cp.Problem(cp.Minimize(obj), constraints)
+    prob.solve(solver=cp.GUROBI, verbose=verbose)
+
+    if prob.status not in ["optimal", "optimal_inaccurate"]:
+        raise ValueError(f"Projection failed, solver status: {prob.status}")
+
+    alpha = torch.tensor(alpha.value, dtype=torch.float32)
+    beta = torch.tensor(beta.value, dtype=torch.float32)
+
+    return alpha, beta
+
+def inner_lp_maximization(
+    alpha: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor
+):
+    M = lower.shape[0]
+
+    # Variables
+    lam = cp.Variable()  # scalar λ
+    mu = cp.Variable(M, nonneg=True)  # vector μ ≥ 0
+    nu = cp.Variable(M, nonneg=True)  # vector ν ≥ 0
+
+    a = lower.detach().cpu().numpy()
+    b = upper.detach().cpu().numpy()
+
+    # Constraint λ*1 + μ - ν ≥ α
+    ones = np.ones(M)
+    constraint = alpha - lam * ones - mu + nu <= 0
+
+    # Problem
+    objective = cp.Maximize(-lam - b @ mu + a @ nu)
+    prob = cp.Problem(objective, [constraint, mu >= 0, nu >= 0])
+    prob.solve(solver=cp.GUROBI, verbose=False)
+
+    y = (torch.tensor(lam.value, dtype=torch.float32), torch.tensor(mu.value, dtype=torch.float32), torch.tensor(nu.value, dtype=torch.float32))
+    dual_vector = torch.tensor(constraint.dual_value, dtype=torch.float32)
+
+    return y, dual_vector
+
+def max_oracle_gradient_descent(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        num_steps: int = 5000,
+        tol: float = 1e-3,
+        plot: bool = True,
+        **kwargs
+):
+
+    # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
+
+    M = cost.shape[0]
+
+    def c_transform(alpha):
+        return (cost - alpha.unsqueeze(1)).min(dim=0).values
+
+    # Initialize x = (alpha, beta)
+    alpha_0 = torch.randn(cost.shape[0])
+    alpha = alpha_0.clone().detach().requires_grad_(True)
+
+    optimizer = torch.optim.SGD([alpha], lr=0.5, momentum=0.9, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.999)
+
+    best = float("inf")
+    history_len = 10
+    recent_values = collections.deque(maxlen=history_len)
+
+    # Logging
+    values = []
+    best_values = []
+    grad_norms = []
+    lr_sizes = []
+
+    # Gradient noise settings
+    base_noise = 0.0
+    max_noise = 0.0 * math.sqrt(M)
+    noise_scale = base_noise
+    decay_factor = 0.95
+
+    for step in tqdm(range(num_steps)):
+
+        # Solve for primal and dual (lines 2 and 3)
+        y, dual_vector = inner_lp_maximization(alpha.clone().detach(), lower, upper)
+        lam, mu, nu = y
+
+        def f(alpha):
+            beta = c_transform(alpha)
+            return -lam - (mu * upper).sum() + (nu * lower).sum() - (beta * empirical_marginal).sum()
+
+        def g(alpha):
+            return -(alpha - lam * torch.ones(alpha.shape[0]) - mu + nu)
+
+        def lagrangian(alpha):
+            return f(alpha) + torch.dot(dual_vector, g(alpha))
+
+        # Compute current value and store best value
+        value = f(alpha).detach().item()
+        values.append(value)
+        recent_values.append(value)
+
+        if value < best:
+            best = value
+        best_values.append(best)
+
+        # Gradient step update for x
+        optimizer.zero_grad()
+        lagrange = lagrangian(alpha)
+        lagrange.backward()
+
+
+        # Log gradient norm and lr
+        grad_norm = alpha.grad.detach().norm().item()
+        grad_norms.append(grad_norm)
+
+        eta = optimizer.param_groups[0]['lr']
+        lr_sizes.append(eta)
+
+        # Randomize gradients
+        alpha.grad += noise_scale * torch.randn_like(alpha.grad)
+        optimizer.step()
+        scheduler.step()
+
+        # Detect stagnation
+        if len(recent_values) == history_len:
+            if abs(recent_values[0] - recent_values[-1]) < tol:
+                # Stuck -> increase gradient noise
+                noise_scale = min(noise_scale * 2, max_noise)
+            else:
+                # Progress -> decay back to base noise
+                noise_scale = max(noise_scale * decay_factor, base_noise)
+
+    _, w = o_maximization(alpha, lower, upper)
+    objective_value = -best
+
+    if plot:
+        plot_optimization_curves(values, best_values, grad_norms, lr_sizes)
+
+    return dict(
+        w_opt=w,
+        objective_opt=objective_value
+    )
+
+def black_box(
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor,
+        time_limit: int = 300,
+        **kwargs
+):
+    M = cost.shape[0]
+
+    # Create model
+    model = gp.Model("dual_transport")
+    model.setParam("NonConvex", 2)
+    model.setParam("TimeLimit", time_limit)
+
+    # Decision variables
+    alpha = model.addVars(M, lb=-GRB.INFINITY, name="alpha")
+    beta = model.addVars(M, lb=-GRB.INFINITY, name="beta")
+    w = model.addVars(M, lb=0.0, name="w")
+
+    # Bounds on w
+    for i in range(M):
+        w[i].lb = lower[i]
+        w[i].ub = upper[i]
+    model.addConstr(gp.quicksum(w[i] for i in range(M)) == 1, name="sum_w")
+
+    # Constraints
+    model.addConstrs((alpha[i] + beta[j] <= cost[i, j]
+                      for i in range(M) for j in range(M)), name="dual_constr")
+
+    model.addConstr(alpha[0] == 0, name="alpha_anchor")
+
+    # Objective
+    obj = gp.quicksum(alpha[i] * w[i] for i in range(M)) + gp.quicksum(beta[j] * empirical_marginal[j] for j in range(M))
+    model.setObjective(obj, GRB.MAXIMIZE)
+
+    # Solve
+    model.optimize()
+
+    print([alpha[i].X for i in range(M)])
+    print([beta[i].X for i in range(M)])
+
+    # Extract solution
+    if model.status == GRB.OPTIMAL  or model.status == GRB.SUBOPTIMAL or model.status == GRB.TIME_LIMIT:
+        w_opt = torch.tensor([w[i].X for i in range(M)])
+        objective_value = model.ObjVal
+        return dict(
+            w_opt=w_opt,
+            objective_opt=objective_value
+        )
+    else:
+        return None
 
 def max_min_lp(
         cost: torch.Tensor,
@@ -634,6 +857,22 @@ def max_min_lp(
         return result["objective_opt"]
     elif method == 'diagonal_constrained_tp':
         result = diagonal_constrained_tp(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal
+        )
+        return result["objective_opt"]
+    elif method == 'max_oracle_gradient_descent':
+        result = max_oracle_gradient_descent(
+            cost=cost,
+            lower=lower,
+            upper=upper,
+            empirical_marginal=empirical_marginal
+        )
+        return result["objective_opt"]
+    elif method == 'black_box':
+        result = black_box(
             cost=cost,
             lower=lower,
             upper=upper,

@@ -143,3 +143,33 @@ def colored_scatter(x, y, c, title, s: int = 200, file_name: Optional[str] = Non
         plt.close()
     else:
         plt.show()
+
+@torch.no_grad()
+def plot_optimization_curves(values, best_values, grad_norms, lr_sizes):
+
+    fig, axs = plt.subplots(4, 1, figsize=(8, 10), sharex=True)
+
+    axs[0].plot(values, label=r"$f(\alpha^{(t)})$")
+    axs[0].set_ylabel("Value")
+    axs[0].legend()
+    axs[0].set_ylim(-0.5, 0.0)
+
+    axs[1].plot(best_values, label=r"$f(\alpha^{(best)})$", color="green")
+    axs[1].set_ylabel("Best Value")
+    axs[1].legend()
+    axs[1].set_ylim(-0.5, 0.0)
+
+    axs[2].plot(grad_norms, label=r"$‖\nabla_{\alpha} f(\alpha)‖$", color="red")
+    axs[2].set_xlabel("Iteration")
+    axs[2].set_ylabel("Gradient Norm")
+    axs[2].legend()
+    axs[2].set_ylim(0.0, 0.5)
+
+    axs[3].plot(lr_sizes, label=r"$\eta^{(t)}$", color="blue")
+    axs[3].set_xlabel("Iteration")
+    axs[3].set_ylabel("Learning rate")
+    axs[3].legend()
+    axs[3].set_ylim(0.0, 0.5)
+
+    plt.tight_layout()
+    plt.show()

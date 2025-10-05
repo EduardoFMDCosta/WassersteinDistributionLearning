@@ -11,11 +11,11 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=3,
+        dimension=2,
         setting=0,
         num_samples_training=1000,
         num_samples=1000,
-        num_clusters=25,
+        num_clusters=30,
         beta=1e-4,
         plot=True
     )
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     M = args.num_clusters
     N = args.num_samples
     beta = args.beta
-    method = 'diagonal_constrained_tp'
+    method = 'max_oracle_gradient_descent'
     support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability

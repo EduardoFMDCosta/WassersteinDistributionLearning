@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from configs.construct import get_support_assumption, get_distribution
 from configs.handlers import parse_arguments
 from optimization import ot_lp_solver, get_omega_space_vertices, cutting_plane, full_search, plain_vanilla, \
-    diagonal_constrained_tp, max_oracle_gradient_descent
+    diagonal_constrained_tp, max_oracle_gradient_descent, black_box
 from plotting.plot import plot_quantization
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
@@ -21,11 +21,11 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=3,
+        dimension=2,
         setting=0,
         num_samples_training=1000,
         num_samples=1000,
-        num_clusters=8,
+        num_clusters=10,
         beta=1e-4,
         plot=False
     )
@@ -85,6 +85,14 @@ if __name__ == '__main__':
 
     print(f"Final w (Full search) = {result['w_opt']}")
     print(f"Value (Full search) = {result['objective_opt']} \n")
+
+    result = black_box(cost=cost,
+                       lower=lower,
+                       upper=upper,
+                       empirical_marginal=empirical_marginal)
+
+    print(f"Final w (Black box) = {result['w_opt']}")
+    print(f"Value (Black box) = {result['objective_opt']} \n")
 
     # result = plain_vanilla(cost=cost,
     #                        lower=lower,

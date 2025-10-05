@@ -805,9 +805,6 @@ def black_box(
     # Solve
     model.optimize()
 
-    print([alpha[i].X for i in range(M)])
-    print([beta[i].X for i in range(M)])
-
     # Extract solution
     if model.status == GRB.OPTIMAL  or model.status == GRB.SUBOPTIMAL or model.status == GRB.TIME_LIMIT:
         w_opt = torch.tensor([w[i].X for i in range(M)])

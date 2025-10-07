@@ -10,7 +10,7 @@ import itertools
 import numpy as np
 
 import cvxpy as cp
-from gurobipy import GRB
+from gurobipy import GRB, QuadExpr
 from scipy.optimize import linprog
 
 from plotting.plot import plot_optimization_curves
@@ -771,7 +771,7 @@ def black_box(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        time_limit: int = 300,
+        time_limit: int = 3000,
         **kwargs
 ):
     M = cost.shape[0]
@@ -799,7 +799,11 @@ def black_box(
     model.addConstr(alpha[0] == 0, name="alpha_anchor")
 
     # Objective
-    obj = gp.quicksum(alpha[i] * w[i] for i in range(M)) + gp.quicksum(beta[j] * empirical_marginal[j] for j in range(M))
+    obj = QuadExpr()
+    for i in range(M):
+        obj.addTerms(1.0, alpha[i], w[i])
+    for j in range(M):
+        obj.add(beta[j] * empirical_marginal[j])
     model.setObjective(obj, GRB.MAXIMIZE)
 
     # Solve

@@ -333,21 +333,19 @@ def cutting_plane(
     ot_solver: Callable
 ):
     M = cost.shape[0]
-    delta = 1e-2
+    delta = 1e-3
 
     objective_opt = -float("inf")
     w_opt = None
 
-
-    total_outer = M * 2
-    pbar = tqdm(total=total_outer, desc="Cutting Plane Outer Loop")
+    pbar = tqdm(total=num_steps, desc="Cutting Plane Outer Loop")
 
     for d in range(num_steps):
         msg = f"[CuttingPlane] iteration={d}"
         pbar.set_postfix_str(msg)
 
         # Initialize w
-        w = empirical_marginal.clone() + torch.randn_like(empirical_marginal) * delta
+        w = empirical_marginal.clone() + torch.rand_like(empirical_marginal) * delta
         w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
 
         for step in range(num_steps):

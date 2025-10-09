@@ -67,13 +67,13 @@ def fournier_radius(
         nsamples: int,
         beta: float
 ):
-    #See Lemma 2 in Gracia et at, 2024 (https://proceedings.mlr.press/v242/gracia24a/gracia24a.pdf)
-    support_diameter = support.width.max().item()
+    # See Proposition A.2. in Boissard and Le Gouic (2014)
+    support_euclidean_diameter = support.width.norm(p=2).item()
     log_inv_beta = math.log(1 / beta)
-    tau = (2 * support_diameter ** 4 * log_inv_beta / nsamples) ** 0.25
+    tau = support_euclidean_diameter * (2 * log_inv_beta / nsamples) ** 0.25
 
     # See Table 2 in Fournier, 2023 (https://www.esaim-ps.org/articles/ps/pdf/2023/01/ps220050.pdf)
-    if support_diameter == 1.0:
+    if isinstance(support, HyperRectangle): # for infinite norm ball
         if support.ndim == 1:
             moment_bound = 1.05 / (nsamples ** (1 / 4))
         elif support.ndim == 2:
@@ -92,6 +92,10 @@ def fournier_radius(
             moment_bound = 1.92 / (nsamples ** (1 / 8))
         elif support.ndim == 9:
             moment_bound = 1.87 / (nsamples ** (1 / 9))
+        elif support.ndim == 100:
+            moment_bound = 1.98 / (nsamples ** (1 / 100))
+        elif support.ndim == 500:
+            moment_bound = 2.00 / (nsamples ** (1 / 500))
         else:
             raise NotImplementedError
 

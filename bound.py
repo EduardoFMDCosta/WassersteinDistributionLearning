@@ -72,6 +72,23 @@ def fournier_radius(
     log_inv_beta = math.log(1 / beta)
     tau = support_euclidean_diameter * (2 * log_inv_beta / nsamples) ** 0.25
 
+    constants = {
+        5: 2.75,
+        6: 2.20,
+        7: 2.01,
+        8: 1.92,
+        9: 1.87,
+        10: 1.85, # for 10 <= d <= 75, we divide 3rd line of Table 4 by sqrt(d)
+        12: 1.83,
+        15: 1.84,
+        20: 1.87,
+        25: 1.89,
+        50: 1.95,
+        75: 1.96,
+        100: 1.98,
+        500: 2.00
+    }
+
     # See Table 2 in Fournier, 2023 (https://www.esaim-ps.org/articles/ps/pdf/2023/01/ps220050.pdf)
     if isinstance(support, HyperRectangle): # for infinite norm ball
         if support.ndim == 1:
@@ -82,22 +99,8 @@ def fournier_radius(
             moment_bound = 2.20 / (nsamples ** (1 / 4))
         elif support.ndim == 4:
             moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.26) / (nsamples ** (1 / 4))
-        elif support.ndim == 5:
-            moment_bound = 2.75 / (nsamples ** (1 / 5))
-        elif support.ndim == 6:
-            moment_bound = 2.20 / (nsamples ** (1 / 6))
-        elif support.ndim == 7:
-            moment_bound = 2.01 / (nsamples ** (1 / 7))
-        elif support.ndim == 8:
-            moment_bound = 1.92 / (nsamples ** (1 / 8))
-        elif support.ndim == 9:
-            moment_bound = 1.87 / (nsamples ** (1 / 9))
-        elif support.ndim == 100:
-            moment_bound = 1.98 / (nsamples ** (1 / 100))
-        elif support.ndim == 500:
-            moment_bound = 2.00 / (nsamples ** (1 / 500))
         else:
-            raise NotImplementedError
+            moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
 
         moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for 2-Wasserstein
 

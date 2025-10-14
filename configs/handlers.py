@@ -1,3 +1,4 @@
+from typing import Optional
 import json
 import argparse
 import os
@@ -14,23 +15,25 @@ def load_json(filename: str):
     return data
 
 
-def param_handler(param_name: str,
-                  dataset_name: str,
-                  dimension: int,
-                  setting_tag: int = None):
+def param_handler(
+    param_name: str,
+    dataset_name: str,
+    dimension: int,
+    setting_tag: Optional[int] = None
+):
     params = load_json(param_name)[dataset_name]
     return argparse.Namespace(**params["dimension"][str(dimension)]["settings"][str(setting_tag)])
 
 
 def parse_arguments(
-        distribution,
-        dimension,
-        setting,
-        num_samples_training,
-        num_samples,
-        num_clusters,
-        beta,
-        plot
+    distribution: str,
+    dimension: int,
+    setting: int,
+    num_clusters: int,
+    num_samples_training: int = 1000,
+    num_samples: int = 1000,
+    beta: float = 1e-4,
+    plot: bool = False
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
     parser.add_argument('--distribution',

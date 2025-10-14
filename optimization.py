@@ -1,9 +1,9 @@
+from dataclasses import dataclass
 import math
 import collections
 from typing import Callable, Tuple, Optional
 
 import torch
-import ot
 from tqdm import tqdm
 import warnings
 import itertools
@@ -26,7 +26,7 @@ def o_maximization(
     lower: torch.Tensor,
     upper: torch.Tensor, 
     tol: float = 1e-6
-):
+) -> Tuple[torch.Tensor, torch.Tensor]:
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
     order = torch.argsort(-cost)
     p = lower.clone()
@@ -49,13 +49,24 @@ def o_maximization(
     result = torch.einsum('i,i->', cost, p)
     return result, p
 
+
+#### -- MAX MIN LP  Methods ----------------------------------------------------------------------------------------- ##
+@dataclass
+class Result:
+    w_opt: Optional[torch.Tensor]
+    objective_opt: float
+    alpha: Optional[torch.Tensor] = None
+    beta: Optional[torch.Tensor] = None
+
+
+## -- Full Search & Cutting Plane methods --------------------------------------------------------------------------- ##
 def project_to_omega_subspace(
     w: torch.Tensor,
     lower: torch.Tensor,
     upper: torch.Tensor,
     tol: float = 1e-8,
     max_iter: int = 1000
-):
+) -> torch.Tensor:
     """Project a vector onto the capped probability simplex.
 
     Solve:  minimize ||y - w||_2  subject to  lower <= y <= upper (elementwise), sum(y)=1.
@@ -144,7 +155,7 @@ def ot_lp_solver(
     empirical_distribution: torch.Tensor,
     method: str = "highs",
     tol: float = 1e-8
-):
+) -> Tuple[torch.Tensor, torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
     n = cost.shape[0]
 
     # Move to CPU/NumPy for the solver
@@ -195,7 +206,7 @@ def ot_lp_solver(
 
     # Convert back to torch on original device/dtype
     T = torch.tensor(T_np)
-    obj = float((cost * T).sum().item())
+    obj = (cost * T).sum()
 
     # Try to return dual potentials (u for rows, v for cols) if provided
     u = v = None
@@ -208,47 +219,6 @@ def ot_lp_solver(
         pass
 
     return T, obj, (u, v) if (u is not None and v is not None) else None
-
-def ot_sinkhorn_solver(
-    cost: torch.Tensor,
-    w: torch.Tensor,
-    empirical_distribution: torch.Tensor,
-    epsilon: float = 1e-3,
-    max_iter: int = 1000,
-    tol: float = 1e-5,
-    method: str = 'sinkhorn_stabilized'
-) -> Tuple[torch.Tensor, float, Tuple[torch.Tensor, torch.Tensor]]:
-    """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
-
-    Returns transport plan T, objective = (-cost * T).sum() for consistency
-    with solve_lin_prog, and dual-like potentials (alpha, beta) derived from
-    scaling vectors. Alpha/beta are epsilon * log(u/v) and defined up to an
-    additive constant.
-    """
-    assert method in ['sinkhorn_stabilized', 'sinkhorn_log']
-    assert cost.dim() == 2 and cost.shape[0] == cost.shape[1], "cost must be square"
-    n = cost.shape[0]
-    assert w.shape == (n,) and empirical_distribution.shape == (n,), "marginals must match cost dimension"
-
-    C_np = cost.detach().cpu().double().numpy()
-    a_np = w.detach().cpu().double().numpy()
-    b_np = empirical_distribution.detach().cpu().double().numpy()
-
-    # Stabilized log-domain sinkhorn
-    T_np, log = ot.sinkhorn(a_np, b_np, C_np, reg=epsilon, numItermax=max_iter, stopThr=tol, method=method, log=True)
-
-    T = torch.from_numpy(T_np).to(device=cost.device, dtype=cost.dtype)
-    logu = torch.from_numpy(log[f"log{'_' if 'log' in method else ''}u"]).to(cost.device, cost.dtype)
-    logv = torch.from_numpy(log[f"log{'_' if 'log' in method else ''}v"]).to(cost.device, cost.dtype)
-
-    alpha = epsilon * logu
-    beta = epsilon * logv
-
-    objective = float((cost * T).sum().item())
-
-    # assert not alpha.isinf().any() and not alpha.isnan().any() and not beta.isinf().any() and not beta.isnan().any()
-
-    return T, objective, (alpha, beta)
 
 def get_vertices(
     lower: torch.Tensor,
@@ -301,28 +271,21 @@ def full_search(
     lower: torch.Tensor,
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor,
-    ot_solver: Callable
-):
-    # Store quantities of interest
-    result = {}
-
+) -> Result:
     vertices = get_omega_space_vertices(lower=lower, upper=upper)
 
     objective_opt = -float("inf")
     w_opt = None
 
     for w in vertices:
-        Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+        Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
 
         # Update highest objective
         if objective_opt < objective:
             objective_opt = objective
             w_opt = w
 
-    result["w_opt"] = w_opt
-    result["objective_opt"] = objective_opt
-    return result
-
+    return Result(w_opt=w_opt, objective_opt=objective_opt)
 
 def cutting_plane(
     cost: torch.Tensor,
@@ -330,8 +293,7 @@ def cutting_plane(
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor,
     num_steps: int,
-    ot_solver: Callable
-):
+) -> Result:
     M = cost.shape[0]
     delta = 1e-3
 
@@ -350,7 +312,7 @@ def cutting_plane(
 
         for step in range(num_steps):
             # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
-            Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+            Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
             alpha, beta = duals
 
             alpha = alpha.float()
@@ -379,19 +341,20 @@ def cutting_plane(
 
     pbar.close()
 
-    return dict(
+    return Result(
         w_opt=w_opt,
         objective_opt=objective_opt,
         alpha=alpha,
         beta=beta
     )
 
+## -- Plain Vanilla ------------------------------------------------------------------------------------------------- ##
 def plain_vanilla(
     cost: torch.Tensor,
     lower: torch.Tensor,
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor
-):
+) -> Result:
     # See Corollary 6.2 in
 
     upper_diff = upper - empirical_marginal
@@ -400,10 +363,12 @@ def plain_vanilla(
     max_prob_diff = torch.max(upper_diff, lower_diff)
     max_dist, _ = torch.max(cost, dim=1)
 
-    return dict(
+    return Result(
         w_opt=None, 
         objective_opt=torch.einsum('i,i->', max_dist, max_prob_diff)
     )
+
+## -- Plain Vanilla ------------------------------------------------------------------------------------------------- ##
 
 def lp_maximization(
     cost: torch.Tensor,
@@ -443,7 +408,8 @@ def solve_milp_min_diagonal_cvxpy(
     cost: torch.Tensor, 
     empirical_distribution: torch.Tensor, 
     lower: torch.Tensor, 
-    upper: torch.Tensor
+    upper: torch.Tensor,
+    **kwargs
 ):
     n = len(empirical_distribution)
 
@@ -567,18 +533,6 @@ def solve_milp_min_diagonal_gurobi(
     w_sol = torch.tensor(w_sol_np, device=device, dtype=dtype)
 
     return obj_val, w_sol
-
-def solve_milp_min_diagonal(
-    cost: torch.Tensor, 
-    empirical_distribution: torch.Tensor, 
-    lower: torch.Tensor, 
-    upper: torch.Tensor, 
-    **kwargs
-):
-    if gp is None:
-        return solve_milp_min_diagonal_cvxpy(cost, empirical_distribution, lower, upper)
-    else:
-        return solve_milp_min_diagonal_gurobi(cost, empirical_distribution, lower, upper, **kwargs)
     
 
 def diagonal_constrained_tp(
@@ -587,50 +541,20 @@ def diagonal_constrained_tp(
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor, 
         **kwargs
-):
+) -> Result:
     # See Section 6.1. in
 
-    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
+    if gp is None:
+        objective, w = solve_milp_min_diagonal_cvxpy(cost, empirical_marginal, lower, upper)
+    else:
+        objective, w = solve_milp_min_diagonal_gurobi(cost, empirical_marginal, lower, upper, **kwargs)
 
-    return dict(
+    return Result(
         w_opt=w,
         objective_opt=objective
     )
 
-def anchor(alpha, beta):
-    return alpha + beta[0], beta - beta[0]
-
-def project_alpha_beta(alpha0, beta0, C, verbose=False):
-    alpha0 = np.asarray(alpha0)
-    beta0 = np.asarray(beta0)
-    C = np.asarray(C)
-
-    n, m = C.shape
-    assert alpha0.shape == (n,)
-    assert beta0.shape == (m,)
-
-    # Variables
-    alpha = cp.Variable(n)
-    beta = cp.Variable(m)
-
-    # Objective: minimize squared distance
-    obj = 0.5 * cp.sum_squares(alpha - alpha0) + 0.5 * cp.sum_squares(beta - beta0)
-
-    # Constraints: alpha_i + beta_j <= C_ij for all (i,j)
-    constraints = [alpha[i] + beta[j] <= C[i, j] for i in range(n) for j in range(m)]
-
-    # Problem
-    prob = cp.Problem(cp.Minimize(obj), constraints)
-    prob.solve(solver=cp.GUROBI, verbose=verbose)
-
-    if prob.status not in ["optimal", "optimal_inaccurate"]:
-        raise ValueError(f"Projection failed, solver status: {prob.status}")
-
-    alpha = torch.tensor(alpha.value, dtype=torch.float32)
-    beta = torch.tensor(beta.value, dtype=torch.float32)
-
-    return alpha, beta
-
+## -- Max Oracle Gradient Descent ----------------------------------------------------------------------------------- ##
 def inner_lp_maximization(
     alpha: torch.Tensor,
     lower: torch.Tensor,
@@ -669,7 +593,7 @@ def max_oracle_gradient_descent(
         tol: float = 1e-3,
         plot: bool = False,
         **kwargs
-):
+) -> Result:
 
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
@@ -743,7 +667,7 @@ def max_oracle_gradient_descent(
     if plot:
         plot_optimization_curves(values, best_values, grad_norms, lr_sizes)
 
-    return dict(
+    return Result(
         w_opt=w,
         objective_opt=objective_value
     )
@@ -755,7 +679,7 @@ def black_box(
         empirical_marginal: torch.Tensor,
         time_limit: int = 60,
         **kwargs
-):
+) -> Result:
     M = cost.shape[0]
 
     # Create model
@@ -795,7 +719,7 @@ def black_box(
     if model.status == GRB.OPTIMAL  or model.status == GRB.SUBOPTIMAL or model.status == GRB.TIME_LIMIT:
         w_opt = torch.tensor([w[i].X for i in range(M)])
         objective_value = model.ObjVal
-        return dict(
+        return Result(
             w_opt=w_opt,
             objective_opt=objective_value
         )
@@ -810,16 +734,14 @@ def max_min_lp(
         method: str,
         num_steps=1000,
         lr=1e-3
-):
+) -> torch.Tensor:
     if method == 'full_search':
         result = full_search(
             cost=cost,
             lower=lower,
             upper=upper,
             empirical_marginal=empirical_marginal,
-            ot_solver=ot_lp_solver
         )
-        return result["objective_opt"]
     elif method == 'cutting_plane':
         result = cutting_plane(
             cost=cost,
@@ -827,9 +749,7 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal,
             num_steps=num_steps,
-            ot_solver=ot_lp_solver
         )
-        return result["objective_opt"]
     elif method == 'plain_vanilla':
         result = plain_vanilla(
             cost=cost,
@@ -837,7 +757,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     elif method == 'diagonal_constrained_tp':
         result = diagonal_constrained_tp(
             cost=cost,
@@ -845,7 +764,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     elif method == 'max_oracle_gradient_descent':
         result = max_oracle_gradient_descent(
             cost=cost,
@@ -853,7 +771,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     elif method == 'black_box':
         result = black_box(
             cost=cost,
@@ -861,6 +778,7 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     else:
         raise ValueError('Unknown optimization method.')
+
+    return torch.as_tensor(result.objective_opt)

@@ -15,9 +15,10 @@ if __name__ == '__main__':
         distribution="Gaussian",
         dimension=2,
         setting=0,
+        num_samples_training=1000,
         num_samples=1000,
         num_clusters=10,
-        beta=1e-4,
+        beta=1e-6,
         plot=False
     )
 

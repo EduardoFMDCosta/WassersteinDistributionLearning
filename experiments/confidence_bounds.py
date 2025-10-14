@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     # Parameters
     beta = 1e-4
-    nums_samples = [10, 50, 100]
+    nums_samples = [10, 50, 100, 1000, 5000, 10000]
 
     # Replicate experiment from Figure 5 in Badings et al., 2025 (https://dl.acm.org/doi/pdf/10.1613/jair.1.14253)
     support = HyperRectangle(lower=torch.tensor([-4.0]), upper=torch.tensor([4.0]))

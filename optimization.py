@@ -556,40 +556,7 @@ def diagonal_constrained_tp(
         objective_opt=objective
     )
 
-def anchor(alpha, beta):
-    return alpha + beta[0], beta - beta[0]
-
-def project_alpha_beta(alpha0, beta0, C, verbose=False):
-    alpha0 = np.asarray(alpha0)
-    beta0 = np.asarray(beta0)
-    C = np.asarray(C)
-
-    n, m = C.shape
-    assert alpha0.shape == (n,)
-    assert beta0.shape == (m,)
-
-    # Variables
-    alpha = cp.Variable(n)
-    beta = cp.Variable(m)
-
-    # Objective: minimize squared distance
-    obj = 0.5 * cp.sum_squares(alpha - alpha0) + 0.5 * cp.sum_squares(beta - beta0)
-
-    # Constraints: alpha_i + beta_j <= C_ij for all (i,j)
-    constraints = [alpha[i] + beta[j] <= C[i, j] for i in range(n) for j in range(m)]
-
-    # Problem
-    prob = cp.Problem(cp.Minimize(obj), constraints)
-    prob.solve(solver=cp.GUROBI, verbose=verbose)
-
-    if prob.status not in ["optimal", "optimal_inaccurate"]:
-        raise ValueError(f"Projection failed, solver status: {prob.status}")
-
-    alpha = torch.tensor(alpha.value, dtype=torch.float32)
-    beta = torch.tensor(beta.value, dtype=torch.float32)
-
-    return alpha, beta
-
+## -- Max Oracle Gradient Descent ----------------------------------------------------------------------------------- ##
 def inner_lp_maximization(
     alpha: torch.Tensor,
     lower: torch.Tensor,

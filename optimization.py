@@ -665,9 +665,9 @@ def max_oracle_gradient_descent(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        num_steps: int = 5000,
+        num_steps: int = 1000,
         tol: float = 1e-3,
-        plot: bool = True,
+        plot: bool = False,
         **kwargs
 ):
 
@@ -694,12 +694,6 @@ def max_oracle_gradient_descent(
     best_values = []
     grad_norms = []
     lr_sizes = []
-
-    # Gradient noise settings
-    base_noise = 0.0
-    max_noise = 0.0 * math.sqrt(M)
-    noise_scale = base_noise
-    decay_factor = 0.95
 
     for step in tqdm(range(num_steps)):
 
@@ -740,18 +734,8 @@ def max_oracle_gradient_descent(
         lr_sizes.append(eta)
 
         # Randomize gradients
-        alpha.grad += noise_scale * torch.randn_like(alpha.grad)
         optimizer.step()
         scheduler.step()
-
-        # Detect stagnation
-        if len(recent_values) == history_len:
-            if abs(recent_values[0] - recent_values[-1]) < tol:
-                # Stuck -> increase gradient noise
-                noise_scale = min(noise_scale * 2, max_noise)
-            else:
-                # Progress -> decay back to base noise
-                noise_scale = max(noise_scale * decay_factor, base_noise)
 
     _, w = o_maximization(alpha, lower, upper)
     objective_value = -best
@@ -769,7 +753,7 @@ def black_box(
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-        time_limit: int = 3000,
+        time_limit: int = 60,
         **kwargs
 ):
     M = cost.shape[0]

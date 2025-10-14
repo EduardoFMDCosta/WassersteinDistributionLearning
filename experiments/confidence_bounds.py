@@ -1,12 +1,13 @@
 import torch
 from sets import HyperRectangle
 from distributions import MultivariateUniform
-from plotting.plot import plot_confidence
+from plotting.plot import plot_confidence, plot_confidence_delta
 from confidence import DuchiConfidence, HoeffdingConfidence, ClopperPearsonConfidence
 
 if __name__ == '__main__':
     torch.manual_seed(0)
 
+    ### Experiment 1: Compare Hoeffding, Duchi and Clopper-Pearson probability bounds
     # Store structures
     hoeff, duchi, pearson = [], [], []
     empirical = []
@@ -39,3 +40,29 @@ if __name__ == '__main__':
         pearson.append(pearson_confidence)
 
     plot_confidence(nums_samples, empirical, hoeff, duchi, pearson, actual_region_prob)
+
+
+    ### Experiment 2: Compare Clopper-Pearson's upperbound for diminishing confidence
+    # Store structures
+    empiricals, adjusted_betas, upper_deltas, upper_probs = [], [], [], []
+
+    # Parameters
+    num_samples = 10000
+    beta = 1e-8
+    nums_clusters = list(range(3, num_samples + 1))
+
+    for num_clusters in nums_clusters:
+        adjusted_beta = beta / num_clusters
+
+        n_set = torch.tensor(num_samples / num_clusters)
+        empirical = n_set / num_samples
+        empiricals.append(empirical)
+
+        pearson_confidence = ClopperPearsonConfidence(beta=adjusted_beta, n_set=n_set, n=num_samples)
+
+        # Store
+        adjusted_betas.append(adjusted_beta)
+        upper_deltas.append(pearson_confidence.upper_proba - empirical)
+        upper_probs.append(pearson_confidence.upper_proba.item())
+
+    plot_confidence_delta(adjusted_betas, empiricals, upper_deltas)

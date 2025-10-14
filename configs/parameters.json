@@ -4,14 +4,12 @@
           "2": {
               "settings": {
                   "0": {
-                      "support_assumption": [[-0.5, -0.5],
-                                             [0.5, 0.5]],
+                      "support_linf_radius_assumed": -0.5,
                       "support": [[-0.15, -0.15],
                                   [0.15, 0.15]]
                   },
                   "1": {
-                        "support_assumption": [[-0.5, -0.5],
-                                               [0.5, 0.5]],
+                        "support_linf_radius_assumed": -0.5,
                         "support": [[-0.05, -0.05],
                                     [0.05, 0.05]]
                   }
@@ -20,8 +18,7 @@
           "3": {
               "settings": {
                   "0": {
-                      "support_assumption": [[-0.5, -0.5, -0.5],
-                                             [0.5, 0.5, 0.5]],
+                      "support_linf_radius_assumed": -0.5,
                       "support": [[-0.15, -0.15, -0.15],
                                   [0.15, 0.15, 0.15]]
                   }
@@ -30,8 +27,7 @@
           "4": {
               "settings": {
                   "0": {
-                      "support_assumption": [[-0.5, -0.5, -0.5, -0.5],
-                                             [0.5, 0.5, 0.5, 0.5]],
+                      "support_linf_radius_assumed": -0.5,
                       "support": [[-0.15, -0.15, -0.15, -0.15],
                                   [0.15, 0.15, 0.15, 0.15]]
                   }
@@ -108,8 +104,7 @@
           "2": {
               "settings": {
                   "0": {
-                      "support_assumption": [[-0.5, -0.5],
-                                             [0.5, 0.5]],
+                      "support_linf_radius_assumed": -0.5,
                       "support_size": 40
                   }
               }

@@ -5,13 +5,13 @@ from sets import HyperRectangle
 
 
 def get_support_assumption(
-    dimension: int,
+    num_dims: int,
     support: Optional[List[List[float]]] = None, 
     support_linf_radius_assumed: Optional[float] = None, 
     **kwargs
 ):
     if support_linf_radius_assumed is not None:
-        return HyperRectangle.from_eps(x=torch.zeros(dimension), eps=support_linf_radius_assumed)
+        return HyperRectangle.from_eps(x=torch.zeros(num_dims), eps=support_linf_radius_assumed)
     elif support is not None:
         return HyperRectangle(lower=torch.as_tensor(support[0]), upper=torch.as_tensor(support[1]))
     else:
@@ -43,12 +43,12 @@ def construct_mixture_trunc_mult_norm(weight, mean, variance, support, **kwargs)
 def construct_random_categorical_float(
     support_linf_radius_assumed: float, 
     support_size: int, 
-    dimension: int,
+    num_dims: int,
     **kwargs
 ):
     return CategoricalFloat(
         probs=torch.ones(support_size) / support_size, 
-        locs=(torch.rand(support_size, dimension) * 2 - 1) - support_linf_radius_assumed
+        locs=(torch.rand(support_size, num_dims) * 2 - 1) - support_linf_radius_assumed
     )
 
 

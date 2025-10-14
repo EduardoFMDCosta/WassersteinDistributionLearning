@@ -18,16 +18,16 @@ def load_json(filename: str):
 def param_handler(
     param_name: str,
     dataset_name: str,
-    dimension: int,
+    num_dims: int,
     setting_tag: Optional[int] = None
 ):
     params = load_json(param_name)[dataset_name]
-    return argparse.Namespace(**params["dimension"][str(dimension)]["settings"][str(setting_tag)])
+    return argparse.Namespace(**params["num_dims"][str(num_dims)]["settings"][str(setting_tag)])
 
 
 def parse_arguments(
     distribution: str,
-    dimension: int,
+    num_dims: int,
     setting: int,
     num_clusters: int,
     num_samples_training: int = 1000,
@@ -40,9 +40,9 @@ def parse_arguments(
                         type=str,
                         default=distribution,
                         help='Distribution to generate samples.')
-    parser.add_argument('--dimension',
+    parser.add_argument('--num_dims',
                         type=int,
-                        default=dimension,
+                        default=num_dims,
                         help='Dimension of the problem.')
     parser.add_argument('--setting',
                         type=int,
@@ -74,7 +74,7 @@ def parse_arguments(
     dynamics_params = param_handler(
         param_name="parameters",
         dataset_name=args.distribution,
-        dimension=args.dimension,
+        num_dims=args.num_dims,
         setting_tag=args.setting
     )
 

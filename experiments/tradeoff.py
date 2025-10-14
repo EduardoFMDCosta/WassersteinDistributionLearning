@@ -11,10 +11,10 @@ from configs.handlers import parse_arguments
 from configs.construct import get_support_assumption, get_distribution
 
 
-def estimate_memory_usage(N, M, dimension=2):
+def estimate_memory_usage(N, M, num_dims=2):
     """Estimate memory usage for given N, M parameters"""
-    # Samples tensor: N x dimension
-    samples_memory = N * dimension * 8 / (1024 * 1024)  # 8 bytes for float64
+    # Samples tensor: N x num_dims
+    samples_memory = N * num_dims * 8 / (1024 * 1024)  # 8 bytes for float64
     
     # Distance matrix for K-means: N x M (potentially)
     distance_matrix_memory = N * M * 8 / (1024 * 1024)
@@ -25,24 +25,24 @@ def estimate_memory_usage(N, M, dimension=2):
     total_estimated_mb = samples_memory + distance_matrix_memory + assignments_memory
     return total_estimated_mb
 
-def estimate_kmeans_complexity(N, k, dimension=2, max_iterations=100):
+def estimate_kmeans_complexity(N, k, num_dims=2, max_iterations=100):
     """Estimate computational complexity of K-means"""
     # K-means complexity is roughly O(n * k * d * iterations)
-    # where n=samples, k=clusters, d=dimensions, iterations=convergence steps
-    operations = N * k * dimension * max_iterations
+    # where n=samples, k=clusters, d=num_dimss, iterations=convergence steps
+    operations = N * k * num_dims * max_iterations
     return operations
 
-def assess_kmeans_feasibility(N, k, dimension=2, max_memory_mb=2000, max_operations=1e9):
+def assess_kmeans_feasibility(N, k, num_dims=2, max_memory_mb=2000, max_operations=1e9):
     """Pre-assess if K-means is likely to be feasible"""
     reasons = []
     
     # Memory check
-    memory_mb = estimate_memory_usage(N, k, dimension)
+    memory_mb = estimate_memory_usage(N, k, num_dims)
     if memory_mb > max_memory_mb:
         reasons.append(f"Memory: {memory_mb:.1f}MB > {max_memory_mb}MB limit")
     
     # Computational complexity check
-    operations = estimate_kmeans_complexity(N, k, dimension)
+    operations = estimate_kmeans_complexity(N, k, num_dims)
     if operations > max_operations:
         reasons.append(f"Complexity: {operations:.1e} > {max_operations:.1e} operations")
 
@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="GaussianMixture",
-        dimension=2,
+        num_dims=2,
         setting=0,
         num_samples=None,
         num_clusters=None,
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         for M in M_options:
             # Pre-assess K-means feasibility
             is_feasible, reasons, stats = assess_kmeans_feasibility(
-                N=N, k=M, dimension=2, 
+                N=N, k=M, num_dims=2, 
                 max_memory_mb=MAX_MEMORY_MB, 
                 max_operations=1e9
             )

@@ -1,6 +1,6 @@
 {
   "Uniform": {
-      "dimension": {
+      "num_dims": {
           "2": {
               "settings": {
                   "0": {
@@ -36,7 +36,7 @@
       }
   },
   "Gaussian": {
-      "dimension": {
+      "num_dims": {
           "2": {
               "settings": {
                   "0": {
@@ -70,7 +70,7 @@
       }
   },
   "GaussianMixture": {
-      "dimension": {
+      "num_dims": {
           "2": {
               "settings": {
                   "0": {
@@ -100,7 +100,7 @@
       }
   }, 
   "Discrete": {
-      "dimension": {
+      "num_dims": {
           "2": {
               "settings": {
                   "0": {

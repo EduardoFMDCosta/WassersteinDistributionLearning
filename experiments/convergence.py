@@ -1,59 +1,12 @@
-from typing import Optional
 import torch
-import os
 
-from sets import BoundedVoronoiPartition
-from quantization import UncertainQuantization
-from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius
-from experiments.utils import DataDrivenRadii, FournierRadii, Quantizations
+from experiments.utils import run_combinations
 
-from configs.construct import get_support_assumption, get_distribution
 from configs.handlers import parse_arguments
 
 import matplotlib.pyplot as plt
 import plotting.plot as plot
-
-
-def run_combinations(args, M_options, N_options):
-    distribution = get_distribution(**vars(args))
-    support_assumption = get_support_assumption(**vars(args))
-    
-    quantizations, data_driven_radii, fournier_radii = Quantizations(), DataDrivenRadii(), FournierRadii()
-    for N in N_options:
-        samples_partition = distribution.sample((N,))
-        samples_quantization = distribution.sample((N,))
-
-        for M in M_options:
-            print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
-            
-            partition = BoundedVoronoiPartition(
-                support=support_assumption, 
-                samples=samples_partition, 
-                M=M
-            )
-            quantizations.append((N, M),  UncertainQuantization(
-                partition=partition, 
-                samples=samples_quantization, 
-                beta=args.beta
-            ))
-
-            if args.plot:
-                plot_quantization(quantization=quantizations.at((N, M)))
-
-            data_driven_radii.append((N, M), DataDrivenRadius(
-                quantization=quantizations.at((N, M)),
-                method=args.method, 
-                compute_moment_bound=args.compute_moment_bound, 
-                compute_discrete_bound=args.compute_discrete_bound
-            ))
-            fournier_radii.append((N, M), compute_fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
-
-            if args.plot:
-                plot_quantization(quantization=quantizations.at((N,M)))
-
-    return quantizations, data_driven_radii, fournier_radii
 
 
 if __name__ == '__main__':

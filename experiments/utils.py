@@ -2,9 +2,14 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 import torch
 
-from bound import DataDrivenRadius
 from quantization import UncertainQuantization
+from sets import BoundedVoronoiPartition
+from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius
 
+from configs.construct import get_support_assumption, get_distribution
+
+
+## -- Data Structure ------------------------------------------------------------------------------------------------ ##
 
 T = TypeVar("T")
 
@@ -122,3 +127,39 @@ class Quantizations(_GridDict[UncertainQuantization]):
     @property
     def std_distances_locs(self):
         return self._std_stack('distance_locs')
+    
+
+## -- Experiment Function -------------------------------------------------------------------------------------------- ##
+
+def run_combinations(args, M_options, N_options):
+    distribution = get_distribution(**vars(args))
+    support_assumption = get_support_assumption(**vars(args))
+    
+    quantizations, data_driven_radii, fournier_radii = Quantizations(), DataDrivenRadii(), FournierRadii()
+    for N in N_options:
+        samples_partition = distribution.sample((N,))
+        samples_quantization = distribution.sample((N,))
+
+        for M in M_options:
+            print(f"Number of clusters (M) / num_samples (N): {M} / {N}")
+            
+            partition = BoundedVoronoiPartition(
+                support=support_assumption, 
+                samples=samples_partition, 
+                M=M
+            )
+            quantizations.append((N, M),  UncertainQuantization(
+                partition=partition, 
+                samples=samples_quantization, 
+                beta=args.beta
+            ))
+
+            data_driven_radii.append((N, M), DataDrivenRadius(
+                quantization=quantizations.at((N, M)),
+                method=args.method, 
+                compute_moment_bound=args.compute_moment_bound, 
+                compute_discrete_bound=args.compute_discrete_bound
+            ))
+            fournier_radii.append((N, M), compute_fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
+
+    return quantizations, data_driven_radii, fournier_radii

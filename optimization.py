@@ -402,7 +402,8 @@ def solve_milp_min_diagonal_cvxpy(
     cost: torch.Tensor, 
     empirical_distribution: torch.Tensor, 
     lower: torch.Tensor, 
-    upper: torch.Tensor
+    upper: torch.Tensor,
+    **kwargs
 ):
     n = len(empirical_distribution)
 
@@ -526,18 +527,6 @@ def solve_milp_min_diagonal_gurobi(
     w_sol = torch.tensor(w_sol_np, device=device, dtype=dtype)
 
     return obj_val, w_sol
-
-def solve_milp_min_diagonal(
-    cost: torch.Tensor, 
-    empirical_distribution: torch.Tensor, 
-    lower: torch.Tensor, 
-    upper: torch.Tensor, 
-    **kwargs
-):
-    if gp is None:
-        return solve_milp_min_diagonal_cvxpy(cost, empirical_distribution, lower, upper)
-    else:
-        return solve_milp_min_diagonal_gurobi(cost, empirical_distribution, lower, upper, **kwargs)
     
 
 def diagonal_constrained_tp(
@@ -549,7 +538,10 @@ def diagonal_constrained_tp(
 ) -> Result:
     # See Section 6.1. in
 
-    objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
+    if gp is None:
+        objective, w = solve_milp_min_diagonal_cvxpy(cost, empirical_marginal, lower, upper)
+    else:
+        objective, w = solve_milp_min_diagonal_gurobi(cost, empirical_marginal, lower, upper, **kwargs)
 
     return Result(
         w_opt=w,

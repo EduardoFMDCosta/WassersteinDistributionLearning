@@ -4,7 +4,6 @@ import collections
 from typing import Callable, Tuple, Optional
 
 import torch
-import ot
 from tqdm import tqdm
 import warnings
 import itertools
@@ -217,46 +216,6 @@ def ot_lp_solver(
 
     return T, obj, (u, v) if (u is not None and v is not None) else None
 
-def ot_sinkhorn_solver(
-    cost: torch.Tensor,
-    w: torch.Tensor,
-    empirical_distribution: torch.Tensor,
-    epsilon: float = 1e-3,
-    max_iter: int = 1000,
-    tol: float = 1e-5,
-    method: str = 'sinkhorn_stabilized'
-) -> Tuple[torch.Tensor, torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-    """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
-
-    Returns transport plan T, objective = (-cost * T).sum() for consistency
-    with solve_lin_prog, and dual-like potentials (alpha, beta) derived from
-    scaling vectors. Alpha/beta are epsilon * log(u/v) and defined up to an
-    additive constant.
-    """
-    assert method in ['sinkhorn_stabilized', 'sinkhorn_log']
-    assert cost.dim() == 2 and cost.shape[0] == cost.shape[1], "cost must be square"
-    n = cost.shape[0]
-    assert w.shape == (n,) and empirical_distribution.shape == (n,), "marginals must match cost dimension"
-
-    C_np = cost.detach().cpu().double().numpy()
-    a_np = w.detach().cpu().double().numpy()
-    b_np = empirical_distribution.detach().cpu().double().numpy()
-
-    # Stabilized log-domain sinkhorn
-    T_np, log = ot.sinkhorn(a_np, b_np, C_np, reg=epsilon, numItermax=max_iter, stopThr=tol, method=method, log=True)
-
-    T = torch.from_numpy(T_np).to(device=cost.device, dtype=cost.dtype)
-    logu = torch.from_numpy(log[f"log{'_' if 'log' in method else ''}u"]).to(cost.device, cost.dtype)
-    logv = torch.from_numpy(log[f"log{'_' if 'log' in method else ''}v"]).to(cost.device, cost.dtype)
-
-    alpha = epsilon * logu
-    beta = epsilon * logv
-
-    objective = (cost * T).sum()
-
-    # assert not alpha.isinf().any() and not alpha.isnan().any() and not beta.isinf().any() and not beta.isnan().any()
-
-    return T, objective, (alpha, beta)
 
 def get_vertices(
     lower: torch.Tensor,
@@ -309,7 +268,6 @@ def full_search(
     lower: torch.Tensor,
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor,
-    ot_solver: Callable
 ) -> Result:
     vertices = get_omega_space_vertices(lower=lower, upper=upper)
 
@@ -317,7 +275,7 @@ def full_search(
     w_opt = None
 
     for w in vertices:
-        Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+        Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
 
         # Update highest objective
         if objective_opt < objective:
@@ -332,7 +290,6 @@ def cutting_plane(
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor,
     num_steps: int,
-    ot_solver: Callable
 ) -> Result:
     M = cost.shape[0]
     delta = 1e-3
@@ -352,7 +309,7 @@ def cutting_plane(
 
         for step in range(num_steps):
             # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
-            Pi, objective, duals = ot_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+            Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
             alpha, beta = duals
 
             alpha = alpha.float()
@@ -835,7 +792,6 @@ def max_min_lp(
             lower=lower,
             upper=upper,
             empirical_marginal=empirical_marginal,
-            ot_solver=ot_lp_solver
         )
     elif method == 'cutting_plane':
         result = cutting_plane(
@@ -844,7 +800,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal,
             num_steps=num_steps,
-            ot_solver=ot_lp_solver
         )
     elif method == 'plain_vanilla':
         result = plain_vanilla(

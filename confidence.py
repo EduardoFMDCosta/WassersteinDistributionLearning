@@ -2,7 +2,7 @@ import math
 import torch
 from scipy.stats import beta as scipy_beta
 
-class Confidence: # TODO make confidence a method of quantization?
+class Confidence:
     def __init__(self, beta: float, n_set: torch.Tensor, n: int):
         assert 0.0 < beta < 1.0
         assert torch.all((n_set >= 0) & (n_set <= n))

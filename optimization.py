@@ -20,13 +20,6 @@ try:
 except:
     gp = None
 
-@dataclass
-class Result:
-    w_opt: Optional[torch.Tensor]
-    objective_opt: float
-    alpha: Optional[torch.Tensor] = None
-    beta: Optional[torch.Tensor] = None
-
 
 def o_maximization(
     cost: torch.Tensor,
@@ -56,6 +49,17 @@ def o_maximization(
     result = torch.einsum('i,i->', cost, p)
     return result, p
 
+
+#### -- MAX MIN LP  Methods ----------------------------------------------------------------------------------------- ##
+@dataclass
+class Result:
+    w_opt: Optional[torch.Tensor]
+    objective_opt: float
+    alpha: Optional[torch.Tensor] = None
+    beta: Optional[torch.Tensor] = None
+
+
+## -- Full Search & Cutting Plane methods --------------------------------------------------------------------------- ##
 def project_to_omega_subspace(
     w: torch.Tensor,
     lower: torch.Tensor,
@@ -216,7 +220,6 @@ def ot_lp_solver(
 
     return T, obj, (u, v) if (u is not None and v is not None) else None
 
-
 def get_vertices(
     lower: torch.Tensor,
     upper: torch.Tensor,
@@ -345,6 +348,7 @@ def cutting_plane(
         beta=beta
     )
 
+## -- Plain Vanilla ------------------------------------------------------------------------------------------------- ##
 def plain_vanilla(
     cost: torch.Tensor,
     lower: torch.Tensor,
@@ -363,6 +367,8 @@ def plain_vanilla(
         w_opt=None, 
         objective_opt=torch.einsum('i,i->', max_dist, max_prob_diff)
     )
+
+## -- Plain Vanilla ------------------------------------------------------------------------------------------------- ##
 
 def lp_maximization(
     cost: torch.Tensor,

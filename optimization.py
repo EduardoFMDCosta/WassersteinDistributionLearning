@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import math
 import collections
 from typing import Callable, Tuple, Optional
@@ -20,13 +21,20 @@ try:
 except:
     gp = None
 
+@dataclass
+class Result:
+    w_opt: Optional[torch.Tensor]
+    objective_opt: float
+    alpha: Optional[torch.Tensor] = None
+    beta: Optional[torch.Tensor] = None
+
 
 def o_maximization(
     cost: torch.Tensor,
     lower: torch.Tensor,
     upper: torch.Tensor, 
     tol: float = 1e-6
-):
+) -> Tuple[torch.Tensor, torch.Tensor]:
     # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
     order = torch.argsort(-cost)
     p = lower.clone()
@@ -55,7 +63,7 @@ def project_to_omega_subspace(
     upper: torch.Tensor,
     tol: float = 1e-8,
     max_iter: int = 1000
-):
+) -> torch.Tensor:
     """Project a vector onto the capped probability simplex.
 
     Solve:  minimize ||y - w||_2  subject to  lower <= y <= upper (elementwise), sum(y)=1.
@@ -144,7 +152,7 @@ def ot_lp_solver(
     empirical_distribution: torch.Tensor,
     method: str = "highs",
     tol: float = 1e-8
-):
+) -> Tuple[torch.Tensor, torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
     n = cost.shape[0]
 
     # Move to CPU/NumPy for the solver
@@ -195,7 +203,7 @@ def ot_lp_solver(
 
     # Convert back to torch on original device/dtype
     T = torch.tensor(T_np)
-    obj = float((cost * T).sum().item())
+    obj = (cost * T).sum()
 
     # Try to return dual potentials (u for rows, v for cols) if provided
     u = v = None
@@ -217,7 +225,7 @@ def ot_sinkhorn_solver(
     max_iter: int = 1000,
     tol: float = 1e-5,
     method: str = 'sinkhorn_stabilized'
-) -> Tuple[torch.Tensor, float, Tuple[torch.Tensor, torch.Tensor]]:
+) -> Tuple[torch.Tensor, torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
     """Entropic OT solver (POT stabilized Sinkhorn) matching solve_lin_prog interface.
 
     Returns transport plan T, objective = (-cost * T).sum() for consistency
@@ -244,7 +252,7 @@ def ot_sinkhorn_solver(
     alpha = epsilon * logu
     beta = epsilon * logv
 
-    objective = float((cost * T).sum().item())
+    objective = (cost * T).sum()
 
     # assert not alpha.isinf().any() and not alpha.isnan().any() and not beta.isinf().any() and not beta.isnan().any()
 
@@ -302,10 +310,7 @@ def full_search(
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor,
     ot_solver: Callable
-):
-    # Store quantities of interest
-    result = {}
-
+) -> Result:
     vertices = get_omega_space_vertices(lower=lower, upper=upper)
 
     objective_opt = -float("inf")
@@ -319,10 +324,7 @@ def full_search(
             objective_opt = objective
             w_opt = w
 
-    result["w_opt"] = w_opt
-    result["objective_opt"] = objective_opt
-    return result
-
+    return Result(w_opt=w_opt, objective_opt=objective_opt)
 
 def cutting_plane(
     cost: torch.Tensor,
@@ -331,7 +333,7 @@ def cutting_plane(
     empirical_marginal: torch.Tensor,
     num_steps: int,
     ot_solver: Callable
-):
+) -> Result:
     M = cost.shape[0]
     delta = 1e-3
 
@@ -379,7 +381,7 @@ def cutting_plane(
 
     pbar.close()
 
-    return dict(
+    return Result(
         w_opt=w_opt,
         objective_opt=objective_opt,
         alpha=alpha,
@@ -391,7 +393,7 @@ def plain_vanilla(
     lower: torch.Tensor,
     upper: torch.Tensor,
     empirical_marginal: torch.Tensor
-):
+) -> Result:
     # See Corollary 6.2 in
 
     upper_diff = upper - empirical_marginal
@@ -400,7 +402,7 @@ def plain_vanilla(
     max_prob_diff = torch.max(upper_diff, lower_diff)
     max_dist, _ = torch.max(cost, dim=1)
 
-    return dict(
+    return Result(
         w_opt=None, 
         objective_opt=torch.einsum('i,i->', max_dist, max_prob_diff)
     )
@@ -587,12 +589,12 @@ def diagonal_constrained_tp(
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor, 
         **kwargs
-):
+) -> Result:
     # See Section 6.1. in
 
     objective, w = solve_milp_min_diagonal(cost=cost, empirical_distribution=empirical_marginal, lower=lower, upper=upper, **kwargs)
 
-    return dict(
+    return Result(
         w_opt=w,
         objective_opt=objective
     )
@@ -669,7 +671,7 @@ def max_oracle_gradient_descent(
         tol: float = 1e-3,
         plot: bool = True,
         **kwargs
-):
+) -> Result:
 
     # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
@@ -759,7 +761,7 @@ def max_oracle_gradient_descent(
     if plot:
         plot_optimization_curves(values, best_values, grad_norms, lr_sizes)
 
-    return dict(
+    return Result(
         w_opt=w,
         objective_opt=objective_value
     )
@@ -771,7 +773,7 @@ def black_box(
         empirical_marginal: torch.Tensor,
         time_limit: int = 3000,
         **kwargs
-):
+) -> Result:
     M = cost.shape[0]
 
     # Create model
@@ -811,7 +813,7 @@ def black_box(
     if model.status == GRB.OPTIMAL  or model.status == GRB.SUBOPTIMAL or model.status == GRB.TIME_LIMIT:
         w_opt = torch.tensor([w[i].X for i in range(M)])
         objective_value = model.ObjVal
-        return dict(
+        return Result(
             w_opt=w_opt,
             objective_opt=objective_value
         )
@@ -826,7 +828,7 @@ def max_min_lp(
         method: str,
         num_steps=1000,
         lr=1e-3
-):
+) -> torch.Tensor:
     if method == 'full_search':
         result = full_search(
             cost=cost,
@@ -835,7 +837,6 @@ def max_min_lp(
             empirical_marginal=empirical_marginal,
             ot_solver=ot_lp_solver
         )
-        return result["objective_opt"]
     elif method == 'cutting_plane':
         result = cutting_plane(
             cost=cost,
@@ -845,7 +846,6 @@ def max_min_lp(
             num_steps=num_steps,
             ot_solver=ot_lp_solver
         )
-        return result["objective_opt"]
     elif method == 'plain_vanilla':
         result = plain_vanilla(
             cost=cost,
@@ -853,7 +853,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     elif method == 'diagonal_constrained_tp':
         result = diagonal_constrained_tp(
             cost=cost,
@@ -861,7 +860,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     elif method == 'max_oracle_gradient_descent':
         result = max_oracle_gradient_descent(
             cost=cost,
@@ -869,7 +867,6 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     elif method == 'black_box':
         result = black_box(
             cost=cost,
@@ -877,6 +874,7 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal
         )
-        return result["objective_opt"]
     else:
         raise ValueError('Unknown optimization method.')
+
+    return torch.as_tensor(result.objective_opt)

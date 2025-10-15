@@ -1,4 +1,4 @@
-from typing import Optional, List, Optional
+from typing import Optional, List, Optional, Union
 import torch
 from distributions import MultivariateUniform, TruncatedMultivariateNormal, MixtureTruncatedMultivariateNormal, CategoricalFloat
 from sets import HyperRectangle
@@ -27,34 +27,58 @@ def construct_uniform(
         high=torch.ones(num_dims) * support_linf_radius
     )
 
+def construct_loc(
+    num_dims: int,
+    mean: Union[float, List[float]]
+) -> torch.Tensor:
+    if isinstance(mean, float):
+        return torch.ones(num_dims) * mean
+    else:
+        return torch.as_tensor(mean)
+
+def construct_scale(
+    num_dims: int,
+    variance: Union[float, List[float]]
+) -> torch.Tensor:
+    if isinstance(variance, float):
+        return torch.ones(num_dims) * (variance ** 0.5) * (1 / num_dims**0.5)
+    else:
+        return torch.as_tensor(variance) ** 0.5
+
 def construct_trunc_mult_norm(
     num_dims: int,
-    mean, 
-    variance, 
+    mean: Union[float, List[float]], 
+    variance: Union[float, List[float]],
     support_linf_radius: float, 
     **kwargs
 ) -> TruncatedMultivariateNormal:
     return TruncatedMultivariateNormal(
-        loc=torch.as_tensor(mean), 
-        scale=torch.as_tensor(variance) ** 0.5,
+        loc=construct_loc(num_dims=num_dims, mean=mean),
+        scale=construct_scale(num_dims=num_dims, variance=variance),
         a=torch.ones(num_dims) * -support_linf_radius,
         b=torch.ones(num_dims) * support_linf_radius
     )
 
 def construct_mixture_trunc_mult_norm(
     num_dims: int,
-    weight, 
-    mean, 
-    variance, 
+    weight: List[float], 
+    mean: Union[List[float], List[List[float]]], 
+    variance: Union[List[float], List[List[float]]],
     support_linf_radius: float, 
     **kwargs
 ) -> MixtureTruncatedMultivariateNormal:
+    assert len(weight) == len(mean) == len(variance), "Inconsistent number of components."
+
     mixture_distribution = torch.distributions.Categorical(probs=torch.as_tensor(weight))
+
+    loc = torch.stack([construct_loc(num_dims=num_dims, mean=m) for m in mean])
+    scale = torch.stack([construct_scale(num_dims=num_dims, variance=v) for v in variance])
+
     component_distribution = TruncatedMultivariateNormal(
-        loc=torch.as_tensor(mean), 
-        scale=torch.tensor(variance) ** 0.5,
-        a=torch.ones(num_dims) * -support_linf_radius,
-        b=torch.ones(num_dims) * support_linf_radius
+        loc=loc,
+        scale=scale,
+        a=torch.ones(num_dims, len(weight)) * -support_linf_radius,
+        b=torch.ones(num_dims, len(weight)) * support_linf_radius
     )
     return MixtureTruncatedMultivariateNormal(mixture_distribution=mixture_distribution, component_distribution=component_distribution)
 

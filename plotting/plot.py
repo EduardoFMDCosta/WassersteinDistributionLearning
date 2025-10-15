@@ -152,6 +152,7 @@ def plot_quantization_slice(
             alpha=0.2,
             label='std dev'
         )
+        ax.set_ylim(0., ax.get_ylim()[1])
     elif stat == 'locs':
         ax.plot(options, data_sliced.mean_distances_locs, label='avg distances', color='black')
         ax.fill_between(

@@ -2,7 +2,7 @@ import torch
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-from optimization import ot_lp_solver, stochastic_vertice_ascent, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
+from solvers import get_solver
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 
@@ -55,72 +55,25 @@ def lower_bound_eps2(num_clusters):
         plot_quantization(quantization=quantization, title=f"M={args.num_clusters}, N={args.num_samples}")
 
     # Get variables
-    cost = quantization.partition.distance_locs ** 2
-    lower = quantization.lower_probs
-    upper = quantization.upper_probs
-    empirical_marginal = quantization.probs
+    store = dict()
+    for name, Solver in get_solver.mapping.items():
+        if name == 'max_oracle_gradient_descent':
+            num_iters = 10
+        else:
+            num_iters = 1
 
-    store = {}
-
-    # Cutting plane LP solver
-    result = stochastic_vertice_ascent(cost=cost,
-                           lower=lower,
-                           upper=upper,
-                           empirical_marginal=empirical_marginal,
-                           num_steps=1000)
-
-    store["Stochastic Vertice Ascent"] = {
-        "w_opt": result.w_opt,
-        "objective_opt": result.objective_opt
-    }
-
-    result = full_search(cost=cost,
-                         lower=lower,
-                         upper=upper,
-                         empirical_marginal=empirical_marginal,
-                         ot_solver=ot_lp_solver)
-
-    store["Searching Vertices"] = {
-        "w_opt": result.w_opt,
-        "objective_opt": result.objective_opt
-    }
-
-    result = black_box(cost=cost,
-                       lower=lower,
-                       upper=upper,
-                       empirical_marginal=empirical_marginal)
-
-    store["Black Box (Gurobi)"] = {
-        "w_opt": result.w_opt,
-        "objective_opt": result.objective_opt
-    }
-
-    result = diagonal_constrained_tp(cost=cost,
-                                     lower=lower,
-                                     upper=upper,
-                                     empirical_marginal=empirical_marginal)
-
-    store["Diagonally Constrained TP"] = {
-        "w_opt": result.w_opt,
-        "objective_opt": result.objective_opt
-    }
-
-    max_value = 0
-    for i in range(10):
-        result = max_oracle_gradient_descent(cost=cost,
-                                             lower=lower,
-                                             upper=upper,
-                                             empirical_marginal=empirical_marginal,
-                                             plot=False)
-
-        if result.objective_opt > max_value:
-            max_value = result.objective_opt
-            w_opt = result.w_opt
-
-    store["Max Oracle Gradient Descent"] = {
-        "w_opt": result.w_opt,
-        "objective_opt": result.objective_opt
-    }
+        for i in range(num_iters):
+            result = Solver().solve(
+                cost=quantization.partition.distance_locs ** 2,
+                lower=quantization.lower_probs,
+                upper=quantization.upper_probs,
+                empirical_marginal=quantization.probs
+            )
+            if i == 0:
+                store[name] = result
+            else:
+                if result.objective_opt > store[name].objective_opt:
+                    store[name] = result
 
     return store
 
@@ -143,7 +96,7 @@ if __name__ == '__main__':
     for M, method_dict in store.items():
         for method_name, results in method_dict.items():
             data[method_name]['M'].append(M)
-            data[method_name]['objective_opt'].append(results["objective_opt"])
+            data[method_name]['objective_opt'].append(results.objective_opt)
 
     # Plot
     plt.figure(figsize=(8, 6))

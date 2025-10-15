@@ -4,8 +4,6 @@ import matplotlib.pyplot as plt
 
 from configs.handlers import parse_arguments
 from experiments.utils import run_combinations
-
-from configs.handlers import parse_arguments
 import plotting.plot as plot
 
 
@@ -21,11 +19,11 @@ if __name__ == '__main__':
         beta=1e-4,
         method='stochastic_vertice_ascent',
         plot=True, 
-        save=False
+        save=False,
+        compute_moment_bound=True,
+        compute_discrete_bound=False,
     )
 
-    args.compute_moment_bound = True
-    args.compute_discrete_bound = False
     results_dir = os.path.join(args.results_dir, args.distribution.lower())
 
     investigate_clusters = True
@@ -37,7 +35,7 @@ if __name__ == '__main__':
         N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
         M_options = [args.num_clusters]
 
-    quantizations, data_driven_radii, fournier_radii = run_combinations(args, M_options=M_options, N_options=N_options)
+    (quantizations, data_driven_radii, fournier_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options)
 
     # Illustrate Quantizations
     if args.num_dims == 2:

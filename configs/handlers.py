@@ -35,7 +35,9 @@ def parse_arguments(
     num_samples: int = 1000,
     beta: float = 1e-4,
     plot: bool = False,
-    save: bool = False
+    save: bool = False,
+    compute_moment_bound: bool = True, 
+    compute_discrete_bound: bool = True
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
     parser.add_argument('--distribution',
@@ -78,6 +80,14 @@ def parse_arguments(
                         type=bool,
                         default=save,
                         help='Save results.')
+    parser.add_argument('--compute_moment_bound',
+                        type=bool,
+                        default=compute_moment_bound,
+                        help='Compute moment-term of data-driven radius.')
+    parser.add_argument('--compute_discrete_bound',
+                        type=bool,
+                        default=compute_discrete_bound,
+                        help='Compute discrete-term of data-driven radius.')
 
     args = parser.parse_args()
 

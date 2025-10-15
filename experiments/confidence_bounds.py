@@ -1,8 +1,11 @@
 import torch
+
 from sets import HyperRectangle
 from distributions import MultivariateUniform
-from plotting.plot import plot_confidence, plot_confidence_delta
 from confidence import DuchiConfidence, HoeffdingConfidence, ClopperPearsonConfidence
+
+from plotting.plot import plot_confidence, plot_confidence_delta
+
 
 if __name__ == '__main__':
     torch.manual_seed(0)

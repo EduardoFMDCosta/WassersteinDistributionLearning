@@ -31,7 +31,8 @@ def plot_w2_slice(
     ax, 
     data_driven_radii: DataDrivenRadii, 
     N: Optional[int] = None, 
-    M: Optional[int] = None
+    M: Optional[int] = None,
+    cummulative: bool = False
 ):
     if (N is not None and M is not None) or (N is None and M is None):
         raise ValueError("Only N or M should be specified.")
@@ -40,10 +41,18 @@ def plot_w2_slice(
     idx = 1 if N is not None else 0
     options = [key[idx] for key in data_driven_radii.keys()]
 
-    ax.plot(options, data_sliced.radius, label='w2', marker='o')
-    ax.plot(options, data_sliced.moment_bound, label='e1', linestyle='--')
-    ax.plot(options, data_sliced.discrete_bound, label='e2', linestyle=':')
-    ax.plot(options, data_sliced.lower_bound, label='lower_bound', linestyle='--')
+    if cummulative:
+        ax.fill_between(options, 0, data_sliced.moment_bound, label='e1', alpha=0.4)
+        ax.fill_between(options, data_sliced.moment_bound, data_sliced.radius, label='e2', alpha=0.4)
+
+        ax.plot(options, data_sliced.moment_bound, color='black', linestyle='--', linewidth=1)
+        ax.plot(options, data_sliced.radius, color='black', linewidth=1)
+    else:
+        ax.plot(options, data_sliced.radius, label='w2', marker='o')
+        ax.plot(options, data_sliced.moment_bound, label='e1', linestyle='--')
+        ax.plot(options, data_sliced.discrete_bound, label='e2', linestyle=':')
+        ax.plot(options, data_sliced.lower_bound, label='lower_bound', linestyle='--')
+
     # ax.set_xscale('log')
     ax.set_xlim(min(options), max(options))
     ax.legend(loc='best')

@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # Plot Statistics
     fig, ax = plt.subplots(5, 1, figsize=(6, 12), constrained_layout=True)
 
-    ax[0] = plot.plot_w2_slice(ax[0], data_driven_radii, N=N_options[0])
+    ax[0] = plot.plot_w2_slice(ax[0], data_driven_radii, N=N_options[0], cummulative=True)
     ax[1] = plot.plot_quantization_slice(ax[1], quantizations, stat='probs', N=N_options[0])
     ax[2] = plot.plot_quantization_slice(ax[2], quantizations, stat='radii', N=N_options[0])
     ax[3] = plot.plot_quantization_slice(ax[3], quantizations, stat='counts', N=N_options[0])

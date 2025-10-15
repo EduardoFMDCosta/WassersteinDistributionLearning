@@ -3,7 +3,9 @@ import math
 from quantization import UncertainQuantization
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from optimization import o_maximization, max_min_lp
+from optimization_utils import o_maximization
+from solvers import MaxMinLP
+
 
 def bound_moment(
         quantization: UncertainQuantization,
@@ -13,20 +15,19 @@ def bound_moment(
 
 
 def bound_discrete(
-        quantization: UncertainQuantization,
-        method: str
+    quantization: UncertainQuantization,
+    solver: MaxMinLP, 
 ) -> torch.Tensor:
     cost_matrix = quantization.partition.distance_locs.pow(2)
 
-    bound = max_min_lp(
+    bound = solver.solve(
         cost=cost_matrix.detach(),
         lower=quantization.lower_probs,
         upper=quantization.upper_probs,
-        empirical_marginal=quantization.probs, 
-        method=method
-    )
+        empirical_marginal=quantization.probs 
+    ).objective_opt
 
-    return bound ** 0.5
+    return torch.as_tensor(bound) ** 0.5
 
 
 class DataDrivenRadius:
@@ -36,7 +37,7 @@ class DataDrivenRadius:
     def __init__(
             self, 
             quantization: UncertainQuantization, 
-            method: str, 
+            solver: MaxMinLP, 
             compute_moment_bound: bool = True,
             compute_discrete_bound: bool = True
         ):
@@ -44,7 +45,7 @@ class DataDrivenRadius:
         if compute_moment_bound:
             self._moment_bound = bound_moment(quantization=quantization)
         if compute_discrete_bound:
-            self._discrete_bound = bound_discrete(quantization=quantization, method=method)
+            self._discrete_bound = bound_discrete(quantization=quantization, solver=solver)
 
         self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 

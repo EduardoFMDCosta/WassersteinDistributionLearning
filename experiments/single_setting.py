@@ -2,10 +2,13 @@ import torch
 
 from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
+from bound import DataDrivenRadius, fournier_radius
+from solvers import get_solver
+
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from bound import DataDrivenRadius, fournier_radius
 from configs.construct import get_support_assumption, get_distribution
+
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -18,9 +21,11 @@ if __name__ == '__main__':
         num_samples_training=1000,
         num_clusters=30,
         beta=1e-4,
-        method='max_oracle_gradient_descent',
+        method='full_search',
         plot=True
     )
+
+    solver = get_solver(method=args.method)
 
     support_assumption = get_support_assumption(**vars(args))
 
@@ -49,7 +54,7 @@ if __name__ == '__main__':
         nsamples=args.num_samples + args.num_samples_training, 
         beta=args.beta
     )
-    data_driven_output = DataDrivenRadius(quantization=quantization, method=args.method)
+    data_driven_output = DataDrivenRadius(quantization=quantization, solver=solver)
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
           f"\t Fournier: {fournier_bound:.4f} \n"

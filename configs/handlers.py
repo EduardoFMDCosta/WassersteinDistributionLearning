@@ -3,6 +3,8 @@ import json
 import argparse
 import os
 
+from solvers import get_solver
+
 dir = os.path.dirname(os.path.abspath(__file__))
 
 def load_json(filename: str):
@@ -46,13 +48,16 @@ def parse_arguments(
     parser.add_argument('--num_samples_training', type=int, default=num_samples_training, help='Number of samples for training (i.e. defining clustering).')
     parser.add_argument('--num_samples', type=int, default=num_samples, help='Number of samples.')
     parser.add_argument('--num_clusters', type=int, default=num_clusters, help='Number of clusters (M).')
-    parser.add_argument('--method', type=str, default=method, help='Method to compute discrete-term of data-driven radius.')
+    parser.add_argument('--method', type=str, default=method, choices=get_solver.supported_methods, help='Method to compute discrete-term of data-driven radius.')
     parser.add_argument('--beta', type=float, default=beta, help='Confidence level.')
     parser.add_argument('--plot', type=bool, default=plot, help='Plot charts.')
     parser.add_argument('--save', type=bool, default=save, help='Save results.')
     parser.add_argument('--compute_moment_bound', type=bool, default=compute_moment_bound, help='Compute moment-term of data-driven radius.')
     parser.add_argument('--compute_discrete_bound', type=bool, default=compute_discrete_bound, help='Compute discrete-term of data-driven radius.')
     args = parser.parse_args()
+
+    if not method in get_solver.supported_methods:
+        raise ValueError(f"Method {method} not supported. Supported methods: {get_solver.supported_methods}")
 
     dynamics_params = param_handler(
         param_name="parameters",

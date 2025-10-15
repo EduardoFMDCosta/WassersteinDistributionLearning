@@ -2,12 +2,13 @@ import torch
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-from configs.construct import get_support_assumption, get_distribution
-from configs.handlers import parse_arguments
 from optimization import ot_lp_solver, cutting_plane, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
-from plotting.plot import plot_quantization
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
+
+from configs.construct import get_support_assumption, get_distribution
+from configs.handlers import parse_arguments
+from plotting.plot import plot_quantization
 
 plt.rcParams.update({
     'font.size': 12,
@@ -23,7 +24,7 @@ It shows that...
 def lower_bound_eps2(num_clusters):
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=2,
+        num_dims=2,
         setting=0,
         num_samples_training=1000,
         num_samples=1000,
@@ -32,32 +33,26 @@ def lower_bound_eps2(num_clusters):
         plot=False
     )
 
-    # Set parameters
-    N_training = args.num_samples_training
-    M = args.num_clusters
-    N = args.num_samples
-    beta = args.beta
     support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability
     distribution = get_distribution(**vars(args))
 
     # Generate Partitions
-    samples_partition = distribution.sample((N_training,))
+    samples_partition = distribution.sample((args.num_samples_training,))
     partition = BoundedVoronoiPartition(
         support=support_assumption,
         samples=samples_partition,
-        M=M,
-        use_voronoi_radii=False # set to false to speed up
+        M=args.num_clusters,
     )
 
     # Generate Quantization
-    samples_quantization = distribution.sample((N,))
-    quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=beta)
+    samples_quantization = distribution.sample((args.num_samples,))
+    quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
     # Plot samples and clusterized distribution
     if args.plot:
-        plot_quantization(quantization=quantization, title=f"M={M}, N={N}")
+        plot_quantization(quantization=quantization, title=f"M={args.num_clusters}, N={args.num_samples}")
 
     # Get variables
     cost = quantization.partition.distance_locs ** 2
@@ -72,12 +67,11 @@ def lower_bound_eps2(num_clusters):
                            lower=lower,
                            upper=upper,
                            empirical_marginal=empirical_marginal,
-                           num_steps=1000,
-                           ot_solver=ot_lp_solver)
+                           num_steps=1000)
 
     store["Stochastic Vertice Ascent"] = {
-        "w_opt": result['w_opt'],
-        "objective_opt": result['objective_opt']
+        "w_opt": result.w_opt,
+        "objective_opt": result.objective_opt
     }
 
     result = full_search(cost=cost,
@@ -87,8 +81,8 @@ def lower_bound_eps2(num_clusters):
                          ot_solver=ot_lp_solver)
 
     store["Searching Vertices"] = {
-        "w_opt": result['w_opt'],
-        "objective_opt": result['objective_opt']
+        "w_opt": result.w_opt,
+        "objective_opt": result.objective_opt
     }
 
     result = black_box(cost=cost,
@@ -97,8 +91,8 @@ def lower_bound_eps2(num_clusters):
                        empirical_marginal=empirical_marginal)
 
     store["Black Box (Gurobi)"] = {
-        "w_opt": result['w_opt'],
-        "objective_opt": result['objective_opt']
+        "w_opt": result.w_opt,
+        "objective_opt": result.objective_opt
     }
 
     result = diagonal_constrained_tp(cost=cost,
@@ -107,8 +101,8 @@ def lower_bound_eps2(num_clusters):
                                      empirical_marginal=empirical_marginal)
 
     store["Diagonally Constrained TP"] = {
-        "w_opt": result['w_opt'],
-        "objective_opt": result['objective_opt']
+        "w_opt": result.w_opt,
+        "objective_opt": result.objective_opt
     }
 
     max_value = 0
@@ -119,13 +113,13 @@ def lower_bound_eps2(num_clusters):
                                              empirical_marginal=empirical_marginal,
                                              plot=False)
 
-        if result['objective_opt'] > max_value:
-            max_value = result['objective_opt']
-            w_opt = result['w_opt']
+        if result.objective_opt > max_value:
+            max_value = result.objective_opt
+            w_opt = result.w_opt
 
     store["Max Oracle Gradient Descent"] = {
-        "w_opt": result['w_opt'],
-        "objective_opt": result['objective_opt']
+        "w_opt": result.w_opt,
+        "objective_opt": result.objective_opt
     }
 
     return store

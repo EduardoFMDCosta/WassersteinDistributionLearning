@@ -1,10 +1,12 @@
 import torch
-from configs.construct import get_support_assumption, get_distribution
-from configs.handlers import parse_arguments
+
 from optimization import inner_lp_maximization
-from plotting.plot import plot_quantization
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
+
+from configs.construct import get_support_assumption, get_distribution
+from configs.handlers import parse_arguments
+from plotting.plot import plot_quantization
 
 
 def is_convex_inequality(func, n_samples, tol=1e-8):

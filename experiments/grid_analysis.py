@@ -22,7 +22,8 @@ if __name__ == '__main__':
         compute_discrete_bound=False,
     )
 
-    N_options = [100, 1000] # [100, 1000, 5000, 10000, 50000, 100000]
+    # We assume num_samples_training = num_samples
+    N_options = [100, 1000] # [100, 1000, 5000, 10000, 50000, 100000]   
     M_options = [10, 50] # [10, 50, 100]
     max_memory_mb = 2000  # 2GB memory limit for fast testing
 

@@ -23,11 +23,11 @@ if __name__ == '__main__':
         compute_moment_bound=True,
         compute_discrete_bound=False,
     )
-
     results_dir = os.path.join(args.results_dir, args.distribution.lower())
 
     investigate_clusters = True
 
+    # We assume num_samples_training = num_samples
     if investigate_clusters:
         N_options = [args.num_samples]
         M_options = [10, 25, 100]  # [10, 25, 75, 100, 200, 500, 1000]

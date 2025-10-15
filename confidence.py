@@ -1,10 +1,14 @@
 import math
 import torch
+from typing import Union
 from scipy.stats import beta as scipy_beta
 
 class Confidence:
-    def __init__(self, beta: float, n_set: torch.Tensor, n: int):
-        assert 0.0 < beta < 1.0
+    def __init__(self, beta: Union[float, torch.Tensor], n_set: torch.Tensor, n: int):
+        if isinstance(beta, float):
+            assert 0.0 < beta < 1.0
+        else:
+            assert torch.all((beta > 0.0) & (beta < 1.0))
         assert torch.all((n_set >= 0) & (n_set <= n))
 
         self.n_set = n_set
@@ -54,7 +58,7 @@ class HoeffdingConfidence(Confidence):
 
 
 class ClopperPearsonConfidence(Confidence):
-    def __init__(self, beta: float, n_set: torch.Tensor, n: int):
+    def __init__(self, beta: Union[float, torch.Tensor], n_set: torch.Tensor, n: int):
         super().__init__(beta=beta, n_set=n_set, n=n)
 
     def _get_lower_proba(self):
@@ -64,8 +68,13 @@ class ClopperPearsonConfidence(Confidence):
         non_zero_mask = self.n_set > 0
         n_set_non_zero = self.n_set[non_zero_mask]
 
+        if isinstance(self.beta, float):
+            beta = self.beta
+        else:
+            beta = self.beta[non_zero_mask].numpy()
+
         lower_probs = torch.tensor(
-            scipy_beta.ppf(self.beta / 2, n_set_non_zero.numpy(), (self.n - n_set_non_zero + 1).numpy()),
+            scipy_beta.ppf(beta / 2, n_set_non_zero.numpy(), (self.n - n_set_non_zero + 1).numpy()),
             dtype=torch.float32
         )
 
@@ -79,8 +88,13 @@ class ClopperPearsonConfidence(Confidence):
         non_full_mask = self.n_set < self.n
         n_set_valid = self.n_set[non_full_mask]
 
+        if isinstance(self.beta, float):
+            beta = self.beta
+        else:
+            beta = self.beta[non_full_mask].numpy()
+
         upper_probs = torch.tensor(
-            scipy_beta.ppf(1 - self.beta / 2, (n_set_valid + 1).numpy(), (self.n - n_set_valid).numpy()),
+            scipy_beta.ppf(1 - beta / 2, (n_set_valid + 1).numpy(), (self.n - n_set_valid).numpy()),
             dtype=torch.float32
         )
 

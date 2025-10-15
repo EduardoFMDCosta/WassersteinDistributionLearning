@@ -287,7 +287,7 @@ def full_search(
 
     return Result(w_opt=w_opt, objective_opt=objective_opt)
 
-def cutting_plane(
+def stochastic_vertice_ascent(
     cost: torch.Tensor,
     lower: torch.Tensor,
     upper: torch.Tensor,
@@ -738,8 +738,8 @@ def max_min_lp(
             upper=upper,
             empirical_marginal=empirical_marginal,
         )
-    elif method == 'cutting_plane':
-        result = cutting_plane(
+    elif method == 'stochastic_vertice_ascent':
+        result = stochastic_vertice_ascent(
             cost=cost,
             lower=lower,
             upper=upper,

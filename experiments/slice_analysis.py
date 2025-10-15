@@ -19,7 +19,7 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=10,
         beta=1e-4,
-        method='cutting_plane',
+        method='stochastic_vertice_ascent',
         plot=True, 
         save=False
     )

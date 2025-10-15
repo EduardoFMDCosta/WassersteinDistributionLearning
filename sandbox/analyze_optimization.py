@@ -1,7 +1,7 @@
 import torch
 from matplotlib import pyplot as plt
 
-from optimization import plain_vanilla, cutting_plane, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
+from optimization import plain_vanilla, stochastic_vertice_ascent, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     # Analysis 3: Compute optima for different starting points (if applicable)
     # Cutting plane LP solver
-    result = cutting_plane(cost=quantization.partition.distance_locs ** 2,
+    result = stochastic_vertice_ascent(cost=quantization.partition.distance_locs ** 2,
                            lower=quantization.lower_probs,
                            upper=quantization.upper_probs,
                            empirical_marginal=quantization.probs,

@@ -2,7 +2,7 @@ import torch
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-from optimization import ot_lp_solver, cutting_plane, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
+from optimization import ot_lp_solver, stochastic_vertice_ascent, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 
@@ -63,7 +63,7 @@ def lower_bound_eps2(num_clusters):
     store = {}
 
     # Cutting plane LP solver
-    result = cutting_plane(cost=cost,
+    result = stochastic_vertice_ascent(cost=cost,
                            lower=lower,
                            upper=upper,
                            empirical_marginal=empirical_marginal,

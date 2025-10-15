@@ -30,7 +30,7 @@ def parse_arguments(
     num_dims: int,
     setting: int,
     num_clusters: int,
-    method: str = 'cutting_plane',
+    method: str = 'stochastic_vertice_ascent',
     num_samples_training: int = 1000,
     num_samples: int = 1000,
     beta: float = 1e-4,

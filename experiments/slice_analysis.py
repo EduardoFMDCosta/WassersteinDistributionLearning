@@ -20,7 +20,7 @@ if __name__ == '__main__':
         num_clusters=10,
         beta=1e-4,
         plot=True, 
-        save=True
+        save=False
     )
 
     args.method = 'cutting_plane'

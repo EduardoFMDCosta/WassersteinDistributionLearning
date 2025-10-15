@@ -21,7 +21,7 @@ if __name__ == '__main__':
         num_clusters=10,
         beta=1e-4,
         plot=True, 
-        save=False
+        save=True
     )
 
     args.method = 'cutting_plane'
@@ -40,15 +40,18 @@ if __name__ == '__main__':
 
     quantizations, data_driven_radii, fournier_radii = run_combinations(args, M_options=M_options, N_options=N_options)
 
-    fig, ax = plt.subplots(ncols=len(quantizations.keys()), nrows=1, figsize=(6 * len(quantizations.keys()), 6))
-    for i, key in enumerate(quantizations.keys()):
-        ax[i] = plot.plot_quantization(ax=ax[i], quantization=quantizations.at(key), title=f"M={key[1]}, N={key[0]}")
+    # Illustrate Quantizations
+    if args.num_dims == 2:
+        fig, ax = plt.subplots(ncols=len(quantizations.keys()), nrows=1, figsize=(6 * len(quantizations.keys()), 6))
+        for i, key in enumerate(quantizations.keys()):
+            ax[i] = plot.plot_quantization(ax=ax[i], quantization=quantizations.at(key), title=f"M={key[1]}, N={key[0]}")
 
-    if args.save:
-        plt.savefig(os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_quantizations.png"))
-    else:
-        plt.show()
+        if args.save:
+            plt.savefig(os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_quantizations.png"))
+        else:
+            plt.show()
 
+    # Plot Statistics
     fig, ax = plt.subplots(5, 1, figsize=(6, 12), constrained_layout=True)
 
     ax[0] = plot.plot_w2_slice(ax[0], data_driven_radii, N=N_options[0])

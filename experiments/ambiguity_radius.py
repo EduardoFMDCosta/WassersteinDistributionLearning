@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        dimension=2,
+        num_dims=2,
         setting=0,
         num_samples_training=1000,
         num_samples=1000,

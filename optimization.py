@@ -13,7 +13,7 @@ import cvxpy as cp
 from gurobipy import GRB, QuadExpr
 from scipy.optimize import linprog
 
-from plotting.plot import plot_optimization_curves
+
 
 try:
     import gurobipy as gp
@@ -591,7 +591,6 @@ def max_oracle_gradient_descent(
         empirical_marginal: torch.Tensor,
         num_steps: int = 1000,
         tol: float = 1e-3,
-        plot: bool = False,
         **kwargs
 ) -> Result:
 
@@ -663,9 +662,6 @@ def max_oracle_gradient_descent(
 
     _, w = o_maximization(alpha, lower, upper)
     objective_value = -best
-
-    if plot:
-        plot_optimization_curves(values, best_values, grad_norms, lr_sizes)
 
     return Result(
         w_opt=w,

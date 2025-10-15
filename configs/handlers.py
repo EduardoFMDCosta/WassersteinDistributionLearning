@@ -18,31 +18,32 @@ def load_json(filename: str):
 def param_handler(
     param_name: str,
     dataset_name: str,
-    dimension: int,
+    num_dims: int,
     setting_tag: Optional[int] = None
 ):
     params = load_json(param_name)[dataset_name]
-    return argparse.Namespace(**params["dimension"][str(dimension)]["settings"][str(setting_tag)])
+    return argparse.Namespace(**params["num_dims"][str(num_dims)]["settings"][str(setting_tag)])
 
 
 def parse_arguments(
     distribution: str,
-    dimension: int,
+    num_dims: int,
     setting: int,
     num_clusters: int,
     num_samples_training: int = 1000,
     num_samples: int = 1000,
     beta: float = 1e-4,
-    plot: bool = False
+    plot: bool = False,
+    save: bool = False
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
     parser.add_argument('--distribution',
                         type=str,
                         default=distribution,
                         help='Distribution to generate samples.')
-    parser.add_argument('--dimension',
+    parser.add_argument('--num_dims',
                         type=int,
-                        default=dimension,
+                        default=num_dims,
                         help='Dimension of the problem.')
     parser.add_argument('--setting',
                         type=int,
@@ -68,15 +69,20 @@ def parse_arguments(
                         type=bool,
                         default=plot,
                         help='Plot charts.')
+    parser.add_argument('--save',
+                        type=bool,
+                        default=save,
+                        help='Save results.')
 
     args = parser.parse_args()
 
     dynamics_params = param_handler(
         param_name="parameters",
         dataset_name=args.distribution,
-        dimension=args.dimension,
+        num_dims=args.num_dims,
         setting_tag=args.setting
     )
 
     args.__dict__.update(vars(dynamics_params))
+    args.results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
     return args

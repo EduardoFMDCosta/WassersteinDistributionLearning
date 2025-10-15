@@ -40,6 +40,14 @@ class Quantization:
     @property
     def ndim(self):
         return self.partition.ndim
+    
+    @property
+    def cluster_radii(self):
+        return self.partition.cluster_radii
+    
+    @property
+    def distance_locs(self):
+        return self.partition.distance_locs
 
     def __len__(self):
         return len(self.partition)

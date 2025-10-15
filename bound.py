@@ -63,6 +63,7 @@ class DataDrivenRadius:
         else:
             return self.moment_bound + self.discrete_bound
     
+    @property
     def lower_bound(self):
         return self._lower_bound
     

@@ -18,10 +18,10 @@ if __name__ == '__main__':
         num_samples_training=1000,
         num_clusters=30,
         beta=1e-4,
+        method='max_oracle_gradient_descent',
         plot=True
     )
 
-    args.method = 'max_oracle_gradient_descent'
     support_assumption = get_support_assumption(**vars(args))
 
     # (Unknown) Generating probability

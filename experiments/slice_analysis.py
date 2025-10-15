@@ -19,11 +19,11 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=10,
         beta=1e-4,
+        method='cutting_plane',
         plot=True, 
         save=False
     )
 
-    args.method = 'cutting_plane'
     args.compute_moment_bound = True
     args.compute_discrete_bound = False
     results_dir = os.path.join(args.results_dir, args.distribution.lower())

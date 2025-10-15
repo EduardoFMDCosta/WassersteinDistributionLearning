@@ -30,6 +30,7 @@ def parse_arguments(
     num_dims: int,
     setting: int,
     num_clusters: int,
+    method: str = 'cutting_plane',
     num_samples_training: int = 1000,
     num_samples: int = 1000,
     beta: float = 1e-4,
@@ -61,6 +62,10 @@ def parse_arguments(
                         type=int,
                         default=num_clusters,
                         help='Number of clusters (M).')
+    parser.add_argument('--method',
+                        type=str,
+                        default=method,
+                        help='Method to compute discrete-term of data-driven radius.')
     parser.add_argument('--beta',
                         type=float,
                         default=beta,

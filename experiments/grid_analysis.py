@@ -77,10 +77,10 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=1000,
         beta=1e-4,
+        method='cutting_plane',
         plot=False
     )
 
-    args.method = 'cutting_plane'
     support_assumption = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
 

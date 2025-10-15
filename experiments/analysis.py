@@ -14,20 +14,20 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="Uniform",
+        distribution="Gaussian",
         num_dims=2,
-        setting=2,
+        setting=0,
         num_samples=1000,
         num_clusters=10,
         beta=1e-4,
         plot=True, 
-        save=True
+        save=False
     )
 
     args.method = 'cutting_plane'
     args.compute_moment_bound = True
     args.compute_discrete_bound = False
-    results_dir = os.path.join(args.results_dir, "uniform")
+    results_dir = os.path.join(args.results_dir, args.distribution.lower())
 
     investigate_clusters = True
 

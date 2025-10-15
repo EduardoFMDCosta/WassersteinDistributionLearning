@@ -44,9 +44,8 @@ def plot_w2_slice(
     ax.plot(options, data_sliced.moment_bound, label='e1', linestyle='--')
     ax.plot(options, data_sliced.discrete_bound, label='e2', linestyle=':')
     ax.plot(options, data_sliced.lower_bound, label='lower_bound', linestyle='--')
-    ax.set_xlabel(f"Number of {'clusters (M)' if M is None else 'samples (N)'}")
-    ax.set_title(f"Number of {'samples (N) = ' if M is None else 'clusters (M)'} = {N if M is None else M}")
     # ax.set_xscale('log')
+    ax.set_xlim(min(options), max(options))
     ax.legend(loc='best')
     return ax
 
@@ -110,6 +109,7 @@ def plot_quantization_slice(
         raise ValueError(f"Stat {stat} not recognized. Choose from 'probs', 'radii', 'counts', 'locs'.")
     
     # ax.set_xscale('log')
+    ax.set_xlim(min(options), max(options))
     ax.legend(loc='best')
     return ax
 
@@ -181,36 +181,39 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
 
 def plot_quantization(
     quantization: Quantization, 
+    ax: Optional[plt.Axes] = None,
     title: str = ''
 ):
-
-    if quantization.ndim == 2:
-        # Plot samples
+    if not quantization.ndim == 2:
+        raise ValueError("Can only plot 2D quantizations.")
+    
+    if ax is None:
         fig, ax = plt.subplots(figsize=(6, 6))
-        ax.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
+    ax.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
 
-        # Plot shell
-        lower = quantization.partition.support.lower
-        upper = quantization.partition.support.upper
-        width = upper[0] - lower[0]
-        height = upper[1] - lower[1]
-        rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
-        ax.add_patch(rect)
+    # Plot shell
+    lower = quantization.partition.support.lower
+    upper = quantization.partition.support.upper
+    width = upper[0] - lower[0]
+    height = upper[1] - lower[1]
+    rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
+    ax.add_patch(rect)
 
-        # Plot locs
-        ax.scatter(*quantization.locs.t(), s=10, color="red", label="Cluster Centers")
+    # Plot Voronoi cells
+    if len(quantization) <= 110 and isinstance(quantization.partition, BoundedVoronoiPartition):
+        ax = utils_plot.plot_clipped_voronoi_2d(
+            centers=quantization.partition.cluster_centers,
+            max_diameters=quantization.partition.cluster_radii * 2,
+            ax=ax
+        )
 
-        if len(quantization) < 100 and isinstance(quantization.partition, BoundedVoronoiPartition):
-            ax = utils_plot.plot_clipped_voronoi_2d(
-                centers=quantization.partition.cluster_centers,
-                max_diameters=quantization.partition.cluster_radii * 2,
-                ax=ax
-            )
+    # Plot locs
+    ax.scatter(*quantization.locs.t(), s=5, color="red", label="Cluster Centers")
 
-        ax.legend()
-        ax.axis('equal')
-        ax.set_title(title)
-        plt.show()
+    ax.legend()
+    ax.axis('equal')
+    ax.set_title(title)
+    return ax
 
 
 @torch.no_grad()

@@ -5,13 +5,28 @@
               "settings": {
                   "0": {
                       "support_linf_radius_assumed": -0.5,
-                      "support": [[-0.15, -0.15],
-                                  [0.15, 0.15]]
+                      "support": [[-0.05, -0.05],
+                                  [0.05, 0.05]]
                   },
                   "1": {
                         "support_linf_radius_assumed": -0.5,
-                        "support": [[-0.05, -0.05],
-                                    [0.05, 0.05]]
+                        "support": [[-0.1, -0.1],
+                                    [0.1, 0.1]]
+                  },
+                  "2": {
+                        "support_linf_radius_assumed": -0.5,
+                        "support": [[-0.2, -0.2],
+                                    [0.2, 0.2]]
+                  },
+                  "3": {
+                        "support_linf_radius_assumed": -0.5,
+                        "support": [[-0.3, -0.3],
+                                    [0.3, 0.3]]
+                  },
+                  "4": {
+                        "support_linf_radius_assumed": -0.5,
+                        "support": [[-0.4, -0.4],
+                                    [0.4, 0.4]]
                   }
               }
           },

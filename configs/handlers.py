@@ -33,7 +33,8 @@ def parse_arguments(
     num_samples_training: int = 1000,
     num_samples: int = 1000,
     beta: float = 1e-4,
-    plot: bool = False
+    plot: bool = False,
+    save: bool = False
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
     parser.add_argument('--distribution',
@@ -68,6 +69,10 @@ def parse_arguments(
                         type=bool,
                         default=plot,
                         help='Plot charts.')
+    parser.add_argument('--save',
+                        type=bool,
+                        default=save,
+                        help='Save results.')
 
     args = parser.parse_args()
 
@@ -79,4 +84,5 @@ def parse_arguments(
     )
 
     args.__dict__.update(vars(dynamics_params))
+    args.results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
     return args

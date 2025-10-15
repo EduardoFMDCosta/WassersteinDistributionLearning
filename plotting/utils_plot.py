@@ -117,8 +117,8 @@ def plot_clipped_voronoi_2d(
         ax.fill(verts[:,0], verts[:,1], alpha=face_alpha)
         ax.plot(verts[:,0], verts[:,1], linewidth=edge_width, color="k")
 
-    C = centers.detach().cpu().numpy()
-    ax.scatter(C[:,0], C[:,1], s=point_size, c="k", zorder=3)
+    # C = centers.detach().cpu().numpy()
+    # ax.scatter(C[:,0], C[:,1], s=point_size, c="k", zorder=3)
 
     ax.set_aspect("equal", adjustable="box")
     ax.set_title("Voronoi partition clipped to max diameters (D_i)")

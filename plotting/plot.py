@@ -9,7 +9,7 @@ from quantization import Quantization
 from sets import BoundedVoronoiPartition
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
-from experiments.utils import DataDrivenRadii, Quantizations
+from experiments.utils import TimeLogger, DataDrivenRadii, Quantizations
 
 colors = [
         "lightcoral",
@@ -27,7 +27,31 @@ plt.rcParams.update({
 
 
 @torch.no_grad()
-def plot_w2_slice(
+def plot_time_logger(
+    ax, 
+    time_logger: TimeLogger,
+    s: int = 200,
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None, 
+    ylabel: Optional[str] = None,
+):
+    Ns, Ms = zip(*time_logger.keys())
+    scatter = ax.scatter(Ns, Ms, c=time_logger.time, s=s, cmap='coolwarm', alpha=1.0)
+    ax.figure.colorbar(scatter, ax=ax)
+    ax.set_xscale('log')
+    # ax.set_yscale('log')
+    # ax.grid(True)
+    if title is not None:
+        ax.set_title(title)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    return ax
+
+
+@torch.no_grad()
+def plot_data_driven_radii_slice(
     ax, 
     data_driven_radii: DataDrivenRadii, 
     N: Optional[int] = None, 
@@ -56,6 +80,30 @@ def plot_w2_slice(
     # ax.set_xscale('log')
     ax.set_xlim(min(options), max(options))
     ax.legend(loc='best')
+    return ax
+
+@torch.no_grad()
+def plot_data_driven_radii(
+    ax, 
+    data_driven_radii: DataDrivenRadii,
+    field: str = 'radius',
+    s: int = 200,
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None, 
+    ylabel: Optional[str] = None,
+):
+    Ns, Ms = zip(*data_driven_radii.keys())
+    scatter = ax.scatter(Ns, Ms, c=getattr(data_driven_radii, field), s=s, cmap='coolwarm', alpha=1.0)
+    ax.figure.colorbar(scatter, ax=ax)
+    ax.set_xscale('log')
+    # ax.set_yscale('log')
+    # ax.grid(True)
+    if title is not None:
+        ax.set_title(title)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
     return ax
 
 @torch.no_grad()

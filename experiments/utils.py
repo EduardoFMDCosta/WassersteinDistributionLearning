@@ -35,6 +35,13 @@ class _GridDict(Generic[T]): # key = (N, M)
         new_data = {key: self.data[key] for key in self.keys(N=N, M=M)}
         return self.__class__(new_data)
 
+
+class TimeLogger(_GridDict[torch.Tensor]):
+    @property
+    def time(self):
+        return self._stack('data')
+
+
 class DataDrivenRadii(_GridDict[DataDrivenRadius]): 
     @property
     def moment_bound(self):
@@ -160,6 +167,6 @@ def run_combinations(args, M_options, N_options):
                 compute_moment_bound=args.compute_moment_bound, 
                 compute_discrete_bound=args.compute_discrete_bound
             ))
-            fournier_radii.append((N, M), compute_fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
+            fournier_radii.append((N, M), compute_fournier_radius(support=partition.support, nsamples=2*N, beta=args.beta))
 
     return quantizations, data_driven_radii, fournier_radii

@@ -1,14 +1,15 @@
 import torch
 import time
-import os
+import matplotlib.pyplot as plt
 
 from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius
-from plotting.plot import colored_scatter
 
+import plotting.plot as plot
 from configs.handlers import parse_arguments
 from configs.construct import get_support_assumption, get_distribution
+from experiments.utils import TimeLogger, DataDrivenRadii, FournierRadii, Quantizations
 
 
 def estimate_memory_usage(N, M, num_dims=2):
@@ -73,28 +74,27 @@ if __name__ == '__main__':
         distribution="GaussianMixture",
         num_dims=2,
         setting=0,
-        num_samples=None,
-        num_clusters=None,
+        num_samples=1000,
+        num_clusters=1000,
         beta=1e-4,
         plot=False
     )
 
-    beta = args.beta
-    method = 'stackelberg_equilibrium'
+    args.method = 'cutting_plane'
     support_assumption = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
 
-    N_options = [100, 1000, 5000, 10000, 50000, 100000]
-    M_options = [10, 50, 100]
+    N_options = [100, 1000] # [100, 1000, 5000, 10000, 50000, 100000]
+    M_options = [10, 50] # [10, 50, 100]
     MAX_MEMORY_MB = 2000  # 2GB memory limit for fast testing
 
-    Ns, Ms, kmean_times, data_driven_times, data_driven_bounds, fournier_bounds = [], [], [], [], [], []
+    quantization_times, radius_computation_times, computation_times = TimeLogger(), TimeLogger(), TimeLogger()
+    quantizations, data_driven_radii, fournier_radii = Quantizations(), DataDrivenRadii(), FournierRadii()
     for N in N_options:
         samples_partition = distribution.sample((N,))
         samples_quantization = distribution.sample((N,))
 
         for M in M_options:
-            # Pre-assess K-means feasibility
             is_feasible, reasons, stats = assess_kmeans_feasibility(
                 N=N, k=M, num_dims=2, 
                 max_memory_mb=MAX_MEMORY_MB, 
@@ -115,43 +115,40 @@ if __name__ == '__main__':
                     support=support_assumption, 
                     samples=samples_partition, 
                     M=M,
-                    use_voronoi_radii=False # set to false to speed up
                 )
-                quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=beta)
-                kmeans_time = time.time() - start
-                print(f"K-means completed in {kmeans_time:.2f} seconds")
+                quantizations.append((N, M), UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta))
+                quantization_times.append((N, M), torch.as_tensor(time.time() - start))
+                print(f"K-means completed in {quantization_times.at((N, M)):.2f} seconds")
 
                 print(f"### Bounding for: clusters (M) / num_samples (N): {M} / {N}--- ###")    
                 start = time.time()
-                data_driven_output = DataDrivenRadius(quantization=quantization, method=method)
-                bounding_time = time.time() - start
-                print(f"Data-driven bounding completed in {bounding_time:.2f} seconds")
+                data_driven_radii.append((N, M), DataDrivenRadius(quantization=quantizations.at((N, M)), method=args.method))
+                radius_computation_times.append((N, M), torch.as_tensor(time.time() - start))
+                print(f"Data-driven bounding completed in {radius_computation_times.at((N, M)):.2f} seconds")
 
-                fournier_result = fournier_radius(support=partition.support, nsamples=N, beta=beta)
+                fournier_radii.append((N, M), fournier_radius(support=partition.support, nsamples=N, beta=args.beta))
                 print(f"Fournier bound completed")
-
-                kmean_times.append(kmeans_time)
-                fournier_bounds.append(fournier_result)
-                data_driven_bounds.append(data_driven_output.radius)
-                data_driven_times.append(bounding_time)
-                Ns.append(N)
-                Ms.append(M)
                 print(f"Successfully completed M={M}, N={N}")
+
+                computation_times.append((N, M), quantization_times.at((N, M)) + radius_computation_times.at((N, M)))
                 
             except Exception as e:
                 print(f"Unexpected error for M={M}, N={N}: {e}. Skipping this configuration.")
                 continue
 
-    computation_times = torch.as_tensor(kmean_times) + torch.as_tensor(data_driven_times)
-    for title, data in zip(
-        ['Data-Driven Bound', 'Computation Time Kmeans', 'Computation Time Bounds', 'Computation Time', 'Fournier Bound'], 
-        [data_driven_bounds, kmean_times, data_driven_times, computation_times, fournier_bounds]
-    ):
-        colored_scatter(
-            x=torch.as_tensor(Ns), 
-            y=torch.as_tensor(Ms), 
-            c=torch.as_tensor(data).real, 
-            title=title, 
-            s=200, 
-            file_name=f'figures{os.sep}{title.lower().replace(" ", "_")}.png'
-        )
+
+    # Plot Bounds
+    xlabel, ylabel = "Number of samples (N)", "Number of clusters (M)"
+
+    fig, ax = plt.subplots(3, 1, figsize=(6, 12), constrained_layout=True)
+    ax[0] = plot.plot_data_driven_radii(ax[0], data_driven_radii, field='moment_bound', ylabel=ylabel, title="Bound on Moment-Term (e1)")
+    ax[1] = plot.plot_data_driven_radii(ax[1], data_driven_radii, field='discrete_bound', ylabel=ylabel, title="Bound on Discrete-Term Bound (e2)")
+    ax[2] = plot.plot_data_driven_radii(ax[2], data_driven_radii, field='radius', xlabel=xlabel, ylabel=ylabel, title="Data-Driven Bound")
+    plt.show()
+
+    # Plot Computation Times
+    fig, ax = plt.subplots(3, 1, figsize=(6, 12), constrained_layout=True)
+    ax[0] = plot.plot_time_logger(ax[0], quantization_times, ylabel=ylabel, title="Quantization time")
+    ax[1] = plot.plot_time_logger(ax[1], radius_computation_times, ylabel=ylabel, title="Radius computation time")
+    ax[2] = plot.plot_time_logger(ax[2], computation_times, xlabel=xlabel, ylabel=ylabel, title="Total computation time")
+    plt.show()

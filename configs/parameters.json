@@ -4,29 +4,24 @@
           "2": {
               "settings": {
                   "0": {
-                      "support_linf_radius_assumed": -0.5,
-                      "support": [[-0.05, -0.05],
-                                  [0.05, 0.05]]
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.05
                   },
                   "1": {
-                        "support_linf_radius_assumed": -0.5,
-                        "support": [[-0.1, -0.1],
-                                    [0.1, 0.1]]
+                        "support_linf_radius_assumed": 0.5,
+                        "support_linf_radius": 0.1
                   },
                   "2": {
-                        "support_linf_radius_assumed": -0.5,
-                        "support": [[-0.2, -0.2],
-                                    [0.2, 0.2]]
+                        "support_linf_radius_assumed": 0.5,
+                        "support_linf_radius": 0.2
                   },
                   "3": {
-                        "support_linf_radius_assumed": -0.5,
-                        "support": [[-0.3, -0.3],
-                                    [0.3, 0.3]]
+                        "support_linf_radius_assumed": 0.5,
+                        "support_linf_radius": 0.3
                   },
                   "4": {
-                        "support_linf_radius_assumed": -0.5,
-                        "support": [[-0.4, -0.4],
-                                    [0.4, 0.4]]
+                        "support_linf_radius_assumed": 0.5,
+                        "support_linf_radius": 0.4
                   }
               }
           },
@@ -34,7 +29,7 @@
               "settings": {
                   "0": {
                       "support_linf_radius_assumed": -0.5,
-                      "support": [[-0.15, -0.15, -0.15],
+                      "support_linf_radius": [[-0.15, -0.15, -0.15],
                                   [0.15, 0.15, 0.15]]
                   }
               }
@@ -43,7 +38,7 @@
               "settings": {
                   "0": {
                       "support_linf_radius_assumed": -0.5,
-                      "support": [[-0.15, -0.15, -0.15, -0.15],
+                      "support_linf_radius": [[-0.15, -0.15, -0.15, -0.15],
                                   [0.15, 0.15, 0.15, 0.15]]
                   }
               }
@@ -55,8 +50,7 @@
           "2": {
               "settings": {
                   "0": {
-                      "support": [[-0.5, -0.5],
-                                  [0.5, 0.5]],
+                      "support_linf_radius": 0.5,
                       "mean": [0.0, 0.0],
                       "variance": [0.02, 0.03]
                   }
@@ -65,8 +59,7 @@
           "3": {
               "settings": {
                   "0": {
-                      "support": [[-0.5, -0.5, -0.5],
-                                  [0.5, 0.5, 0.5]],
+                      "support_linf_radius": 0.5,
                       "mean": [0.0, 0.0, 0.0],
                       "variance": [0.02, 0.03, 0.04]
                   }
@@ -75,8 +68,7 @@
           "4": {
               "settings": {
                   "0": {
-                      "support": [[-0.5, -0.5, -0.5, -0.5],
-                                  [0.5, 0.5, 0.5, 0.5]],
+                      "support_linf_radius": 0.5,
                       "mean": [0.0, 0.0, 0.0, 0.0],
                       "variance": [0.2, 0.3, 0.4, 0.8]
                   }
@@ -89,8 +81,7 @@
           "2": {
               "settings": {
                   "0": {
-                      "support": [[-0.5, -0.5],
-                                  [0.5, 0.5]],
+                      "support_linf_radius": 0.5,
                       "weight": [0.4, 0.6],
                       "mean": [[-0.1, -0.1],
                                [0.1, 0.1]],
@@ -102,8 +93,7 @@
         "3": {
               "settings": {
                   "0": {
-                      "support": [[-0.5, -0.5, -0.5],
-                                  [0.5, 0.5, 0.5]],
+                      "support_linf_radius": 0.5,
                       "weight": [0.3, 0.6],
                       "mean": [[-0.1, -0.1, -0.1],
                                [0.1, 0.1, 0.1]],
@@ -119,7 +109,7 @@
           "2": {
               "settings": {
                   "0": {
-                      "support_linf_radius_assumed": -0.5,
+                      "support_linf_radius_assumed": 0.5,
                       "support_size": 40
                   }
               }

@@ -1,5 +1,5 @@
 import torch
-
+from typing import Optional
 from confidence import ClopperPearsonConfidence
 from sets import BoundedVoronoiPartition
 
@@ -70,13 +70,16 @@ class UncertainQuantization(Quantization):
             n=self.nsamples
         )
 
-    def _confidence_allocation(self, beta: float, outer_prop: float = 0.9):
-        beta_outer = outer_prop * beta
-        beta_inner = beta - beta_outer
-        beta_allocation = beta_inner / (self.__len__() - 1) * torch.ones(self.__len__())
-        beta_allocation[-1] = beta_outer
+    def _confidence_allocation(self, beta: float, outer_prop: Optional[float] = None):
+        if outer_prop is None:
+            return beta / self.__len__()
+        else:
+            beta_outer = outer_prop * beta
+            beta_inner = beta - beta_outer
+            beta_allocation = beta_inner / (self.__len__() - 1) * torch.ones(self.__len__())
+            beta_allocation[-1] = beta_outer
 
-        return beta_allocation
+            return beta_allocation
 
     @property
     def lower_probs(self):

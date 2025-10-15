@@ -73,7 +73,17 @@
                       "variance": 0.03
                   }
               }
+          },
+          "100": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.03
+                  }
+              }
           }
+
       }
   },
   "GaussianMixture": {

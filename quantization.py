@@ -65,10 +65,18 @@ class UncertainQuantization(Quantization):
         super().__init__(partition=partition, samples=samples)
 
         self.confidence = ConfidenceClass(
-            beta=beta / self.__len__(), 
+            beta=self._confidence_allocation(beta=beta, outer_prop=0.9),
             n_set=self.counts, 
             n=self.nsamples
         )
+
+    def _confidence_allocation(self, beta: float, outer_prop: float = 0.9):
+        beta_outer = outer_prop * beta
+        beta_inner = beta - beta_outer
+        beta_allocation = beta_inner / (self.__len__() - 1) * torch.ones(self.__len__())
+        beta_allocation[-1] = beta_outer
+
+        return beta_allocation
 
     @property
     def lower_probs(self):

@@ -1,7 +1,7 @@
 import torch
 from matplotlib import pyplot as plt
 
-from optimization import plain_vanilla, stochastic_vertice_ascent, full_search, diagonal_constrained_tp, max_oracle_gradient_descent, black_box
+from solvers import get_solver
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 
@@ -53,53 +53,19 @@ if __name__ == '__main__':
 
 
     # Analysis 3: Compute optima for different starting points (if applicable)
-    # Cutting plane LP solver
-    result = stochastic_vertice_ascent(cost=quantization.partition.distance_locs ** 2,
-                           lower=quantization.lower_probs,
-                           upper=quantization.upper_probs,
-                           empirical_marginal=quantization.probs,
-                           num_steps=1000)
+    for name, Solver in get_solver.mapping.items():
+        if name == 'max_oracle_gradient_descent':
+            num_iters = 10
+        else:
+            num_iters = 1
 
-    print(f"Final w (Cutting plane) = {result.w_opt}")
-    print(f"Value (Cutting plane) = {result.objective_opt} \n")
+        for _ in range(num_iters):
+            result = Solver().solve(
+                cost=quantization.partition.distance_locs ** 2,
+                lower=quantization.lower_probs,
+                upper=quantization.upper_probs,
+                empirical_marginal=quantization.probs
+            )
 
-    result = full_search(cost=quantization.partition.distance_locs ** 2,
-                         lower=quantization.lower_probs,
-                         upper=quantization.upper_probs,
-                         empirical_marginal=quantization.probs)
-
-    print(f"Final w (Full search) = {result.w_opt}")
-    print(f"Value (Full search) = {result.objective_opt} \n")
-
-    result = black_box(cost=quantization.partition.distance_locs ** 2,
-                       lower=quantization.lower_probs,
-                       upper=quantization.upper_probs,
-                       empirical_marginal=quantization.probs)
-
-    print(f"Final w (Black box) = {result.w_opt}")
-    print(f"Value (Black box) = {result.objective_opt} \n")
-
-    result = plain_vanilla(cost=quantization.partition.distance_locs ** 2,
-                           lower=quantization.lower_probs,
-                           upper=quantization.upper_probs,
-                           empirical_marginal=quantization.probs)
-    
-    print(f"Final w (Plain vanilla) = {result.w_opt}")
-    print(f"Value (Plain vanilla) = {result.objective_opt} \n")
-    
-    result = diagonal_constrained_tp(cost=quantization.partition.distance_locs ** 2,
-                                     lower=quantization.lower_probs,
-                                     upper=quantization.upper_probs,
-                                     empirical_marginal=quantization.probs)
-    
-    print(f"Final w (Fixate TP) = {result.w_opt}")
-    print(f"Value (Fixate TP) = {result.objective_opt} \n")
-
-    for i in range(10):
-        result = max_oracle_gradient_descent(cost=quantization.partition.distance_locs ** 2,
-                                       lower=quantization.lower_probs,
-                                       upper=quantization.upper_probs,
-                                       empirical_marginal=quantization.probs)
-
-        print(f"Final w (Oracle) = {result.w_opt}")
-        print(f"Value (Oracle) = {result.objective_opt} \n")
+            print(f"Final w ({name}) = {result.w_opt}")
+            print(f"Value ({name}) = {result.objective_opt} \n")

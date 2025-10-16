@@ -7,6 +7,7 @@ from argparse import Namespace
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius
+from solvers import get_solver
 
 from configs.construct import get_support_assumption, get_distribution
 
@@ -201,6 +202,8 @@ def run_combinations(
     max_memory_mb: int = 2000, 
     print_timings: bool = False
 ):
+    solver = get_solver(method=args.method)
+
     distribution = get_distribution(**vars(args))
     support_assumption = get_support_assumption(**vars(args))
     
@@ -242,7 +245,7 @@ def run_combinations(
                 start = time.time()
                 data_driven_radii.append((N, M), DataDrivenRadius(
                     quantization=quantizations.at((N, M)),
-                    method=args.method, 
+                    solver=solver, 
                     compute_moment_bound=args.compute_moment_bound, 
                     compute_discrete_bound=args.compute_discrete_bound
                 ))

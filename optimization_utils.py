@@ -1,0 +1,142 @@
+from typing import Tuple, Optional
+
+import torch
+import numpy as np
+
+import cvxpy as cp
+from scipy.optimize import linprog
+
+
+def o_maximization(
+    cost: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor, 
+    tol: float = 1e-6
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    # Inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
+    order = torch.argsort(-cost)
+    p = lower.clone()
+    rem = 1 - p.sum()
+    gap = upper - p
+    cumgap = torch.cumsum(gap[order], dim=0)
+    for idx, o in enumerate(order):
+        rem_state = rem - cumgap[idx] + gap[o]
+        if rem_state <= 0:
+            continue
+        if gap[o] < rem_state:
+            p[o] += gap[o]
+        else:
+            p[o] += rem_state
+            break
+
+    assert (p.sum() - 1.0).abs() <= tol
+    assert (p >= lower - tol).all() & (p <= upper + tol).all()
+
+    result = torch.einsum('i,i->', cost, p)
+    return result, p
+
+
+def ot_lp_solver(
+    cost: torch.Tensor,
+    w: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    method: str = "highs",
+    tol: float = 1e-8
+) -> Tuple[torch.Tensor, torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
+    n = cost.shape[0]
+
+    # Move to CPU/NumPy for the solver
+    C_np = cost.detach().cpu().double().numpy()
+    p_np = w.detach().cpu().double().numpy()
+    q_np = empirical_distribution.detach().cpu().double().numpy()
+
+    # normalize
+    p_np /= p_np.sum()
+    q_np /= q_np.sum()
+
+    # Decision variable is vec(T) of length n*n in row-major order
+    c = C_np.reshape(-1)
+
+    # Equality constraints: A_eq x = b_eq
+    # Row sums: for each i, sum_j T[i,j] = p[i]
+    A_eq_rows = []
+    b_eq = []
+
+    # Row constraints
+    for i in range(n):
+        row = np.zeros(n*n, dtype=float)
+        row[i*n:(i+1)*n] = 1.0
+        A_eq_rows.append(row)
+        b_eq.append(p_np[i])
+
+    # Column constraints
+    for j in range(n):
+        col = np.zeros(n*n, dtype=float)
+        col[j::n] = 1.0
+        A_eq_rows.append(col)
+        b_eq.append(q_np[j])
+
+    A_eq = np.stack(A_eq_rows, axis=0)
+    b_eq = np.array(b_eq, dtype=float)
+
+    # Bounds: T[i,j] >= 0 (no upper bound)
+    bounds = [(-tol, None)] * (n*n)
+
+    # Solve LP
+    res = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method=method)
+
+    if not res.success:
+        raise RuntimeError(f"LP failed: {res.message}")
+
+    x = res.x  # optimal vec(T)
+    T_np = x.reshape(n, n)
+
+    # Convert back to torch on original device/dtype
+    T = torch.tensor(T_np)
+    obj = (cost * T).sum()
+
+    # Try to return dual potentials (u for rows, v for cols) if provided
+    u = v = None
+    try:
+        # SciPy (HiGHS) exposes equality marginals; the first n are row constraints, next n columns
+        eq_duals = res.eqlin.marginals  # length 2n
+        u = torch.tensor(eq_duals[:n])
+        v = torch.tensor(eq_duals[n:])
+    except Exception:
+        pass
+
+    return T, obj, (u, v) if (u is not None and v is not None) else None
+
+
+def lp_maximization( # TODO depreciate
+    cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor
+):
+    n = cost.shape[0]
+
+    # Decision variables
+    Pi = cp.Variable((n, n), nonneg=True)
+    w = cp.Variable(n)
+
+    objective = cp.Maximize(cp.sum(cp.multiply(cost, Pi)))
+
+    constraints = [
+        cp.sum(Pi, axis=0) == empirical_distribution,
+        cp.sum(Pi, axis=1) == w,
+        w >= lower, w <= upper,
+        cp.sum(w) == 1
+    ]
+
+    for i in range(n):
+        constraints.append(Pi[i, i] >= lower[i])
+
+    # Solve
+    prob = cp.Problem(objective, constraints)
+    prob.solve(solver=cp.CVXOPT)
+
+    if prob.status not in ["optimal", "optimal_inaccurate"]:
+        raise RuntimeError(f"Solver status: {prob.status}")
+
+    return prob.value, w.value

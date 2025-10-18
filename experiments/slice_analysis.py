@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from configs.handlers import parse_arguments
-from experiments.utils import run_combinations
+from experiments.utils import run_combinations, generate_table
 import plotting.plot as plot
 
 
@@ -19,9 +19,9 @@ if __name__ == '__main__':
         beta=1e-4,
         method='stochastic_vertice_ascent',
         plot=True, 
-        save=False,
+        save=True,
         compute_moment_bound=True,
-        compute_discrete_bound=False,
+        compute_discrete_bound=True,
     )
     results_dir = os.path.join(args.results_dir, args.distribution.lower())
 
@@ -30,12 +30,16 @@ if __name__ == '__main__':
     # We assume num_samples_training = num_samples
     if investigate_clusters:
         N_options = [args.num_samples]
-        M_options = [10, 25, 100]  # [10, 25, 75, 100, 200, 500, 1000]
+        M_options = [10, 15]  # [10, 25, 75, 100, 200, 500, 1000]
     else:
         N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
         M_options = [args.num_clusters]
 
     (quantizations, data_driven_radii, fournier_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options)
+
+    # Generate CSV
+    if args.save:
+        generate_table(data_driven_radii, fournier_radii, args)
 
     # Illustrate Quantizations
     if args.num_dims == 2:

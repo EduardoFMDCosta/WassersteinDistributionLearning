@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 import torch
 import time
+import os
+import csv
 from argparse import Namespace
 
 from quantization import UncertainQuantization
@@ -262,3 +264,52 @@ def run_combinations(
                 continue
 
     return (quantizations, data_driven_radii, fournier_radii), (quantization_times, radius_computation_times, computation_times)
+
+def generate_table(data_driven_radii: _GridDict,
+                   fournier_radii: _GridDict,
+                   args):
+
+    data_data = data_driven_radii.data
+    fournier_data = fournier_radii.data
+
+    # Prepare CSV file name
+    results_dir = os.path.join(args.results_dir, args.distribution.lower())
+    csv_path = os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
+
+    # Prepare rows
+    rows = []
+    for (N, M), bounds in data_data.items():
+        # Extract bounds
+        moment_bound = bounds.moment_bound.item()
+        discrete_bound = bounds.discrete_bound.item()
+        total_bound = moment_bound + discrete_bound
+        fournier_value = fournier_data.get((N, M), float("nan"))
+
+        rows.append({
+            "Distribution": args.distribution,
+            "Dimension": args.num_dims,
+            "N": N,
+            "M": M,
+            "Moment bound": f"{moment_bound:.2f}",
+            "Discrete bound": f"{discrete_bound:.2f}",
+            "Ours": f"{total_bound:.2f}",
+            "Fournier": f"{fournier_value:.2f}"
+        })
+
+    # Write to CSV
+    with open(csv_path, mode="w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "Distribution",
+                "Dimension",
+                "N",
+                "M",
+                "Moment bound",
+                "Discrete bound",
+                "Ours",
+                "Fournier",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)

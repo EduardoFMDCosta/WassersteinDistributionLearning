@@ -42,7 +42,7 @@ if __name__ == '__main__':
         duchi.append(duchi_confidence)
         pearson.append(pearson_confidence)
 
-    plot_confidence(nums_samples, empirical, hoeff, duchi, pearson, actual_region_prob)
+    plot_confidence(nums_samples, empirical, hoeff, duchi, pearson, actual_region_prob, save=True)
 
 
     ### Experiment 2: Compare Clopper-Pearson's upperbound for diminishing confidence
@@ -68,4 +68,4 @@ if __name__ == '__main__':
         upper_deltas.append(pearson_confidence.upper_proba - empirical)
         upper_probs.append(pearson_confidence.upper_proba.item())
 
-    plot_confidence_delta(adjusted_betas, empiricals, upper_deltas)
+    plot_confidence_delta(adjusted_betas, empiricals, upper_deltas, save=True)

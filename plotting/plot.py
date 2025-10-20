@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 import torch
 import seaborn as sns
@@ -178,7 +179,8 @@ def plot_confidence(nums_samples:list,
                     hoeff_list: list[Confidence],
                     duchi_list: list[Confidence],
                     pearson_list: list[Confidence],
-                    actual_prob: Optional[torch.Tensor] = None):
+                    actual_prob: Optional[torch.Tensor] = None,
+                    save=False):
 
     sns.set_style("darkgrid")
 
@@ -210,10 +212,15 @@ def plot_confidence(nums_samples:list,
 
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
+
+    if save:
+        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
+        plt.savefig(os.path.join(results_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
+
     plt.show()
 
 @torch.no_grad()
-def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
+def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list, save=False):
     sns.set_style("whitegrid")
 
     fig, ax = plt.subplots()
@@ -232,6 +239,10 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list):
     formatter.set_powerlimits((-2, 2))
 
     plt.tight_layout()
+    if save:
+        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
+        plt.savefig(os.path.join(results_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
+
     plt.show()
 
 def plot_quantization(

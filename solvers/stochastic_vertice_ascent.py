@@ -1,4 +1,5 @@
 import torch
+import torch.multiprocessing as mp
 from tqdm import tqdm
 
 from .templates import MaxMinLP, MaxMinLPResult
@@ -99,9 +100,46 @@ def project_to_omega_subspace(
 
 
 class StochasticVerticeAscent(MaxMinLP):
-    def __init__(self, num_steps: int = 1000):
+    def __init__(self, num_steps: int = 1000, num_workers: int = 10):
         super().__init__()
         self.num_steps = num_steps
+        self.num_workers = num_workers
+
+    def _solve_single(self, args):
+        d, cost, lower, upper, empirical_marginal, num_steps = args
+        delta = 1e-3
+
+        w = empirical_marginal.clone() + torch.rand_like(empirical_marginal) * delta
+        w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
+
+        objective_opt = -float("inf")
+        alpha = beta = None
+
+        for step in range(num_steps):
+            # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
+            Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
+            alpha, beta = duals
+
+            alpha = alpha.float()
+            beta = beta.float()
+
+            # O-maximization (w^{(k+1)})
+            _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
+
+            epsilon = torch.einsum('i,i->', alpha, w_next - w)
+
+            if epsilon < 1e-5:
+                break
+
+            # Update w
+            w = w_next
+
+            # Update highest objective
+            if objective_opt < objective:
+                objective_opt = objective
+                w_opt = w
+
+        return objective_opt, w_opt, alpha, beta
 
     def solve(
         self,
@@ -110,53 +148,28 @@ class StochasticVerticeAscent(MaxMinLP):
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor
     ) -> MaxMinLPResult:
-        M = cost.shape[0]
-        delta = 1e-3
+        with mp.Pool(self.num_workers) as pool:
+            results = list(
+                tqdm(
+                    pool.imap_unordered(
+                        self._solve_single,
+                        [
+                            (d, cost, lower, upper, empirical_marginal, self.num_steps)
+                            for d in range(self.num_steps)
+                        ],
+                    ),
+                    total=self.num_steps,
+                    desc="Parallel Stochastic Vertice Ascent Outer Loop",
+                )
+            )
 
-        objective_opt = -float("inf")
-        w_opt = None
-
-        pbar = tqdm(total=self.num_steps, desc="Cutting Plane Outer Loop")
-
-        for d in range(self.num_steps):
-            msg = f"[CuttingPlane] iteration={d}"
-            pbar.set_postfix_str(msg)
-
-            # Initialize w
-            w = empirical_marginal.clone() + torch.rand_like(empirical_marginal) * delta
-            w = project_to_omega_subspace(w=w, lower=lower, upper=upper, max_iter=10_000)
-
-            for step in range(self.num_steps):
-                # Solve for primal (w^{(k)}) and dual (alpha^{(k)}, beta^{(k)})
-                Pi, objective, duals = ot_lp_solver(cost=cost, w=w, empirical_distribution=empirical_marginal)
-                alpha, beta = duals
-
-                alpha = alpha.float()
-                beta = beta.float()
-
-                # O-maximization (w^{(k+1)})
-                _, w_next = o_maximization(cost=alpha, lower=lower, upper=upper)
-
-                epsilon = torch.einsum('i,i->', alpha, w_next - w)
-                msg_inner = f"[Inner] step={step+1}, epsilon={epsilon:.2e}, objective={objective:.4f}"
-                pbar.set_postfix_str(msg + ", " + msg_inner)
-
-                if epsilon < 1e-5:
-                    pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
-                    break
-
-                # Update w
-                w = w_next
-
-            #Update highest objective
-            if objective_opt < objective:
-                objective_opt = objective
-                w_opt = w
-
-            pbar.update(1)
-
-        pbar.close()
-
-        return MaxMinLPResult(objective_opt=float(objective_opt), w_opt=w_opt, alpha=alpha, beta=beta)
+        # Aggregate best result
+        objective_opt, w_opt, alpha, beta = max(results, key=lambda r: r[0])
+        return MaxMinLPResult(
+            objective_opt=float(objective_opt),
+            w_opt=w_opt,
+            alpha=alpha,
+            beta=beta,
+        )
     
 

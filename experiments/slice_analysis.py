@@ -35,11 +35,11 @@ if __name__ == '__main__':
         N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
         M_options = [args.num_clusters]
 
-    (quantizations, data_driven_radii, fournier_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options)
+    (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True)
 
     # Generate CSV
     if args.save:
-        generate_table(data_driven_radii, fournier_radii, args)
+        generate_table(data_driven_radii, fournier_radii, empirical_radii, args)
 
     # Illustrate Quantizations
     if args.num_dims == 2:

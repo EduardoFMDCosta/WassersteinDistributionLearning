@@ -65,12 +65,27 @@ class DataDrivenRadii(_GridDict[DataDrivenRadius]):
     @property
     def radius(self):
         return self._stack('radius')
+    
+    def moment_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].moment_bound
+    
+    def discrete_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].discrete_bound
+    
+    def lower_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].lower_bound
+    
+    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].radius
 
 
 class FournierRadii(_GridDict[Union[torch.Tensor, float]]):
     @property
     def radius(self):
         return self._stack('data')
+    
+    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return torch.as_tensor(self.data[key])
 
 
 class Quantizations(_GridDict[UncertainQuantization]):
@@ -151,6 +166,13 @@ class EmpiricalRadii(_GridDict[EmpiricalRadius]):
     @property
     def radius_quantization(self):
         return self._stack('radius_quantization')
+    
+    def radius_samples_at(self, key: Tuple[int, int]) -> float:
+        return self.data[key].radius_samples
+
+    def radius_quantization_at(self, key: Tuple[int, int]) -> float:
+        return self.data[key].radius_quantization
+
 
 ## -- Experiment Function -------------------------------------------------------------------------------------------- ##
 def estimate_memory_usage(N, M, num_dims=2):
@@ -280,42 +302,31 @@ def run_combinations(
 
     return (quantizations, data_driven_radii, fournier_radii, empirical_radii), (quantization_times, radius_computation_times, computation_times)
 
-def generate_table(data_driven_radii: _GridDict,
-                   fournier_radii: _GridDict,
-                   empirical_radii: _GridDict,
-                   args):
-
-    data_data = data_driven_radii.data
-    fournier_data = fournier_radii.data
-    empirical_data = empirical_radii.data
-
+def generate_table(
+    data_driven_radii: DataDrivenRadii,
+    fournier_radii: FournierRadii,
+    empirical_radii: EmpiricalRadii,
+    args
+): 
     # Prepare CSV file name
-    results_dir = os.path.join(args.results_dir, args.distribution.lower())
+    results_dir = os.path.join(args.results_dir, args.distribution.lower())  # TODO change results_dir to this...
     csv_path = os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
 
     # Prepare rows
     rows = []
-    for (N, M), bounds in data_data.items():
-        # Extract bounds
-        moment_bound = bounds.moment_bound.item()
-        discrete_bound = bounds.discrete_bound.item()
-        total_bound = moment_bound + discrete_bound
-        fournier_value = fournier_data.get((N, M), float("nan"))
-        radius_samples = empirical_data.get((N, M)).radius_samples
-        radius_quantization = empirical_data.get((N, M)).radius_quantization
-
+    for (N, M) in data_driven_radii.keys():
         rows.append({
             "Distribution": args.distribution,
             "Dimension": args.num_dims,
             "Support radius": args.support_linf_radius,
             "N": N,
             "M": M,
-            "Moment bound": f"{moment_bound:.2f}",
-            "Discrete bound": f"{discrete_bound:.2f}",
-            "Ours": f"{total_bound:.2f}",
-            "Fournier": f"{fournier_value:.2f}",
-            "Empirical (samples)": f"{radius_samples:.2f}",
-            "Empirical (locs)": f"{radius_quantization:.2f}",
+            "Moment bound": f"{data_driven_radii.moment_bound_at((N, M))}",
+            "Discrete bound": f"{data_driven_radii.discrete_bound_at((N, M))}",
+            "Ours": f"{data_driven_radii.radius_at((N, M))}",
+            "Fournier": f"{fournier_radii.radius_at((N, M))}",
+            "Empirical (samples)": f"{empirical_radii.radius_samples_at((N, M))}",
+            "Empirical (locs)": f"{empirical_radii.radius_quantization_at((N, M))}",
         })
 
     # Write to CSV

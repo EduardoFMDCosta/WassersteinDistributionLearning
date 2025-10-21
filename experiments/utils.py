@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 
-import ot
 import torch
 import time
 import os
@@ -10,7 +9,7 @@ from argparse import Namespace
 
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
-from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius
+from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, EmpiricalRadius
 from solvers import get_solver
 
 from configs.construct import get_support_assumption, get_distribution
@@ -144,36 +143,14 @@ class Quantizations(_GridDict[UncertainQuantization]):
         return self._std_stack('distance_locs')
 
 
-class EmpiricalRadius:
-    def __init__(
-            self,
-            quantization: UncertainQuantization,
-            fournier_samples: torch.Tensor,
-            distribution: ds.Distribution,
-    ):
-        self._N = fournier_samples.shape[0]
-        self._M = quantization.locs.shape[0]
-        self._distribution_representation = distribution.sample((10 * self._N,))
-
-        self._empirical_wasserstein = ot.solve_sample(X_a=self._distribution_representation, X_b=fournier_samples).value.sqrt().item()
-        self._quantization_wasserstein = ot.solve_sample(X_a=self._distribution_representation, X_b=quantization.locs, b=quantization.probs).value.sqrt().item()
-
-    @property
-    def empirical_wasserstein(self) -> float:
-        return self._empirical_wasserstein
-
-    @property
-    def quantization_wasserstein(self) -> float:
-        return self._quantization_wasserstein
-
 class EmpiricalRadii(_GridDict[EmpiricalRadius]):
     @property
-    def empirical_wasserstein(self):
-        return self._stack('empirical_wasserstein')
+    def radius_samples(self):
+        return self._stack('radius_samples')
 
     @property
-    def quantization_wasserstein(self):
-        return self._stack('quantization_wasserstein')
+    def radius_quantization(self):
+        return self._stack('radius_quantization')
 
 ## -- Experiment Function -------------------------------------------------------------------------------------------- ##
 def estimate_memory_usage(N, M, num_dims=2):
@@ -299,11 +276,7 @@ def run_combinations(
                 continue
 
             if compute_empirical_radii:
-                empirical_radii.append((N, M), EmpiricalRadius(
-                    quantization=quantizations.at((N, M)),
-                    fournier_samples=samples_partition,
-                    distribution=distribution,
-                ))
+                empirical_radii.append((N, M), EmpiricalRadius(quantization=quantizations.at((N, M)), dist=distribution))
 
     return (quantizations, data_driven_radii, fournier_radii, empirical_radii), (quantization_times, radius_computation_times, computation_times)
 
@@ -328,8 +301,8 @@ def generate_table(data_driven_radii: _GridDict,
         discrete_bound = bounds.discrete_bound.item()
         total_bound = moment_bound + discrete_bound
         fournier_value = fournier_data.get((N, M), float("nan"))
-        empirical_wasserstein = empirical_data.get((N, M)).empirical_wasserstein
-        quantization_wasserstein = empirical_data.get((N, M)).quantization_wasserstein
+        radius_samples = empirical_data.get((N, M)).radius_samples
+        radius_quantization = empirical_data.get((N, M)).radius_quantization
 
         rows.append({
             "Distribution": args.distribution,
@@ -341,8 +314,8 @@ def generate_table(data_driven_radii: _GridDict,
             "Discrete bound": f"{discrete_bound:.2f}",
             "Ours": f"{total_bound:.2f}",
             "Fournier": f"{fournier_value:.2f}",
-            "Empirical Wasserstein": f"{empirical_wasserstein:.2f}",
-            "Quantization Wasserstein": f"{quantization_wasserstein:.2f}",
+            "Empirical (samples)": f"{radius_samples:.2f}",
+            "Empirical (locs)": f"{radius_quantization:.2f}",
         })
 
     # Write to CSV
@@ -359,8 +332,8 @@ def generate_table(data_driven_radii: _GridDict,
                 "Discrete bound",
                 "Ours",
                 "Fournier",
-                "Empirical Wasserstein",
-                "Quantization Wasserstein",
+                "Empirical (samples)",
+                "Empirical (locs)",
             ],
         )
         writer.writeheader()

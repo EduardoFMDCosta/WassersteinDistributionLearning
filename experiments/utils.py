@@ -309,8 +309,7 @@ def generate_table(
     args
 ): 
     # Prepare CSV file name
-    results_dir = os.path.join(args.results_dir, args.distribution.lower())  # TODO change results_dir to this...
-    csv_path = os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
+    csv_path = os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
 
     # Prepare rows
     rows = []

@@ -13,7 +13,6 @@ from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, 
 from solvers import get_solver
 
 from configs.construct import get_support_assumption, get_distribution
-import torch.distributions as ds
 
 
 ## -- Data Structure ------------------------------------------------------------------------------------------------ ##

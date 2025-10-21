@@ -27,7 +27,7 @@ if __name__ == '__main__':
     M_options = [10, 50] # [10, 50, 100]
     max_memory_mb = 2000  # 2GB memory limit for fast testing
 
-    (quantizations, data_driven_radii, fournier_radii), (quantization_times, radius_computation_times, computation_times) = run_combinations(args, M_options=M_options, N_options=N_options, max_memory_mb=max_memory_mb)
+    (quantizations, data_driven_radii, fournier_radii, _), (quantization_times, radius_computation_times, computation_times) = run_combinations(args, M_options=M_options, N_options=N_options, max_memory_mb=max_memory_mb)
 
     # Plot Bounds
     xlabel, ylabel = "Number of samples (N)", "Number of clusters (M)"

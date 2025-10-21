@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
+
 import torch
 import time
 import os
@@ -8,7 +9,7 @@ from argparse import Namespace
 
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
-from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius
+from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, EmpiricalRadius
 from solvers import get_solver
 
 from configs.construct import get_support_assumption, get_distribution
@@ -63,12 +64,27 @@ class DataDrivenRadii(_GridDict[DataDrivenRadius]):
     @property
     def radius(self):
         return self._stack('radius')
+    
+    def moment_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].moment_bound
+    
+    def discrete_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].discrete_bound
+    
+    def lower_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].lower_bound
+    
+    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].radius
 
 
 class FournierRadii(_GridDict[Union[torch.Tensor, float]]):
     @property
     def radius(self):
         return self._stack('data')
+    
+    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return torch.as_tensor(self.data[key])
 
 
 class Quantizations(_GridDict[UncertainQuantization]):
@@ -139,7 +155,23 @@ class Quantizations(_GridDict[UncertainQuantization]):
     @property
     def std_distances_locs(self):
         return self._std_stack('distance_locs')
+
+
+class EmpiricalRadii(_GridDict[EmpiricalRadius]):
+    @property
+    def radius_samples(self):
+        return self._stack('radius_samples')
+
+    @property
+    def radius_quantization(self):
+        return self._stack('radius_quantization')
     
+    def radius_samples_at(self, key: Tuple[int, int]) -> float:
+        return self.data[key].radius_samples
+
+    def radius_quantization_at(self, key: Tuple[int, int]) -> float:
+        return self.data[key].radius_quantization
+
 
 ## -- Experiment Function -------------------------------------------------------------------------------------------- ##
 def estimate_memory_usage(N, M, num_dims=2):
@@ -202,7 +234,8 @@ def run_combinations(
     M_options: List[int], 
     N_options: List[int], 
     max_memory_mb: int = 2000, 
-    print_timings: bool = False
+    print_timings: bool = False,
+    compute_empirical_radii: bool = False,
 ):
     solver = get_solver(method=args.method)
 
@@ -210,7 +243,7 @@ def run_combinations(
     support_assumption = get_support_assumption(**vars(args))
     
     quantization_times, radius_computation_times, computation_times = TimeLogger(), TimeLogger(), TimeLogger()
-    quantizations, data_driven_radii, fournier_radii = Quantizations(), DataDrivenRadii(), FournierRadii()
+    quantizations, data_driven_radii, fournier_radii, empirical_radii = Quantizations(), DataDrivenRadii(), FournierRadii(), EmpiricalRadii()
     for N in N_options:
         samples_partition = distribution.sample((N,))
         samples_quantization = distribution.sample((N,))
@@ -263,38 +296,35 @@ def run_combinations(
                 print(f"Unexpected error for M={M}, N={N}: {e}. Skipping this configuration.")
                 continue
 
-    return (quantizations, data_driven_radii, fournier_radii), (quantization_times, radius_computation_times, computation_times)
+            if compute_empirical_radii:
+                empirical_radii.append((N, M), EmpiricalRadius(quantization=quantizations.at((N, M)), dist=distribution))
 
-def generate_table(data_driven_radii: _GridDict,
-                   fournier_radii: _GridDict,
-                   args):
+    return (quantizations, data_driven_radii, fournier_radii, empirical_radii), (quantization_times, radius_computation_times, computation_times)
 
-    data_data = data_driven_radii.data
-    fournier_data = fournier_radii.data
-
+def generate_table(
+    data_driven_radii: DataDrivenRadii,
+    fournier_radii: FournierRadii,
+    empirical_radii: EmpiricalRadii,
+    args
+): 
     # Prepare CSV file name
-    results_dir = os.path.join(args.results_dir, args.distribution.lower())
-    csv_path = os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
+    csv_path = os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
 
     # Prepare rows
     rows = []
-    for (N, M), bounds in data_data.items():
-        # Extract bounds
-        moment_bound = bounds.moment_bound.item()
-        discrete_bound = bounds.discrete_bound.item()
-        total_bound = moment_bound + discrete_bound
-        fournier_value = fournier_data.get((N, M), float("nan"))
-
+    for (N, M) in data_driven_radii.keys():
         rows.append({
             "Distribution": args.distribution,
             "Dimension": args.num_dims,
             "Support radius": args.support_linf_radius,
             "N": N,
             "M": M,
-            "Moment bound": f"{moment_bound:.2f}",
-            "Discrete bound": f"{discrete_bound:.2f}",
-            "Ours": f"{total_bound:.2f}",
-            "Fournier": f"{fournier_value:.2f}"
+            "Moment bound": f"{data_driven_radii.moment_bound_at((N, M))}",
+            "Discrete bound": f"{data_driven_radii.discrete_bound_at((N, M))}",
+            "Ours": f"{data_driven_radii.radius_at((N, M))}",
+            "Fournier": f"{fournier_radii.radius_at((N, M))}",
+            "Empirical (samples)": f"{empirical_radii.radius_samples_at((N, M))}",
+            "Empirical (locs)": f"{empirical_radii.radius_quantization_at((N, M))}",
         })
 
     # Write to CSV
@@ -311,6 +341,8 @@ def generate_table(data_driven_radii: _GridDict,
                 "Discrete bound",
                 "Ours",
                 "Fournier",
+                "Empirical (samples)",
+                "Empirical (locs)",
             ],
         )
         writer.writeheader()

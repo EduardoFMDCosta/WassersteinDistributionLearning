@@ -2,6 +2,7 @@ from typing import Optional
 import json
 import argparse
 import os
+from pathlib import Path
 
 from solvers import get_solver
 
@@ -67,5 +68,13 @@ def parse_arguments(
     )
 
     args.__dict__.update(vars(dynamics_params))
-    args.results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
+    args.results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results", args.distribution.lower())
+    ensure_dir(args.results_dir)
+
     return args
+
+def ensure_dir(dirname):
+    """Check whether a given directory was created; if not, create a new one."""
+    dirname = Path(dirname)
+    if not dirname.is_dir():
+        dirname.mkdir(parents=True, exist_ok=False)

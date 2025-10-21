@@ -23,8 +23,6 @@ if __name__ == '__main__':
         compute_moment_bound=True,
         compute_discrete_bound=True,
     )
-    results_dir = os.path.join(args.results_dir, args.distribution.lower())
-
     investigate_clusters = True
 
     # We assume num_samples_training = num_samples
@@ -35,11 +33,11 @@ if __name__ == '__main__':
         N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
         M_options = [args.num_clusters]
 
-    (quantizations, data_driven_radii, fournier_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options)
+    (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True)
 
     # Generate CSV
     if args.save:
-        generate_table(data_driven_radii, fournier_radii, args)
+        generate_table(data_driven_radii, fournier_radii, empirical_radii, args)
 
     # Illustrate Quantizations
     if args.num_dims == 2:
@@ -48,7 +46,7 @@ if __name__ == '__main__':
             ax[i] = plot.plot_quantization(ax=ax[i], quantization=quantizations.at(key), title=f"M={key[1]}, N={key[0]}")
 
         if args.save:
-            plt.savefig(os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_quantizations.png"))
+            plt.savefig(os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_quantizations.png"))
         else:
             plt.show()
 
@@ -71,7 +69,7 @@ if __name__ == '__main__':
         tag += f"_N={N_options}_M={args.num_clusters}"
 
     if args.save:
-        plt.savefig(os.path.join(results_dir, f"ndims={args.num_dims}_set={args.setting}_analysis.png"))
+        plt.savefig(os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_analysis.png"))
     else:
         plt.show()
         

@@ -1,5 +1,7 @@
 import torch
 import math
+import ot
+
 from quantization import UncertainQuantization
 from sets import HyperRectangle
 from quantization import UncertainQuantization
@@ -118,3 +120,24 @@ def fournier_radius(
         raise NotImplementedError
 
     return moment_bound + tau
+
+
+class EmpiricalRadius:
+    def __init__(
+        self,
+        quantization: UncertainQuantization,
+        dist: torch.distributions.Distribution,
+    ):
+
+        emp_dist = dist.sample((10 * quantization.nsamples,))
+
+        self._radius_samples = ot.solve_sample(X_a=emp_dist, X_b=quantization.samples).value.sqrt().item()
+        self._radius_quantization = ot.solve_sample(X_a=emp_dist, X_b=quantization.locs, b=quantization.probs).value.sqrt().item()
+
+    @property
+    def radius_samples(self) -> float:
+        return self._radius_samples
+
+    @property
+    def radius_quantization(self) -> float:
+        return self._radius_quantization

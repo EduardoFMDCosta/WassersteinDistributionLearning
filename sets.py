@@ -83,7 +83,7 @@ class BoundedVoronoiPartition:
         radii.clamp_(max=radius_scale_factor * max_sample_distances)
         radii.clamp_(max=torch.norm(support.width * 0.5).item())
 
-        if not use_voronoi_radii:
+        if not use_voronoi_radii: # TODO test if robust for small M and num_neigh
             num_neigh = max(int(M*0.05), 5)
             distance_closest_neighbor = torch.topk(distance_centers, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
             radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)

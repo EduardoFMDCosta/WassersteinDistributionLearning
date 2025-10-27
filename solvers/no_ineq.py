@@ -20,33 +20,29 @@ class NoIneq(MaxMinLP):
     ) -> MaxMinLPResult:
         n = cost.size(0)
 
-        C = cost.detach().cpu().double().numpy()
+        C = cost.detach().cpu().double().numpy()  # C[j,i] = \sup_{x \in C_j} ||x - c_i||^2
         l = lower.detach().cpu().double().numpy()
         u = upper.detach().cpu().double().numpy()
         pi = empirical_marginal.detach().cpu().double().numpy()
         
-        # ---- Model ----
         m = gp.Model("dual")
         m.Params.OutputFlag = 1 if self.verbose else 0
 
-        # ---- Variables ----
-        alpha = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="alpha")
-        beta = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="beta")
+        # μ, ν >= 0
+        mu = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="mu")
+        nu = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="nu")
 
-        # ---- Gauge: fix beta[0] = 0 to remove additive freedom ----
-        # m.addConstr(beta[0] == 0.0, name="gauge")
-
-        options = m.addMVar((n, n), lb=-GRB.INFINITY, name="options")
-
+        # ---- vals[i] = max_j scores[j, i] ----
+        scores = m.addMVar((n, n), lb=-GRB.INFINITY, name="scores")
         for i in range(n):
             for j in range(n):
-                m.addConstr(options[j,i] == C[j,i] + beta[j]  - alpha[j], name=f"dual_feas_{j}_{i}")
+                m.addConstr(scores[j,i] == C[j,i] + nu[j]  - mu[j], name=f"defined_scores_{j}_{i}")
 
         vals = m.addMVar(n, lb=-GRB.INFINITY, name="vals")
         for i in range(n):
-            m.addGenConstrMax(vals[i], [options[j, i] for j in range(n)], name=f"inner maximization {i}")
+            m.addGenConstrMax(vals[i], [scores[j, i] for j in range(n)], name=f"inner maximization {i}")
 
-        obj = alpha @ u - beta @ l + vals @ pi
+        obj = mu @ u - nu @ l + vals @ pi
         m.setObjective(obj, GRB.MINIMIZE)
         m.update()
 

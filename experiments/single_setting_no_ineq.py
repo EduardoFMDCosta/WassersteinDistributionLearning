@@ -2,7 +2,7 @@ import torch
 
 from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
-from bound import DataDrivenRadiusNoIneq, fournier_radius
+from bound import DataDrivenRadiusNoIneq, fournier_radius, DataDrivenRadius
 from solvers import get_solver
 
 from plotting.plot import plot_quantization
@@ -19,11 +19,14 @@ if __name__ == '__main__':
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=30,
+        num_clusters=5,
+        method='full_search',
         beta=1e-4,
         plot=True,
         save=True,
     )
+
+    solver = get_solver(method=args.method)
 
     support_assumption = get_support_assumption(**vars(args))
 
@@ -52,10 +55,12 @@ if __name__ == '__main__':
         nsamples=args.num_samples + args.num_samples_training, 
         beta=args.beta
     )
-    data_driven_output = DataDrivenRadiusNoIneq(quantization=quantization)
+    data_driven_output_no_ineq = DataDrivenRadiusNoIneq(quantization=quantization)
+    data_driven_output = DataDrivenRadius(quantization=quantization, solver=solver)
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
           f"\t Fournier: {fournier_bound:.4f} \n"
+          f"\t Ours (No Inequality): {data_driven_output_no_ineq.radius:.4f} \n"
           f"\t Ours : {data_driven_output.radius:.4f} \n"
         )
 

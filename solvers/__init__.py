@@ -5,6 +5,7 @@ from .plain_vanilla import PlainVanilla
 from .diagonal_constrained_tp import DiagonalConstrainedTP
 from .max_oracle_gradient_descent import MaxOracleGradientDescent
 from .black_box import BlackBox
+from .no_ineq import NoIneq
 
 __all__ = ['get_solver']
 

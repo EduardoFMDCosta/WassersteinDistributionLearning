@@ -6,7 +6,7 @@ from quantization import UncertainQuantization
 from sets import HyperRectangle
 from quantization import UncertainQuantization
 from optimization_utils import o_maximization
-from solvers import MaxMinLP
+from solvers import MaxMinLP, NoIneq
 
 
 def bound_moment(
@@ -34,7 +34,19 @@ def bound_discrete(
 def bound(
     quantization: UncertainQuantization,
 ) -> torch.Tensor:
-    return torch.tensor(torch.nan)
+    
+    solver = NoIneq()
+
+    cost_matrix = quantization.partition.distance_locs.pow(2) + quantization.partition.radii.unsqueeze(-1).pow(2) # j,i
+
+    bound = solver.solve(
+        cost=cost_matrix.detach(),
+        lower=quantization.lower_probs,
+        upper=quantization.upper_probs,
+        empirical_marginal=quantization.probs 
+    ).objective_opt
+
+    return torch.as_tensor(bound) ** 0.5
 
 class DataDrivenRadiusNoIneq:
     def __init__(

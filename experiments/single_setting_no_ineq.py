@@ -20,13 +20,13 @@ if __name__ == '__main__':
         num_samples=1000,
         num_samples_training=1000,
         num_clusters=5,
-        method='full_search',
         beta=1e-4,
         plot=True,
         save=True,
     )
 
-    solver = get_solver(method=args.method)
+    full_search_solver = get_solver(method="full_search")
+    sva_solver = get_solver(method="stochastic_vertice_ascent")
 
     support_assumption = get_support_assumption(**vars(args))
 
@@ -50,17 +50,19 @@ if __name__ == '__main__':
         plot_quantization(quantization=quantization, title=f"M={args.num_clusters}, N={args.num_samples}")
 
     # Compute bounds
-    fournier_bound = fournier_radius(
+    fournier = fournier_radius(
         support=partition.support, 
         nsamples=args.num_samples + args.num_samples_training, 
         beta=args.beta
     )
-    data_driven_output_no_ineq = DataDrivenRadiusNoIneq(quantization=quantization)
-    data_driven_output = DataDrivenRadius(quantization=quantization, solver=solver)
+    no_ineq = DataDrivenRadiusNoIneq(quantization=quantization)
+    full_search = DataDrivenRadius(quantization=quantization, solver=full_search_solver)
+    sva = DataDrivenRadius(quantization=quantization, solver=sva_solver)
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
-          f"\t Fournier: {fournier_bound:.4f} \n"
-          f"\t Ours (No Inequality): {data_driven_output_no_ineq.radius:.4f} \n"
-          f"\t Ours : {data_driven_output.radius:.4f} \n"
+          f"\t Fournier: {fournier:.4f} \n"
+          f"\t Conditional TP: {no_ineq.radius:.4f} \n"
+          f"\t Full Search : {full_search.radius:.4f} \n"
+          f"\t SVA : {sva.radius:.4f} \n"
         )
 

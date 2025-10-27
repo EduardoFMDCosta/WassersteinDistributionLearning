@@ -38,6 +38,7 @@ def bound(
     solver = NoIneq()
 
     cost_matrix = quantization.partition.distance_locs.pow(2) + quantization.partition.radii.unsqueeze(-1).pow(2) # j,i
+    # cost_matrix = quantization.partition.distance_locs.pow(2)
 
     bound = solver.solve(
         cost=cost_matrix.detach(),

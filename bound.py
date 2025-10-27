@@ -31,6 +31,26 @@ def bound_discrete(
 
     return torch.as_tensor(bound) ** 0.5
 
+def bound(
+    quantization: UncertainQuantization,
+) -> torch.Tensor:
+    return torch.tensor(torch.nan)
+
+class DataDrivenRadiusNoIneq:
+    def __init__(
+            self, 
+            quantization: UncertainQuantization
+        ):
+        self._radius = bound(quantization=quantization)
+        self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
+
+    @property
+    def radius(self) -> torch.Tensor:
+        return self._radius
+    
+    @property
+    def lower_bound(self):
+        return self._lower_bound
 
 class DataDrivenRadius:
     _moment_bound = torch.tensor(torch.nan)

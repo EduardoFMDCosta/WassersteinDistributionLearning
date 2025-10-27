@@ -9,7 +9,7 @@ from argparse import Namespace
 
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
-from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, EmpiricalRadius
+from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, EmpiricalRadius, DataDrivenRadiusNoIneq
 from solvers import get_solver
 
 from configs.construct import get_support_assumption, get_distribution
@@ -47,6 +47,20 @@ class TimeLogger(_GridDict[torch.Tensor]):
     def time(self):
         return self._stack('data')
 
+class DataDrivenRadiiNoIneq(_GridDict[DataDrivenRadiusNoIneq]): 
+    @property
+    def lower_bound(self):
+        return self._stack('lower_bound')
+
+    @property
+    def radius(self):
+        return self._stack('radius')
+    
+    def lower_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].lower_bound
+    
+    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key].radius
 
 class DataDrivenRadii(_GridDict[DataDrivenRadius]): 
     @property

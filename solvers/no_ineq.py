@@ -28,21 +28,24 @@ class NoIneq(MaxMinLP):
         m = gp.Model("dual")
         m.Params.OutputFlag = 1 if self.verbose else 0
 
+        m.setParam("TimeLimit", float(60))
+
         # μ, ν >= 0
         mu = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="mu")
         nu = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="nu")
+        alpha = m.addMVar(n, lb=0., vtype=GRB.CONTINUOUS, name="alpha")
 
         # ---- vals[i] = max_j scores[j, i] ----
         scores = m.addMVar((n, n), lb=-GRB.INFINITY, name="scores")
         for i in range(n):
             for j in range(n):
-                m.addConstr(scores[j,i] == C[j,i] + nu[j]  - mu[j], name=f"defined_scores_{j}_{i}")
+                m.addConstr(scores[j,i] == C[j,i] + nu[j]  - mu[j] + alpha[j] * (1.0 if j == i else 0.0), name=f"defined_scores_{j}_{i}")
 
         vals = m.addMVar(n, lb=-GRB.INFINITY, name="vals")
         for i in range(n):
             m.addGenConstrMax(vals[i], [scores[j, i] for j in range(n)], name=f"inner maximization {i}")
 
-        obj = mu @ u - nu @ l + vals @ pi
+        obj = mu @ u - (nu + alpha) @ l + vals @ pi
         m.setObjective(obj, GRB.MINIMIZE)
         m.update()
 

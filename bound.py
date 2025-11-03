@@ -5,31 +5,30 @@ import ot
 from quantization import UncertainQuantization
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from optimization_utils import o_maximization
+from optimization_utils import o_maximization, euclidean_projection_to_vertex, ot_lp_solver
 from solvers import MaxMinLP
 
 
 def bound_moment(
         quantization: UncertainQuantization,
+        vertex_distribution: torch.Tensor,
 ) -> torch.Tensor:
+
+    cost_matrix = (quantization.partition.distance_locs + quantization.partition.radii.unsqueeze(-1)).pow(2)  # j,i
+
     bound, _ = o_maximization(quantization.partition.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
     return bound.pow(0.5)
 
 
 def bound_discrete(
     quantization: UncertainQuantization,
-    solver: MaxMinLP, 
+    vertex_distribution: torch.Tensor,
 ) -> torch.Tensor:
     cost_matrix = quantization.partition.distance_locs.pow(2)
 
-    bound = solver.solve(
-        cost=cost_matrix.detach(),
-        lower=quantization.lower_probs,
-        upper=quantization.upper_probs,
-        empirical_marginal=quantization.probs 
-    ).objective_opt
+    _, bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex_distribution, empirical_distribution=quantization.probs)
 
-    return torch.as_tensor(bound) ** 0.5
+    return torch.as_tensor(bound).pow(0.5)
 
 
 class DataDrivenRadius:
@@ -43,11 +42,13 @@ class DataDrivenRadius:
             compute_moment_bound: bool = True,
             compute_discrete_bound: bool = True
         ):
-        
+
+        vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
+
         if compute_moment_bound:
-            self._moment_bound = bound_moment(quantization=quantization)
+            self._moment_bound = bound_moment(quantization=quantization, vertex_distribution=vertex)
         if compute_discrete_bound:
-            self._discrete_bound = bound_discrete(quantization=quantization, solver=solver)
+            self._discrete_bound = bound_discrete(quantization=quantization, vertex_distribution=vertex)
 
         self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 

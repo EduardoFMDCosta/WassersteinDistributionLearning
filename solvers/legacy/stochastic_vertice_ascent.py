@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import MaxMinLP, MaxMinLPResult
 from optimization_utils import ot_lp_solver, o_maximization
 
 

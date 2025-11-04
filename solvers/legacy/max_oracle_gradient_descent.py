@@ -3,7 +3,7 @@ import cvxpy as cp
 import collections
 from tqdm import tqdm
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import MaxMinLP, MaxMinLPResult
 from optimization_utils import o_maximization
 
 

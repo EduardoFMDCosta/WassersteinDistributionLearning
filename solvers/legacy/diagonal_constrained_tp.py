@@ -3,7 +3,7 @@ import torch
 import cvxpy as cp
 import gurobipy as gp
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import MaxMinLP, MaxMinLPResult
 
 
 def solve_milp_min_diagonal_cvxpy(

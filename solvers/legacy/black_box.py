@@ -1,7 +1,7 @@
 import torch
 import gurobipy as gp
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import MaxMinLP, MaxMinLPResult
 
 
 class BlackBox(MaxMinLP):

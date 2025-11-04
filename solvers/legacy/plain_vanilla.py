@@ -1,6 +1,6 @@
 import torch
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import MaxMinLP, MaxMinLPResult
 
 
 class PlainVanilla(MaxMinLP):

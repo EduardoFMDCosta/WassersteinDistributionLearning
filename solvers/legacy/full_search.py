@@ -2,7 +2,7 @@ import torch
 import warnings
 import itertools
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import MaxMinLP, MaxMinLPResult
 from optimization_utils import ot_lp_solver
 
 def get_vertices(

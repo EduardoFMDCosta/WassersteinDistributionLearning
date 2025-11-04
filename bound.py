@@ -4,7 +4,6 @@ import ot
 
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from optimization_utils import euclidean_projection_to_vertex, ot_lp_solver, sample_vertices
 from solvers import MaxMinLP
 
 

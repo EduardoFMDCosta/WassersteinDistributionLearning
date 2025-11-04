@@ -64,7 +64,7 @@ def solve_milp(
 
     return total_value, w_opt, diag_term_value, transport_term_value
 
-class JointOptimization(MaxMinLP):
+class JointOptimizationMilp(MaxMinLP):
     def __init__(self):
         super().__init__()
 

@@ -1,13 +1,15 @@
 from .templates import MaxMinLP
+from .joint_optimization_milp import JointOptimizationMilp
+from .separate_optimization_milp import SeparateOptimizationMilp
 from .triangle_inequality_vertex import TriangleInequalityFromVertex
-from .joint_optimization import JointOptimization
 
 __all__ = ['get_solver']
 
 
 class GetSolver:
     mapping = dict(
-        joint_optimization=JointOptimization,
+        joint_optimization_milp=JointOptimizationMilp,
+        separate_optimization_milp=SeparateOptimizationMilp,
         triangle_inequality_vertex=TriangleInequalityFromVertex
     )
 

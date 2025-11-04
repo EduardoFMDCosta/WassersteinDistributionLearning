@@ -5,7 +5,8 @@ from quantization import UncertainQuantization
 from .templates import MaxMinLP, MaxMinLPResult
 
 def solve_milp(
-    cost: torch.Tensor,
+    inside_region_cost: torch.Tensor,
+    cross_location_cost: torch.Tensor,
     empirical_distribution: torch.Tensor,
     lower: torch.Tensor,
     upper: torch.Tensor,
@@ -20,9 +21,9 @@ def solve_milp(
     b = cp.Variable(n, boolean=True)
 
     # Objective
-    term_transport = cp.sum(cp.multiply(cost, Pi))
-    term_diag = cp.sum(cp.multiply(cp.diag(cost), w))
-    objective = cp.Maximize(term_transport + term_diag)
+    term_diag = cp.sum(cp.multiply(inside_region_cost, w))
+    term_transport = cp.sum(cp.multiply(cross_location_cost, Pi))
+    objective = cp.Maximize(term_diag + term_transport)
 
     constraints = []
 
@@ -73,9 +74,14 @@ class JointOptimization(MaxMinLP):
         tol=1e-7,
     ) -> MaxMinLPResult:
 
-        cost_matrix = (quantization.partition.distance_locs + quantization.partition.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+        inside_region_cost = quantization.partition.radii.pow(2)
+        cross_location_cost = quantization.partition.distance_locs.pow(2)
 
-        total_value, w_opt, diag_term_value, transport_term_value = solve_milp(cost=cost_matrix, empirical_distribution=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
+        total_value, w_opt, diag_term_value, transport_term_value = solve_milp(inside_region_cost=inside_region_cost,
+                                                                               cross_location_cost=cross_location_cost,
+                                                                               empirical_distribution=quantization.probs,
+                                                                               lower=quantization.lower_probs,
+                                                                               upper=quantization.upper_probs)
 
         factor = 2
         obj = torch.as_tensor(factor * total_value).pow(0.5)

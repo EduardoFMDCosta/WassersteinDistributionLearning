@@ -1,22 +1,14 @@
 from .templates import MaxMinLP
-from .full_search import FullSearch
-from .stochastic_vertice_ascent import StochasticVerticeAscent
-from .plain_vanilla import PlainVanilla
-from .diagonal_constrained_tp import DiagonalConstrainedTP
-from .max_oracle_gradient_descent import MaxOracleGradientDescent
-from .black_box import BlackBox
+from .triangle_inequality_vertex import TriangleInequalityFromVertex
+from .joint_optimization import JointOptimization
 
 __all__ = ['get_solver']
 
 
 class GetSolver:
     mapping = dict(
-        full_search=FullSearch,
-        stochastic_vertice_ascent=StochasticVerticeAscent,
-        plain_vanilla=PlainVanilla,
-        diagonal_constrained_tp=DiagonalConstrainedTP,
-        max_oracle_gradient_descent=MaxOracleGradientDescent,
-        black_box=BlackBox
+        joint_optimization=JointOptimization,
+        triangle_inequality_vertex=TriangleInequalityFromVertex
     )
 
     def __call__(self, method: str, **kwargs):

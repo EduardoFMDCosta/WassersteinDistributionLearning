@@ -63,12 +63,51 @@ def lifted_lp_from_vertex(cost: torch.Tensor,
     prob.solve(solver=method, verbose=False, feastol=tol, reltol=tol, abstol=tol)
 
     result = {
-        "w": torch.tensor(w.value, dtype=torch.float64),
-        "t": torch.tensor(t.value, dtype=torch.float64),
         "objective": float(prob.value),
+        "w": torch.tensor(w.value, dtype=torch.float64),
         "status": prob.status,
     }
     return result
+
+def compute_worst_to_vertex(quantization: UncertainQuantization,
+                            vertex: torch.Tensor,
+                            tol: float):
+    n = vertex.shape[0]
+    cost_matrix = (quantization.partition.distance_locs + quantization.partition.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+
+    # Identify fixed indices
+    I_fixed = torch.nonzero(vertex <= quantization.lower_probs + tol).flatten().tolist()
+    J_fixed = torch.nonzero(vertex >= quantization.upper_probs - tol).flatten().tolist()
+    free = list(set(range(n)) - set(I_fixed) - set(J_fixed))
+    if len(free) != 1:
+        raise ValueError("There must be exactly one free index")
+    free_idx = free[0]
+
+    # Run the LP twice, once assuming free belongs to I, once to J
+    best_obj = -float('inf')
+    for free_assignment in ["I", "J"]:
+        if free_assignment == "I":
+            I = I_fixed + [free_idx]
+            J = J_fixed
+        else:
+            I = I_fixed
+            J = J_fixed + [free_idx]
+
+        # Convert to lists
+        I = list(I)
+        J = list(J)
+        if len(I) == 0 or len(J) == 0:
+            continue
+
+        result = lifted_lp_from_vertex(cost=cost_matrix, p=vertex, lower=quantization.lower_probs,
+                                       upper=quantization.upper_probs, I=I, J=J)
+        obj_val = result["objective"]
+
+        if obj_val > best_obj:
+            best_obj = obj_val
+
+    return torch.as_tensor(best_obj).pow(0.5)
+
 
 class TriangleInequalityFromVertex(MaxMinLP):
     def __init__(self):
@@ -77,59 +116,21 @@ class TriangleInequalityFromVertex(MaxMinLP):
     def solve(
         self,
         quantization: UncertainQuantization,
-        tol=1e-7,
+        tol=1e-8,
     ) -> MaxMinLPResult:
-
-        lower = quantization.lower_probs
-        upper = quantization.upper_probs
 
         # Get nearest vertex to empirical
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
-        n = vertex.shape[0]
+        # Compute moment bound
+        moment_bound = compute_worst_to_vertex(quantization=quantization, vertex=vertex, tol=tol)
 
-        # Identify fixed indices
-        I_fixed = torch.nonzero(vertex <= lower + tol).flatten().tolist()
-        J_fixed = torch.nonzero(vertex >= upper - tol).flatten().tolist()
-        free = list(set(range(n)) - set(I_fixed) - set(J_fixed))
-        if len(free) != 1:
-            raise ValueError("There must be exactly one free index")
-        free_idx = free[0]
-
-        # Run the LP twice, once assuming free belongs to I, once to J
-        best_obj = -float('inf')
-        best_w = None
-        for free_assignment in ["I", "J"]:
-            if free_assignment == "I":
-                I = I_fixed + [free_idx]
-                J = J_fixed
-            else:
-                I = I_fixed
-                J = J_fixed + [free_idx]
-
-            # Convert to lists
-            I = list(I)
-            J = list(J)
-            if len(I) == 0 or len(J) == 0:
-                continue
-
-            cost_matrix = (quantization.partition.distance_locs + quantization.partition.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
-            result = lifted_lp_from_vertex(cost=cost_matrix, p=vertex, lower=lower, upper=upper, I=I, J=J)
-            obj_val = result["objective"]
-            w_opt = result["w"]
-
-            if obj_val > best_obj:
-                best_obj = obj_val
-                best_w = w_opt.clone()
-
-        moment_bound = torch.as_tensor(best_obj).pow(0.5)
-
-        # Compute second term
+        # Compute discrete bound
         cost_matrix = quantization.partition.distance_locs.pow(2)
         _, discrete_bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex, empirical_distribution=quantization.probs)
-
         discrete_bound = torch.as_tensor(discrete_bound).pow(0.5)
 
-        objective_opt = moment_bound + discrete_bound
+        # Compute bound
+        bound = moment_bound + discrete_bound
 
-        return MaxMinLPResult(bound=objective_opt, moment_bound=moment_bound, discrete_bound=discrete_bound)
+        return MaxMinLPResult(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)

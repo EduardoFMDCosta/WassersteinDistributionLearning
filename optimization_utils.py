@@ -142,41 +142,25 @@ def lp_maximization( # TODO depreciate
     return prob.value, w.value
 
 
-def sample_vertices(lower: torch.Tensor, upper: torch.Tensor, num_vertices: int) -> torch.Tensor:
+def sample_vertex(lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
     n = lower.numel()
-    assert torch.all(lower <= upper), "Each lower bound must be <= upper bound"
-
-    # Expand bounds
-    lower_b = lower.unsqueeze(0).expand(num_vertices, n)
-    upper_b = upper.unsqueeze(0).expand(num_vertices, n)
 
     while True:
-        # Randomly pick free index for each vertex
-        free_idx = torch.randint(0, n, (num_vertices,))
+        # Choose one free variable index
+        free_idx = torch.randint(0, n, (1,)).item()
 
-        # Randomly select lower or upper for all coords
-        use_upper = (torch.rand(num_vertices, n) < 0.5)
-        x = torch.where(use_upper, upper_b, lower_b)
+        # Randomly assign lower or upper bounds to others
+        x = torch.where(torch.rand(n) < 0.5, lower, upper)
 
-        # Compute required residuals for sum = 1
-        row_sum = x.sum(dim=1)
-        residuals = 1.0 - (row_sum - x[torch.arange(num_vertices), free_idx])
+        # Compute value needed for sum(x)=1
+        residual = 1.0 - (x.sum() - x[free_idx])
 
-        # Set the free variable
-        x[torch.arange(num_vertices), free_idx] = residuals
+        # Set free variable
+        x[free_idx] = residual
 
-        # Check feasibility (vectorized)
-        ok = (x >= lower_b).all(dim=1) & (x <= upper_b).all(dim=1)
-
-        if ok.all():
+        # Check feasibility
+        if lower[free_idx] <= x[free_idx] <= upper[free_idx]:
             return x
-        else:
-            # Resample only failed rows
-            failed = ~ok
-            n_failed = failed.sum().item()
-            if n_failed > 0:
-                x[failed] = sample_vertices(lower, upper, n_failed)
-                return x
 
 
 def euclidean_projection_to_vertex(

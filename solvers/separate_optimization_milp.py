@@ -165,10 +165,18 @@ class SeparateOptimizationMilp(MaxMinLP):
         # Compute discrete bound
         cost_matrix = quantization.partition.distance_locs.pow(2)
         if not self.use_gurobi:
-            objective, w = solve_milp_min_diagonal_cvxpy(cost=cost_matrix, empirical_distribution=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
+            objective, w = solve_milp_min_diagonal_cvxpy(cost=cost_matrix,
+                                                         empirical_distribution=quantization.probs,
+                                                         lower=quantization.lower_probs,
+                                                         upper=quantization.upper_probs)
         else:
-            objective, w = solve_milp_min_diagonal_gurobi(
-                cost=cost_matrix, empirical_distribution=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs, time_limit=self.time_limit, mip_gap=self.mip_gap, verbose=self.verbose)
+            objective, w = solve_milp_min_diagonal_gurobi(cost=cost_matrix,
+                                                          empirical_distribution=quantization.probs,
+                                                          lower=quantization.lower_probs,
+                                                          upper=quantization.upper_probs,
+                                                          time_limit=self.time_limit,
+                                                          mip_gap=self.mip_gap,
+                                                          verbose=self.verbose)
         discrete_bound = torch.as_tensor(objective).pow(0.5)
 
         # Compute bound

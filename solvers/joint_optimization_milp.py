@@ -1,10 +1,86 @@
 import torch
 import cvxpy as cp
+import gurobipy as gp
+from gurobipy import GRB
+from typing import Optional
 
 from quantization import UncertainQuantization
 from .templates import MaxMinLP, MaxMinLPResult
 
-def solve_milp(
+def solve_milp_gurobi(
+    inside_region_cost: torch.Tensor,
+    cross_location_cost: torch.Tensor,
+    empirical_distribution: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    time_limit: Optional[float] = None,
+    **kwargs
+):
+    n = len(empirical_distribution)
+    inside_region_cost = inside_region_cost.detach().cpu().numpy()
+    cross_location_cost = cross_location_cost.detach().cpu().numpy()
+    empirical_distribution = empirical_distribution.detach().cpu().numpy()
+    lower = lower.detach().cpu().numpy()
+    upper = upper.detach().cpu().numpy()
+
+    M = upper - lower  # tight big-M constants
+
+    # Create model
+    model = gp.Model("MILP")
+
+    # Decision variables
+    Pi = model.addVars(n, n, lb=0.0, name="Pi")
+    w = model.addVars(n, lb=0.0, name="w")
+    m = model.addVars(n, lb=0.0, name="m")
+    b = model.addVars(n, vtype=GRB.BINARY, name="b")
+
+    # Objective
+    term_diag = gp.quicksum(inside_region_cost[i] * w[i] for i in range(n))
+    term_transport = gp.quicksum(cross_location_cost[i, j] * Pi[i, j] for i in range(n) for j in range(n))
+    model.setObjective(term_diag + term_transport, GRB.MAXIMIZE)
+
+    # Column sums
+    for j in range(n):
+        model.addConstr(gp.quicksum(Pi[i, j] for i in range(n)) == empirical_distribution[j])
+
+    # Row sums
+    for i in range(n):
+        model.addConstr(gp.quicksum(Pi[i, j] for j in range(n)) == w[i])
+
+    # Bounds on w
+    for i in range(n):
+        model.addConstr(w[i] >= lower[i])
+        model.addConstr(w[i] <= upper[i])
+
+    # Big-M linearization constraints
+    for i in range(n):
+        model.addConstr(m[i] <= w[i])
+        model.addConstr(m[i] <= empirical_distribution[i])
+        model.addConstr(m[i] >= w[i] - M[i] * (1 - b[i]))
+        model.addConstr(m[i] >= empirical_distribution[i] - M[i] * b[i])
+
+        # Diagonal constraint
+        model.addConstr(Pi[i, i] >= m[i])
+
+    # w sums to 1
+    model.addConstr(gp.quicksum(w[i] for i in range(n)) == 1)
+
+    # Optimize
+    model.setParam("OutputFlag", kwargs.get("verbose", False))
+    model.optimize()
+
+    # Extract results
+    total_value = model.objVal
+    w_opt = torch.tensor([w[i].X for i in range(n)], dtype=torch.float64)
+    diag_term_value = sum(inside_region_cost[i] * w_opt[i].item() for i in range(n))
+    transport_term_value = sum(
+        cross_location_cost[i, j] * Pi[i, j].X for i in range(n) for j in range(n)
+    )
+
+    return total_value, w_opt, diag_term_value, transport_term_value
+
+
+def solve_milp_cvxpy(
     inside_region_cost: torch.Tensor,
     cross_location_cost: torch.Tensor,
     empirical_distribution: torch.Tensor,
@@ -65,8 +141,13 @@ def solve_milp(
     return total_value, w_opt, diag_term_value, transport_term_value
 
 class JointOptimizationMilp(MaxMinLP):
-    def __init__(self):
+    def __init__(self,
+                 time_limit: Optional[float] = None,
+                 use_gurobi: bool = True):
         super().__init__()
+
+        self.time_limit = time_limit
+        self.use_gurobi = use_gurobi
 
     def solve(
         self,
@@ -77,11 +158,19 @@ class JointOptimizationMilp(MaxMinLP):
         inside_region_cost = quantization.partition.radii.pow(2)
         cross_location_cost = quantization.partition.distance_locs.pow(2)
 
-        total_value, w_opt, diag_term_value, transport_term_value = solve_milp(inside_region_cost=inside_region_cost,
-                                                                               cross_location_cost=cross_location_cost,
-                                                                               empirical_distribution=quantization.probs,
-                                                                               lower=quantization.lower_probs,
-                                                                               upper=quantization.upper_probs)
+        if not self.use_gurobi:
+            total_value, w_opt, diag_term_value, transport_term_value = solve_milp_cvxpy(inside_region_cost=inside_region_cost,
+                                                                                         cross_location_cost=cross_location_cost,
+                                                                                         empirical_distribution=quantization.probs,
+                                                                                         lower=quantization.lower_probs,
+                                                                                         upper=quantization.upper_probs)
+        else:
+            total_value, w_opt, diag_term_value, transport_term_value = solve_milp_gurobi(inside_region_cost=inside_region_cost,
+                                                                                          cross_location_cost=cross_location_cost,
+                                                                                          empirical_distribution=quantization.probs,
+                                                                                          lower=quantization.lower_probs,
+                                                                                          upper=quantization.upper_probs,
+                                                                                          time_limit=self.time_limit,)
 
         factor = 2
         obj = torch.as_tensor(factor * total_value).pow(0.5)

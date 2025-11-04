@@ -142,11 +142,48 @@ def lp_maximization( # TODO depreciate
     return prob.value, w.value
 
 
+def sample_vertices(lower: torch.Tensor, upper: torch.Tensor, num_vertices: int) -> torch.Tensor:
+    n = lower.numel()
+    assert torch.all(lower <= upper), "Each lower bound must be <= upper bound"
+
+    # Expand bounds
+    lower_b = lower.unsqueeze(0).expand(num_vertices, n)
+    upper_b = upper.unsqueeze(0).expand(num_vertices, n)
+
+    while True:
+        # Randomly pick free index for each vertex
+        free_idx = torch.randint(0, n, (num_vertices,))
+
+        # Randomly select lower or upper for all coords
+        use_upper = (torch.rand(num_vertices, n) < 0.5)
+        x = torch.where(use_upper, upper_b, lower_b)
+
+        # Compute required residuals for sum = 1
+        row_sum = x.sum(dim=1)
+        residuals = 1.0 - (row_sum - x[torch.arange(num_vertices), free_idx])
+
+        # Set the free variable
+        x[torch.arange(num_vertices), free_idx] = residuals
+
+        # Check feasibility (vectorized)
+        ok = (x >= lower_b).all(dim=1) & (x <= upper_b).all(dim=1)
+
+        if ok.all():
+            return x
+        else:
+            # Resample only failed rows
+            failed = ~ok
+            n_failed = failed.sum().item()
+            if n_failed > 0:
+                x[failed] = sample_vertices(lower, upper, n_failed)
+                return x
+
+
 def euclidean_projection_to_vertex(
         w: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
-        tol: float = 1e-7,
+        tol: float = 1e-6,
         max_iter: int = 1000
 ):
 

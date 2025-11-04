@@ -3,22 +3,20 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import torch
+from quantization import UncertainQuantization
 
 
 @dataclass
 class MaxMinLPResult:
-    objective_opt: float
+    bound: torch.Tensor
+    moment_bound: Optional[torch.Tensor] = None
+    discrete_bound: Optional[torch.Tensor] = None
     w_opt: Optional[torch.Tensor] = None
-    alpha: Optional[torch.Tensor] = None
-    beta: Optional[torch.Tensor] = None
 
 class MaxMinLP(ABC):
     @abstractmethod
     def solve(
         self,
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor,
+        quantization: UncertainQuantization,
     ) -> MaxMinLPResult:
         pass

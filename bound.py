@@ -2,53 +2,34 @@ import torch
 import math
 import ot
 
-from quantization import UncertainQuantization
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from optimization_utils import o_maximization, euclidean_projection_to_vertex, ot_lp_solver
+from optimization_utils import euclidean_projection_to_vertex, ot_lp_solver, sample_vertices
 from solvers import MaxMinLP
 
 
-def bound_moment(
+def bound(
         quantization: UncertainQuantization,
-        vertex_distribution: torch.Tensor,
-) -> torch.Tensor:
-
-    cost_matrix = (quantization.partition.distance_locs + quantization.partition.radii.unsqueeze(-1)).pow(2)  # j,i
-
-    bound, _ = o_maximization(quantization.partition.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
-    return bound.pow(0.5)
-
-
-def bound_discrete(
-    quantization: UncertainQuantization,
-    vertex_distribution: torch.Tensor,
-) -> torch.Tensor:
-    cost_matrix = quantization.partition.distance_locs.pow(2)
-
-    _, bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex_distribution, empirical_distribution=quantization.probs)
-
-    return torch.as_tensor(bound).pow(0.5)
+        solver: MaxMinLP,
+):
+    bounds = solver.solve(quantization=quantization)
+    return bounds
 
 
 class DataDrivenRadius:
+    _radius = torch.tensor(torch.nan)
     _moment_bound = torch.tensor(torch.nan)
     _discrete_bound = torch.tensor(torch.nan)
 
     def __init__(
             self, 
             quantization: UncertainQuantization, 
-            solver: MaxMinLP, 
-            compute_moment_bound: bool = True,
-            compute_discrete_bound: bool = True
+            solver: MaxMinLP,
         ):
-
-        vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
-
-        if compute_moment_bound:
-            self._moment_bound = bound_moment(quantization=quantization, vertex_distribution=vertex)
-        if compute_discrete_bound:
-            self._discrete_bound = bound_discrete(quantization=quantization, vertex_distribution=vertex)
+        bounds = bound(quantization=quantization, solver=solver)
+        self._radius = bounds.bound
+        self._moment_bound = bounds.moment_bound
+        self._discrete_bound = bounds.discrete_bound
 
         self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 
@@ -62,10 +43,7 @@ class DataDrivenRadius:
 
     @property
     def radius(self) -> torch.Tensor:
-        if self.moment_bound.isnan() or self.discrete_bound.isnan():
-            return torch.tensor(torch.nan)
-        else:
-            return self.moment_bound + self.discrete_bound
+        return self._radius
     
     @property
     def lower_bound(self):

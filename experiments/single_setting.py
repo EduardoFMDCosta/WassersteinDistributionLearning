@@ -19,10 +19,10 @@ if __name__ == '__main__':
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=30,
+        num_clusters=20,
         beta=1e-4,
-        method='full_search',
-        plot=True
+        method='joint_optimization_milp',
+        plot=False
     )
 
     solver = get_solver(method=args.method)
@@ -60,4 +60,6 @@ if __name__ == '__main__':
           f"\t Fournier: {fournier_bound:.4f} \n"
           f"\t Ours : {data_driven_output.radius:.4f} \n"
         )
+
+    print("Process finished.")
 

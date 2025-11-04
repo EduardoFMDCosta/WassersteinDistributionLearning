@@ -3,6 +3,8 @@ import torch
 import cvxpy as cp
 import gurobipy as gp
 
+from optimization_utils import o_maximization
+from quantization import UncertainQuantization
 from solvers.templates import MaxMinLP, MaxMinLPResult
 
 
@@ -136,7 +138,7 @@ def solve_milp_min_diagonal_gurobi(
 
     return obj_val, w_sol
     
-class DiagonalConstrainedTP(MaxMinLP):
+class SeparateOptimizationMilp(MaxMinLP):
     def __init__(
         self, 
         time_limit: Optional[float] = None,
@@ -153,17 +155,23 @@ class DiagonalConstrainedTP(MaxMinLP):
     
     def solve(
         self,
-        cost: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        empirical_marginal: torch.Tensor, 
+        quantization: UncertainQuantization,
     ) -> MaxMinLPResult:
-        # See Section 6.1. in
 
+        # Compute moment bound
+        moment_bound, _ = o_maximization(quantization.partition.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
+        moment_bound = moment_bound.pow(0.5)
+
+        # Compute discrete bound
+        cost_matrix = quantization.partition.distance_locs.pow(2)
         if not self.use_gurobi:
-            objective, w = solve_milp_min_diagonal_cvxpy(cost, empirical_marginal, lower, upper)
+            objective, w = solve_milp_min_diagonal_cvxpy(cost=cost_matrix, empirical_distribution=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
         else:
             objective, w = solve_milp_min_diagonal_gurobi(
-                cost, empirical_marginal, lower, upper, time_limit=self.time_limit, mip_gap=self.mip_gap, verbose=self.verbose)
+                cost=cost_matrix, empirical_distribution=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs, time_limit=self.time_limit, mip_gap=self.mip_gap, verbose=self.verbose)
+        discrete_bound = torch.as_tensor(objective).pow(0.5)
 
-        return MaxMinLPResult(objective_opt=objective, w_opt=w)
+        # Compute bound
+        bound = moment_bound + discrete_bound
+
+        return MaxMinLPResult(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)

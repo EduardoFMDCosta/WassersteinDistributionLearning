@@ -1,4 +1,5 @@
 import torch
+import matplotlib.pyplot as plt
 
 from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
@@ -8,7 +9,7 @@ from solvers import get_solver
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from configs.construct import get_support_assumption, get_distribution
-
+from experiments.partitions import get_partition
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -22,7 +23,8 @@ if __name__ == '__main__':
         num_clusters=5,
         beta=1e-4,
         method='joint_optimization_milp',
-        plot=False, 
+        plot=True, 
+        save=False,
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
@@ -39,12 +41,7 @@ if __name__ == '__main__':
     distribution = get_distribution(**vars(args))
 
     # Generate Partitioning
-    samples_partition = distribution.sample((args.num_samples_training,))
-    partition = BoundedVoronoiPartition(
-        support=support_assumption, 
-        samples=samples_partition, 
-        M=args.num_clusters,
-    )
+    partition = get_partition(args=args, num_samples=args.num_samples_training, num_clusters=args.num_clusters)
 
     # Generate Quantization
     samples_quantization = distribution.sample((args.num_samples,))
@@ -53,6 +50,7 @@ if __name__ == '__main__':
     # Plot samples and clusterized distribution
     if args.plot:
         plot_quantization(quantization=quantization, title=f"M={args.num_clusters}, N={args.num_samples}")
+        plt.show()
 
     # Compute bounds
     fournier_bound = fournier_radius(

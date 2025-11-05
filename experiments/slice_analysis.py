@@ -17,7 +17,7 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=10,
         beta=1e-6,
-        method='stochastic_vertice_ascent',
+        method='full_search',
         plot=True, 
         save=True,
         compute_moment_bound=True,

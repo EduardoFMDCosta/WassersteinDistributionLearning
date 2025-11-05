@@ -10,7 +10,7 @@ from quantization import Quantization
 from sets import BoundedVoronoiPartition
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
-from experiments.utils import TimeLogger, DataDrivenRadii, Quantizations
+from experiments.datastructures import TimeLogger, DataDrivenRadii, Quantizations
 
 colors = [
         "lightcoral",

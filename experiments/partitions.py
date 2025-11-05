@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Optional, List, Tuple
 import torch
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ from plotting.plot import plot_partition
 from configs.handlers import parse_arguments, pickle_load, pickle_dump
 from configs.construct import get_support_assumption, get_distribution
 
-from utils import _GridDict
+from datastructures import _GridDict
 
 
 class BoundedVoronoiPartitionDict(_GridDict[BoundedVoronoiPartition]): # key = (N, M)
@@ -22,6 +23,7 @@ class BoundedVoronoiPartitionDict(_GridDict[BoundedVoronoiPartition]): # key = (
     def samples(self):
         return self._samples
 
+setattr(sys.modules.get('__main__'), 'BoundedVoronoiPartitionDict', BoundedVoronoiPartitionDict)
 
 def get_partition(
     args, 

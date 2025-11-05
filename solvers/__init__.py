@@ -1,22 +1,25 @@
-from .templates import MaxMinLP
 from .joint_optimization_milp import JointOptimizationMilp
-from .separate_optimization_milp import SeparateOptimizationMilp
 from .triangle_inequality_vertex import TriangleInequalityFromVertex
+from .triangle_inequality import TriangleInequalitySolver
+from .discrete_solvers import get_discrete_solver
+from .templates import Solver
 
-__all__ = ['get_solver']
+__all__ = ['get_solver', 'get_discrete_solver', 'Solver']
 
 
 class GetSolver:
     mapping = dict(
         joint_optimization_milp=JointOptimizationMilp,
-        separate_optimization_milp=SeparateOptimizationMilp,
         triangle_inequality_vertex=TriangleInequalityFromVertex
     )
 
     def __call__(self, method: str, **kwargs):
-        if method not in self.mapping:
-            raise ValueError('Unknown optimization method.')
-        return self.mapping[method](**kwargs)
+        if method in self.mapping:
+            return self.mapping[method](**kwargs)
+        else:
+            return TriangleInequalitySolver(
+                discrete_solver=get_discrete_solver(method=method, **kwargs)
+            )
     
     @property
     def supported_methods(self):

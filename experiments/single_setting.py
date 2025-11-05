@@ -19,9 +19,9 @@ if __name__ == '__main__':
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=20,
+        num_clusters=5,
         beta=1e-4,
-        method='joint_optimization_milp',
+        method='diagonal_constrained_tp',
         plot=False
     )
 

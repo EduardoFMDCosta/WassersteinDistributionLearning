@@ -6,7 +6,7 @@ from gurobipy import GRB
 
 from optimization_utils import euclidean_projection_to_vertex, ot_lp_solver
 from quantization import UncertainQuantization
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import Solver, Result
 
 def lifted_lp_from_vertex_gurobi(
     cost: torch.Tensor,
@@ -205,7 +205,7 @@ def compute_worst_to_vertex(
     return torch.as_tensor(best_obj).pow(0.5)
 
 
-class TriangleInequalityFromVertex(MaxMinLP):
+class TriangleInequalityFromVertex(Solver):
     def __init__(
         self,
         use_gurobi: bool = True
@@ -213,18 +213,18 @@ class TriangleInequalityFromVertex(MaxMinLP):
         super().__init__()
 
         self.use_gurobi = use_gurobi
+        self.tol = 1e-8
 
     def solve(
         self,
         quantization: UncertainQuantization,
-        tol=1e-8,
-    ) -> MaxMinLPResult:
+    ) -> Result:
 
         # Get nearest vertex to empirical
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
         # Compute moment bound
-        moment_bound = compute_worst_to_vertex(quantization=quantization, vertex=vertex, tol=tol, use_gurobi=self.use_gurobi)
+        moment_bound = compute_worst_to_vertex(quantization=quantization, vertex=vertex, tol=self.tol, use_gurobi=self.use_gurobi)
 
         # Compute discrete bound
         cost_matrix = quantization.partition.distance_locs.pow(2)
@@ -234,4 +234,4 @@ class TriangleInequalityFromVertex(MaxMinLP):
         # Compute bound
         bound = moment_bound + discrete_bound
 
-        return MaxMinLPResult(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)
+        return Result(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)

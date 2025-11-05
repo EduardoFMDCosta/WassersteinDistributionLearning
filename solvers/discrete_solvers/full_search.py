@@ -2,7 +2,7 @@ import torch
 import warnings
 import itertools
 
-from solvers.templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import DiscreteSolver, DiscreteResult
 from optimization_utils import ot_lp_solver
 
 def get_vertices(
@@ -53,7 +53,7 @@ def get_omega_space_vertices(
         return torch.empty((0, lower.shape[0]), dtype=lower.dtype)
 
 
-class FullSearch(MaxMinLP):
+class FullSearch(DiscreteSolver):
     def __init__(self):
         super().__init__()
     
@@ -63,7 +63,7 @@ class FullSearch(MaxMinLP):
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-    ) -> MaxMinLPResult:
+    ) -> DiscreteResult:
         vertices = get_omega_space_vertices(lower=lower, upper=upper)
 
         objective_opt = -float("inf")
@@ -77,4 +77,4 @@ class FullSearch(MaxMinLP):
                 objective_opt = objective
                 w_opt = w
 
-        return MaxMinLPResult(objective_opt=float(objective_opt), w_opt=w_opt)
+        return DiscreteResult(objective_opt=float(objective_opt), w_opt=w_opt)

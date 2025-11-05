@@ -5,15 +5,13 @@ import gurobipy as gp
 
 from optimization_utils import o_maximization
 from quantization import UncertainQuantization
-from solvers.templates import MaxMinLP, MaxMinLPResult
-
+from solvers.templates import DiscreteResult, DiscreteSolver
 
 def solve_milp_min_diagonal_cvxpy(
     cost: torch.Tensor, 
     empirical_distribution: torch.Tensor, 
     lower: torch.Tensor, 
-    upper: torch.Tensor,
-    **kwargs
+    upper: torch.Tensor
 ):
     n = len(empirical_distribution)
 
@@ -138,7 +136,7 @@ def solve_milp_min_diagonal_gurobi(
 
     return obj_val, w_sol
     
-class SeparateOptimizationMilp(MaxMinLP):
+class DiagonalConstrainedTP(DiscreteSolver):
     def __init__(
         self, 
         time_limit: Optional[float] = None,
@@ -155,35 +153,29 @@ class SeparateOptimizationMilp(MaxMinLP):
     
     def solve(
         self,
-        quantization: UncertainQuantization,
-    ) -> MaxMinLPResult:
-
-        # Compute moment bound
-        moment_bound, _ = o_maximization(quantization.partition.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
-        moment_bound = moment_bound.pow(0.5)
-
-        # Compute discrete bound
-        cost_matrix = quantization.partition.distance_locs.pow(2)
-        if not self.use_gurobi:
-            objective, w = solve_milp_min_diagonal_cvxpy(
-                cost=cost_matrix,
-                empirical_distribution=quantization.probs,
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs
-        )
-        else:
+        cost: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        empirical_marginal: torch.Tensor
+    ) -> DiscreteResult:
+        
+        if self.use_gurobi:
             objective, w = solve_milp_min_diagonal_gurobi(
-                cost=cost_matrix,
-                empirical_distribution=quantization.probs,
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs,
+                cost=cost,
+                empirical_distribution=empirical_marginal,
+                lower=lower,
+                upper=upper,
                 time_limit=self.time_limit,
                 mip_gap=self.mip_gap,
                 verbose=self.verbose
             )
+        else:
+            objective, w = solve_milp_min_diagonal_cvxpy(
+                cost=cost,
+                empirical_distribution=empirical_marginal,
+                lower=lower,
+                upper=upper
+            )
         discrete_bound = torch.as_tensor(objective).pow(0.5)
 
-        # Compute bound
-        bound = moment_bound + discrete_bound
-
-        return MaxMinLPResult(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)
+        return DiscreteResult(objective_opt=objective, w_opt=w)

@@ -4,12 +4,12 @@ import ot
 
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from solvers import MaxMinLP
+from solvers import Solver
 
 
 def bound(
     quantization: UncertainQuantization,
-    solver: MaxMinLP,
+    solver: Solver,
 ):
     bounds = solver.solve(quantization=quantization)
     return bounds
@@ -23,7 +23,7 @@ class DataDrivenRadius:
     def __init__(
             self, 
             quantization: UncertainQuantization, 
-            solver: MaxMinLP,
+            solver: Solver,
         ):
         bounds = bound(quantization=quantization, solver=solver)
         self._radius = bounds.bound

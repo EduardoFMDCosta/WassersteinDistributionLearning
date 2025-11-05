@@ -1,7 +1,7 @@
 import torch
 from tqdm import tqdm
 
-from solvers.templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import DiscreteResult, DiscreteSolver
 from optimization_utils import ot_lp_solver, o_maximization
 
 
@@ -98,7 +98,7 @@ def project_to_omega_subspace(
     return final_y
 
 
-class StochasticVerticeAscent(MaxMinLP):
+class StochasticVerticeAscent(DiscreteSolver):
     def __init__(self, num_steps: int = 1000):
         super().__init__()
         self.num_steps = num_steps
@@ -109,7 +109,7 @@ class StochasticVerticeAscent(MaxMinLP):
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor
-    ) -> MaxMinLPResult:
+    ) -> DiscreteResult:
         M = cost.shape[0]
         delta = 1e-3
 
@@ -157,6 +157,6 @@ class StochasticVerticeAscent(MaxMinLP):
 
         pbar.close()
 
-        return MaxMinLPResult(objective_opt=float(objective_opt), w_opt=w_opt, alpha=alpha, beta=beta)
+        return DiscreteResult(objective_opt=float(objective_opt), w_opt=w_opt, alpha=alpha, beta=beta)
     
 

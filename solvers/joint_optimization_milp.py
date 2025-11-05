@@ -5,7 +5,7 @@ from gurobipy import GRB
 from typing import Optional
 
 from quantization import UncertainQuantization
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import Solver, Result
 
 def solve_milp_gurobi(
     inside_region_cost: torch.Tensor,
@@ -140,7 +140,7 @@ def solve_milp_cvxpy(
 
     return total_value, w_opt, diag_term_value, transport_term_value
 
-class JointOptimizationMilp(MaxMinLP):
+class JointOptimizationMilp(Solver):
     def __init__(
         self,
         time_limit: Optional[float] = None,
@@ -154,8 +154,7 @@ class JointOptimizationMilp(MaxMinLP):
     def solve(
         self,
         quantization: UncertainQuantization,
-        tol=1e-7,
-    ) -> MaxMinLPResult:
+    ) -> Result:
 
         inside_region_cost = quantization.partition.radii.pow(2)
         cross_location_cost = quantization.partition.distance_locs.pow(2)
@@ -184,4 +183,4 @@ class JointOptimizationMilp(MaxMinLP):
         obj_discrete = torch.as_tensor(transport_term_value).pow(0.5)
         w_opt = torch.as_tensor(w_opt)
 
-        return MaxMinLPResult(bound=obj, moment_bound=obj_moment, discrete_bound=obj_discrete, w_opt=w_opt)
+        return Result(bound=obj, moment_bound=obj_moment, discrete_bound=obj_discrete, w_opt=w_opt)

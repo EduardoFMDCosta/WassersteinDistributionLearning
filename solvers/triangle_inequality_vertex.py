@@ -85,14 +85,16 @@ def lifted_lp_from_vertex_gurobi(
     return result
 
 
-def lifted_lp_from_vertex_cvxpy(cost: torch.Tensor,
-              p: torch.Tensor,
-              lower: torch.Tensor,
-              upper: torch.Tensor,
-              I: list,
-              J: list,
-              method: str = "cvxopt",
-              tol: float = 1e-8):
+def lifted_lp_from_vertex_cvxpy(
+    cost: torch.Tensor,
+    p: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    I: list,
+    J: list,
+    method: str = "cvxopt",
+    tol: float = 1e-8
+):
     # Convert to numpy
     cost_np = cost.detach().cpu().numpy()
     p_np = p.detach().cpu().numpy()
@@ -148,10 +150,12 @@ def lifted_lp_from_vertex_cvxpy(cost: torch.Tensor,
     }
     return result
 
-def compute_worst_to_vertex(quantization: UncertainQuantization,
-                            vertex: torch.Tensor,
-                            tol: float,
-                            use_gurobi: bool):
+def compute_worst_to_vertex(
+    quantization: UncertainQuantization,
+    vertex: torch.Tensor,
+    tol: float,
+    use_gurobi: bool
+):
     n = vertex.shape[0]
     cost_matrix = (quantization.partition.distance_locs + quantization.partition.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
 
@@ -202,8 +206,10 @@ def compute_worst_to_vertex(quantization: UncertainQuantization,
 
 
 class TriangleInequalityFromVertex(MaxMinLP):
-    def __init__(self,
-                 use_gurobi: bool = True):
+    def __init__(
+        self,
+        use_gurobi: bool = True
+    ):
         super().__init__()
 
         self.use_gurobi = use_gurobi

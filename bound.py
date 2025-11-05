@@ -8,8 +8,8 @@ from solvers import MaxMinLP
 
 
 def bound(
-        quantization: UncertainQuantization,
-        solver: MaxMinLP,
+    quantization: UncertainQuantization,
+    solver: MaxMinLP,
 ):
     bounds = solver.solve(quantization=quantization)
     return bounds
@@ -53,9 +53,9 @@ class DataDrivenRadius:
 
 
 def fournier_radius(
-        support: HyperRectangle,
-        nsamples: int,
-        beta: float
+    support: HyperRectangle,
+    nsamples: int,
+    beta: float
 ) -> float:
     # See Proposition A.2. in Boissard and Le Gouic (2014)
     support_euclidean_diameter = support.width.norm(p=2).item()

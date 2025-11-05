@@ -141,9 +141,11 @@ def solve_milp_cvxpy(
     return total_value, w_opt, diag_term_value, transport_term_value
 
 class JointOptimizationMilp(MaxMinLP):
-    def __init__(self,
-                 time_limit: Optional[float] = None,
-                 use_gurobi: bool = True):
+    def __init__(
+        self,
+        time_limit: Optional[float] = None,
+        use_gurobi: bool = True
+    ):
         super().__init__()
 
         self.time_limit = time_limit
@@ -159,18 +161,22 @@ class JointOptimizationMilp(MaxMinLP):
         cross_location_cost = quantization.partition.distance_locs.pow(2)
 
         if not self.use_gurobi:
-            total_value, w_opt, diag_term_value, transport_term_value = solve_milp_cvxpy(inside_region_cost=inside_region_cost,
-                                                                                         cross_location_cost=cross_location_cost,
-                                                                                         empirical_distribution=quantization.probs,
-                                                                                         lower=quantization.lower_probs,
-                                                                                         upper=quantization.upper_probs)
+            total_value, w_opt, diag_term_value, transport_term_value = solve_milp_cvxpy(
+                inside_region_cost=inside_region_cost,
+                cross_location_cost=cross_location_cost,
+                empirical_distribution=quantization.probs,
+                lower=quantization.lower_probs,
+                upper=quantization.upper_probs
+            )
         else:
-            total_value, w_opt, diag_term_value, transport_term_value = solve_milp_gurobi(inside_region_cost=inside_region_cost,
-                                                                                          cross_location_cost=cross_location_cost,
-                                                                                          empirical_distribution=quantization.probs,
-                                                                                          lower=quantization.lower_probs,
-                                                                                          upper=quantization.upper_probs,
-                                                                                          time_limit=self.time_limit,)
+            total_value, w_opt, diag_term_value, transport_term_value = solve_milp_gurobi(
+                inside_region_cost=inside_region_cost,
+                cross_location_cost=cross_location_cost,
+                empirical_distribution=quantization.probs,
+                lower=quantization.lower_probs,
+                upper=quantization.upper_probs,
+                time_limit=self.time_limit,
+            )
 
         factor = 2
         obj = torch.as_tensor(factor * total_value).pow(0.5)

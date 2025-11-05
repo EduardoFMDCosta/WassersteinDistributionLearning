@@ -164,11 +164,11 @@ def sample_vertex(lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
 
 
 def euclidean_projection_to_vertex(
-        w: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        tol: float = 1e-6,
-        max_iter: int = 1000
+    w: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    tol: float = 1e-6,
+    max_iter: int = 1000
 ):
 
     # Start with all lower bounds

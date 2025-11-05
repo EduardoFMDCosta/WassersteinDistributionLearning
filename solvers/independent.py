@@ -20,7 +20,7 @@ class IndependentSolver(Solver):
     ) -> Result:
 
         if self.compute_moment_bound:
-            moment_bound, _ = o_maximization(quantization.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
+            moment_bound, _ = o_maximization(quantization.l2_radii.pow(2), quantization.lower_probs, quantization.upper_probs)
             moment_bound = moment_bound.pow(0.5)
         else:
             moment_bound = torch.tensor(torch.nan)

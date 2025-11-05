@@ -156,7 +156,7 @@ class JointOptimizationMilp(Solver):
         quantization: UncertainQuantization,
     ) -> Result:
 
-        inside_region_cost = quantization.radii.pow(2)
+        inside_region_cost = quantization.l2_radii.pow(2)
         cross_location_cost = quantization.l2_distance_locs_to_locs.pow(2)
 
         if not self.use_gurobi:

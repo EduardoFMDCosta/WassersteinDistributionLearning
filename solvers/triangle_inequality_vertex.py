@@ -157,7 +157,7 @@ def compute_worst_to_vertex(
     use_gurobi: bool
 ):
     n = vertex.shape[0]
-    cost_matrix = (quantization.l2_distance_locs_to_locs + quantization.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+    cost_matrix = (quantization.l2_distance_locs_to_locs + quantization.l2_radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
 
     # Identify fixed indices
     I_fixed = torch.nonzero(vertex <= quantization.lower_probs + tol).flatten().tolist()

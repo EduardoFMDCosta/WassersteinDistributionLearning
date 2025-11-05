@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     data_worst, data_exact, data_bench = DataDrivenRadii(), DataDrivenRadii(), DataDrivenRadii()
     for M in M_options:
-        partition = BoundedVoronoiPartition(
+        partition = BoundedVoronoiPartition.from_samples(
             support=support_assumption, 
             samples=samples_partition, 
             M=M,

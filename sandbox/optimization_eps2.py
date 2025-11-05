@@ -40,7 +40,7 @@ def lower_bound_eps2(num_clusters):
 
     # Generate Partitions
     samples_partition = distribution.sample((args.num_samples_training,))
-    partition = BoundedVoronoiPartition(
+    partition = BoundedVoronoiPartition.from_samples(
         support=support_assumption,
         samples=samples_partition,
         M=args.num_clusters,
@@ -64,7 +64,7 @@ def lower_bound_eps2(num_clusters):
 
         for i in range(num_iters):
             result = Solver().solve(
-                cost=quantization.partition.distance_locs ** 2,
+                cost=quantization.l2_distance_locs_to_locs ** 2,
                 lower=quantization.lower_probs,
                 upper=quantization.upper_probs,
                 empirical_marginal=quantization.probs

@@ -3,6 +3,7 @@ import json
 import argparse
 import os
 from pathlib import Path
+import pickle
 
 from solvers import get_solver, get_discrete_solver
 
@@ -32,7 +33,7 @@ def parse_arguments(
     distribution: str,
     num_dims: int,
     setting: int,
-    num_clusters: int,
+    num_clusters: int = 10,
     method: str = 'stochastic_vertice_ascent',
     num_samples_training: int = 1000,
     num_samples: int = 1000,
@@ -68,8 +69,13 @@ def parse_arguments(
     )
 
     args.__dict__.update(vars(dynamics_params))
-    args.results_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results", args.distribution.lower())
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    args.results_dir = os.path.join(base_dir, "results", args.distribution.lower())
+    args.partitions_dir = os.path.join(base_dir, "partitions", args.distribution.lower())
+
     ensure_dir(args.results_dir)
+    ensure_dir(args.partitions_dir)
 
     return args
 
@@ -78,3 +84,20 @@ def ensure_dir(dirname):
     dirname = Path(dirname)
     if not dirname.is_dir():
         dirname.mkdir(parents=True, exist_ok=False)
+
+
+def pickle_dump(obj, tag):
+    if not ".pickle" in tag:
+        tag = f"{tag}.pickle"
+    pickle_out = open(tag, "wb")
+    pickle.dump(obj, pickle_out)
+    pickle_out.close()
+
+
+def pickle_load(tag):
+    if not ".pickle" in tag:
+        tag = f"{tag}.pickle"
+    pickle_in = open(tag, "rb")
+    to_return = pickle.load(pickle_in)
+    pickle_in.close()
+    return to_return

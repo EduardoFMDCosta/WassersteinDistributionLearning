@@ -27,12 +27,11 @@ if __name__ == '__main__':
         compute_moment_bound=True
     )
 
-    solver = get_solver(method=args.method)
-
-    if not args.compute_discrete_bound:
-        solver.disable_discrete_bound_computation()
-    if not args.compute_moment_bound:
-        solver.disable_moment_bound_computation()
+    solver = get_solver(
+        method=args.method, 
+        compute_discrete_bound=args.compute_discrete_bound, 
+        compute_moment_bound=args.compute_moment_bound
+    )
 
     support_assumption = get_support_assumption(**vars(args))
 

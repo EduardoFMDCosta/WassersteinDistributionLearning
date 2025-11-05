@@ -13,13 +13,22 @@ class GetSolver:
         triangle_inequality_vertex=TriangleInequalityFromVertex
     )
 
-    def __call__(self, method: str, **kwargs):
+    def __call__(
+        self,
+        method: str, 
+        compute_discrete_bound: bool = True,
+        compute_moment_bound: bool = True,
+        **kwargs
+    ):
         if method in self.mapping:
-            return self.mapping[method](**kwargs)
+            solver = self.mapping[method](**kwargs)
         else:
-            return IndependentSolver(
+            solver = IndependentSolver(
                 discrete_solver=get_discrete_solver(method=method, **kwargs)
             )
+        solver.compute_discrete_bound = compute_discrete_bound
+        solver.compute_moment_bound = compute_moment_bound
+        return solver
     
     @property
     def supported_methods(self):

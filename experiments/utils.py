@@ -237,7 +237,7 @@ def run_combinations(
     print_timings: bool = False,
     compute_empirical_radii: bool = False,
 ):
-    solver = get_solver(method=args.method)
+    solver = get_solver(method=args.method, compute_discrete_bound=args.compute_discrete_bound, compute_moment_bound=args.compute_moment_bound)
 
     distribution = get_distribution(**vars(args))
     support_assumption = get_support_assumption(**vars(args))

@@ -21,7 +21,7 @@ if __name__ == '__main__':
         num_samples_training=1000,
         num_clusters=5,
         beta=1e-4,
-        method='diagonal_constrained_tp',
+        method='joint_optimization_milp',
         plot=False, 
         compute_discrete_bound=False, 
         compute_moment_bound=True

@@ -1,7 +1,7 @@
 import torch
 from matplotlib import pyplot as plt
 
-from solvers import get_solver
+from solvers import get_discrete_solver
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
 
     # Analysis 3: Compute optima for different starting points (if applicable)
-    for name, Solver in get_solver.mapping.items():
+    for name, Solver in get_discrete_solver.mapping.items():
         if name == 'max_oracle_gradient_descent':
             num_iters = 10
         else:
@@ -68,4 +68,4 @@ if __name__ == '__main__':
             )
 
             print(f"Final w ({name}) = {result.w_opt}")
-            print(f"Value ({name}) = {result.objective_opt} \n")
+            print(f"Value ({name}) = {result.bound} \n")

@@ -45,7 +45,11 @@ def get_dict_of_partitions(
     return_all_available_combinations: bool = False,
 ) -> BoundedVoronoiPartitionDict:
 
-    partitions = load_stored_partitions(args)
+    if os.path.exists(args.partitions_file):
+        stored_partitions = pickle_load(args.partitions_file)
+    else:
+        stored_partitions = BoundedVoronoiPartitionDict()
+
     requested_partitions = BoundedVoronoiPartitionDict()
 
     if combinations is not None:
@@ -58,14 +62,14 @@ def get_dict_of_partitions(
     # Collect all stored combinations
     missing_combinations = []
     for (N, M) in combinations:
-        if (N, M) in partitions.keys():
-            requested_partitions.append((N, M), partitions.at((N, M)))
+        if (N, M) in stored_partitions.keys():
+            requested_partitions.append((N, M), stored_partitions.at((N, M)))
         else:
             missing_combinations.append((N, M))
     
     # Generate missing combinations
     if len(missing_combinations) > 0:
-        missing_partitions = generate_partitions(missing_combinations, args, samples=partitions.samples)
+        missing_partitions = generate_partitions(missing_combinations, args, samples=stored_partitions.samples)
         requested_partitions.attach_samples(missing_partitions.samples)
 
         for (N, M) in missing_combinations:
@@ -73,22 +77,11 @@ def get_dict_of_partitions(
 
     # Add all other available combinations if requested
     if return_all_available_combinations:
-        for (N, M) in partitions.keys():
+        for (N, M) in stored_partitions.keys():
             if (N, M) not in combinations:
-                requested_partitions.append((N, M), partitions.at((N, M)))
+                requested_partitions.append((N, M), stored_partitions.at((N, M)))
 
     return requested_partitions
-
-
-def load_stored_partitions(args):
-    pickle_files = [f for f in os.listdir(args.partitions_dir) if f.endswith(".pickle")]
-    
-    if len(pickle_files) == 0:
-        return BoundedVoronoiPartitionDict()
-    elif len(pickle_files) == 1:
-        return pickle_load(os.path.join(args.partitions_dir, pickle_files[0]))
-    else:
-        raise NotImplementedError("Multiple partition files found; please ensure only one exists, or implement merging.")
 
 
 def generate_partitions(
@@ -126,16 +119,14 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        num_dims=2,
+        num_dims=3,
         setting=0,
         save=True,
         plot=False, 
     )    
 
-    num_samples_options = [1000, 5000]  # [500, 1000, 5000, 10000]
-    num_clusters_options = [5, 20, 30, 40, 50, 75, 100]
-
-    path = os.path.join(args.partitions_dir, f"dims={args.num_dims}_setting={args.setting}.pickle")
+    num_samples_options = [1000, 2500, 5000, 7500, 10000]  # [500, 1000, 5000, 10000]
+    num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
 
     partitions = get_dict_of_partitions(
         args=args,
@@ -145,7 +136,7 @@ if __name__ == '__main__':
     )
 
     if args.save:
-        pickle_dump(partitions, path)
+        pickle_dump(partitions, args.partitions_file)
         
     if args.plot:
         for (N, M) in partitions.keys():

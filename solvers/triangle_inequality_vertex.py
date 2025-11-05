@@ -231,7 +231,4 @@ class TriangleInequalityFromVertex(Solver):
         _, discrete_bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex, empirical_distribution=quantization.probs)
         discrete_bound = torch.as_tensor(discrete_bound).pow(0.5)
 
-        # Compute bound
-        bound = moment_bound + discrete_bound
-
-        return Result(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)
+        return Result(moment_bound=moment_bound, discrete_bound=discrete_bound)

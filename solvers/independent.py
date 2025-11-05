@@ -23,16 +23,11 @@ class IndependentSolver(Solver):
         # Compute discrete bound
         cost_matrix = quantization.partition.distance_locs.pow(2)
 
-        sq_discrete_bound = self.discrete_solver.solve(
+        discrete_result = self.discrete_solver.solve(
             cost=cost_matrix.detach(),
             lower=quantization.lower_probs,
             upper=quantization.upper_probs,
             empirical_marginal=quantization.probs 
-        ).objective_opt
+        )
 
-        discrete_bound = torch.as_tensor(sq_discrete_bound).pow(0.5)
-
-        # Compute bound
-        bound = moment_bound + discrete_bound
-
-        return Result(bound=bound, moment_bound=moment_bound, discrete_bound=discrete_bound)
+        return Result(moment_bound=moment_bound, discrete_bound=discrete_result.bound)

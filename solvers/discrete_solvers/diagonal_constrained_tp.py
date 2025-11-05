@@ -3,8 +3,6 @@ import torch
 import cvxpy as cp
 import gurobipy as gp
 
-from optimization_utils import o_maximization
-from quantization import UncertainQuantization
 from solvers.templates import DiscreteResult, DiscreteSolver
 
 def solve_milp_min_diagonal_cvxpy(
@@ -176,6 +174,5 @@ class DiagonalConstrainedTP(DiscreteSolver):
                 lower=lower,
                 upper=upper
             )
-        discrete_bound = torch.as_tensor(objective).pow(0.5)
-
-        return DiscreteResult(objective_opt=objective, w_opt=w)
+            
+        return DiscreteResult(bound=torch.as_tensor(objective).pow(0.5), w_opt=w)

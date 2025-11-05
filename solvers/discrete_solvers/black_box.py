@@ -55,6 +55,6 @@ class BlackBox(DiscreteSolver):
         if model.status == gp.GRB.OPTIMAL  or model.status == gp.GRB.SUBOPTIMAL or model.status == gp.GRB.TIME_LIMIT:
             w_opt = torch.tensor([w[i].X for i in range(M)])
             objective_value = model.ObjVal
-            return DiscreteResult(objective_opt=objective_value, w_opt=w_opt)
+            return DiscreteResult(bound=torch.as_tensor(objective_value).pow(0.5), w_opt=w_opt)
         else:
             raise RuntimeError(f"Gurobi ended with status {model.status}")

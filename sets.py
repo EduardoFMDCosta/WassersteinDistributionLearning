@@ -49,7 +49,6 @@ class BoundedVoronoiPartition:
     ):
         self.support = support
         self.cluster_locs = cluster_locs
-        self.outer_center = support.center.unsqueeze(0)
         self.cluster_radii = cluster_radii
         self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
     
@@ -62,7 +61,7 @@ class BoundedVoronoiPartition:
     
     @property
     def locs(self):
-        return torch.cat((self.cluster_locs, self.outer_center), dim=0)
+        return torch.cat((self.cluster_locs, self.support.center.unsqueeze(0)), dim=0)
 
     @property
     def radii(self):

@@ -5,5 +5,5 @@ set -euo pipefail
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "START"
-python -u experiments/partition --distribution Gaussian --num_dims 10 --setting 0
+python -u experiments/partition.py --distribution Gaussian --num_dims 10 --setting 0
 echo "FINNISHED"

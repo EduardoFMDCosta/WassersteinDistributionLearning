@@ -268,13 +268,13 @@ def plot_partition(
     # Plot Voronoi cells
     if len(partition) <= 110 and isinstance(partition, BoundedVoronoiPartition):
         ax = utils_plot.plot_clipped_voronoi_2d(
-            centers=partition.cluster_centers,
+            centers=partition.cluster_locs,
             max_diameters=partition.cluster_radii * 2,
             ax=ax
         )
 
     # Plot locs
-    ax.scatter(*partition.locs.t(), s=5, color="red", label="Cluster Centers")
+    ax.scatter(*partition.locs.t(), s=5, color="red", label="Cluster locs")
 
     ax.legend()
     ax.axis('equal')

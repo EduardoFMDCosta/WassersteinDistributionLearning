@@ -12,17 +12,17 @@ class Quantization(BoundedVoronoiPartition):
     ):
         super().__init__(
             support=partition.support,
-            cluster_centers=partition.cluster_centers,
+            cluster_locs=partition.cluster_locs,
             cluster_radii=partition.cluster_radii
         )
         
         self.samples = samples
 
-        centers_to_samples_distance = torch.cdist(partition.cluster_centers, samples, p=2)
-        mask = centers_to_samples_distance > partition.cluster_radii.unsqueeze(1)
+        locs_to_samples_distance = torch.cdist(partition.cluster_locs, samples, p=2)
+        mask = locs_to_samples_distance > partition.cluster_radii.unsqueeze(1)
         in_outer = mask.all(dim=0)
-        centers_to_samples_distance[mask] = torch.inf
-        labels = torch.argmin(centers_to_samples_distance, dim=0)
+        locs_to_samples_distance[mask] = torch.inf
+        labels = torch.argmin(locs_to_samples_distance, dim=0)
 
         self.cluster_counts = torch.bincount(labels[~in_outer], minlength=len(partition) - 1)
         self.outer_counts = self.nsamples - self.cluster_counts.sum()

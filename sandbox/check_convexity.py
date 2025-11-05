@@ -83,7 +83,7 @@ if __name__ == '__main__':
         plot_quantization(quantization=quantization, title=f"M={M}, N={N}")
 
     # Get variables
-    cost = quantization.distance_locs ** 2
+    cost = quantization.l2_distance_locs_to_locs ** 2
     lower = quantization.lower_probs
     upper = quantization.upper_probs
     empirical_marginal = quantization.probs

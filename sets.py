@@ -51,7 +51,7 @@ class BoundedVoronoiPartition:
         self.cluster_locs = cluster_locs
         self.outer_center = support.center.unsqueeze(0)
         self.cluster_radii = cluster_radii
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
     
     def __len__(self):
         return self.locs.size(0)

@@ -26,7 +26,7 @@ class IndependentSolver(Solver):
             moment_bound = torch.tensor(torch.nan)
 
         if self.compute_discrete_bound:
-            cost_matrix = quantization.distance_locs.pow(2)
+            cost_matrix = quantization.l2_distance_locs_to_locs.pow(2)
 
             discrete_bound = self.discrete_solver.solve(
                 cost=cost_matrix.detach(),

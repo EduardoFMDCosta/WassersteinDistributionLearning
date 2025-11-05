@@ -157,7 +157,7 @@ def compute_worst_to_vertex(
     use_gurobi: bool
 ):
     n = vertex.shape[0]
-    cost_matrix = (quantization.distance_locs + quantization.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+    cost_matrix = (quantization.l2_distance_locs_to_locs + quantization.radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
 
     # Identify fixed indices
     I_fixed = torch.nonzero(vertex <= quantization.lower_probs + tol).flatten().tolist()
@@ -227,7 +227,7 @@ class TriangleInequalityFromVertex(Solver):
         moment_bound = compute_worst_to_vertex(quantization=quantization, vertex=vertex, tol=self.tol, use_gurobi=self.use_gurobi)
 
         # Compute discrete bound
-        cost_matrix = quantization.distance_locs.pow(2)
+        cost_matrix = quantization.l2_distance_locs_to_locs.pow(2)
         _, discrete_bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex, empirical_distribution=quantization.probs)
         discrete_bound = torch.as_tensor(discrete_bound).pow(0.5)
 

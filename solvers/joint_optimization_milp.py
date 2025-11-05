@@ -157,7 +157,7 @@ class JointOptimizationMilp(Solver):
     ) -> Result:
 
         inside_region_cost = quantization.radii.pow(2)
-        cross_location_cost = quantization.distance_locs.pow(2)
+        cross_location_cost = quantization.l2_distance_locs_to_locs.pow(2)
 
         if not self.use_gurobi:
             total_value, w_opt, diag_term_value, transport_term_value = solve_milp_cvxpy(

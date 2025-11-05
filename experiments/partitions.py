@@ -103,7 +103,7 @@ def generate_partitions(
 
     if samples is None:
         samples = distribution.sample((max_num_samples,))
-    elif samples.size(0) < max(num_samples_options):
+    elif samples.size(0) < max_num_samples:
         samples = torch.cat((samples, distribution.sample((max_num_samples - samples.size(0),), )), dim=0)
 
     partitions = BoundedVoronoiPartitionDict()

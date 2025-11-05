@@ -70,7 +70,7 @@ class BoundedVoronoiPartition:
     
     @property
     def l2_distance_locs_to_region(self):
-        return self.l2_distance_locs_to_locs + self.region_l2_radii.unsqueeze(-1)
+        return self.l2_distance_locs_to_locs + self.l2_radii.unsqueeze(-1)
     
     @property
     def l1_radii(self):

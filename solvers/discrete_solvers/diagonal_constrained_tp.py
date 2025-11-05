@@ -3,15 +3,13 @@ import torch
 import cvxpy as cp
 import gurobipy as gp
 
-from .templates import MaxMinLP, MaxMinLPResult
-
+from solvers.templates import DiscreteResult, DiscreteSolver
 
 def solve_milp_min_diagonal_cvxpy(
     cost: torch.Tensor, 
     empirical_distribution: torch.Tensor, 
     lower: torch.Tensor, 
-    upper: torch.Tensor,
-    **kwargs
+    upper: torch.Tensor
 ):
     n = len(empirical_distribution)
 
@@ -136,7 +134,7 @@ def solve_milp_min_diagonal_gurobi(
 
     return obj_val, w_sol
     
-class DiagonalConstrainedTP(MaxMinLP):
+class DiagonalConstrainedTP(DiscreteSolver):
     def __init__(
         self, 
         time_limit: Optional[float] = None,
@@ -156,14 +154,25 @@ class DiagonalConstrainedTP(MaxMinLP):
         cost: torch.Tensor,
         lower: torch.Tensor,
         upper: torch.Tensor,
-        empirical_marginal: torch.Tensor, 
-    ) -> MaxMinLPResult:
-        # See Section 6.1. in
-
-        if not self.use_gurobi:
-            objective, w = solve_milp_min_diagonal_cvxpy(cost, empirical_marginal, lower, upper)
-        else:
+        empirical_marginal: torch.Tensor
+    ) -> DiscreteResult:
+        
+        if self.use_gurobi:
             objective, w = solve_milp_min_diagonal_gurobi(
-                cost, empirical_marginal, lower, upper, time_limit=self.time_limit, mip_gap=self.mip_gap, verbose=self.verbose)
-
-        return MaxMinLPResult(objective_opt=objective, w_opt=w)
+                cost=cost,
+                empirical_distribution=empirical_marginal,
+                lower=lower,
+                upper=upper,
+                time_limit=self.time_limit,
+                mip_gap=self.mip_gap,
+                verbose=self.verbose
+            )
+        else:
+            objective, w = solve_milp_min_diagonal_cvxpy(
+                cost=cost,
+                empirical_distribution=empirical_marginal,
+                lower=lower,
+                upper=upper
+            )
+            
+        return DiscreteResult(bound=torch.as_tensor(objective).pow(0.5), w_opt=w)

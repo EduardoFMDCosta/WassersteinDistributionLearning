@@ -2,7 +2,7 @@ import torch
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-from solvers import get_solver
+from solvers import get_discrete_solver
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 
@@ -56,7 +56,7 @@ def lower_bound_eps2(num_clusters):
 
     # Get variables
     store = dict()
-    for name, Solver in get_solver.mapping.items():
+    for name, Solver in get_discrete_solver.mapping.items():
         if name == 'max_oracle_gradient_descent':
             num_iters = 10
         else:
@@ -72,7 +72,7 @@ def lower_bound_eps2(num_clusters):
             if i == 0:
                 store[name] = result
             else:
-                if result.objective_opt > store[name].objective_opt:
+                if result.bound > store[name].objective_opt:
                     store[name] = result
 
     return store

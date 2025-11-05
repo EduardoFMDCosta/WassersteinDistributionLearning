@@ -1,9 +1,9 @@
 import torch
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import DiscreteResult, DiscreteSolver
 
 
-class PlainVanilla(MaxMinLP):
+class PlainVanilla(DiscreteSolver):
     def __init__(self):
         super().__init__()
 
@@ -13,7 +13,7 @@ class PlainVanilla(MaxMinLP):
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor
-    ) -> MaxMinLPResult:
+    ) -> DiscreteResult:
         # See Corollary 6.2 in
 
         upper_diff = upper - empirical_marginal
@@ -22,4 +22,4 @@ class PlainVanilla(MaxMinLP):
         max_prob_diff = torch.max(upper_diff, lower_diff)
         max_dist, _ = torch.max(cost, dim=1)
 
-        return MaxMinLPResult(objective_opt=torch.einsum('i,i->', max_dist, max_prob_diff).item())
+        return DiscreteResult(bound=torch.einsum('i,i->', max_dist, max_prob_diff).pow(0.5))

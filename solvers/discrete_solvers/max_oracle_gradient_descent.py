@@ -3,7 +3,7 @@ import cvxpy as cp
 import collections
 from tqdm import tqdm
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import DiscreteResult, DiscreteSolver
 from optimization_utils import o_maximization
 
 
@@ -35,7 +35,7 @@ def inner_lp_maximization(
 
     return y, dual_vector
 
-class MaxOracleGradientDescent(MaxMinLP):
+class MaxOracleGradientDescent(DiscreteSolver):
     def __init__(self, num_steps: int = 1000):
         super().__init__()
         self.num_steps = num_steps
@@ -46,7 +46,7 @@ class MaxOracleGradientDescent(MaxMinLP):
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
-    ) -> MaxMinLPResult:
+    ) -> DiscreteResult:
 
         # See Algorithm 1 in Goktas, Greenwald (2021): https://proceedings.neurips.cc/paper/2021/hash/174a61b0b3eab8c94e0a9e78b912307f-Abstract.html
 
@@ -117,4 +117,4 @@ class MaxOracleGradientDescent(MaxMinLP):
         _, w = o_maximization(alpha, lower, upper)
         objective_value = -best
 
-        return MaxMinLPResult(objective_opt=objective_value, w_opt=w)
+        return DiscreteResult(bound=torch.as_tensor(objective_value).pow(0.5), w_opt=w)

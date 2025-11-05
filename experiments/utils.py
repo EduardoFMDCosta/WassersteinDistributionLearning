@@ -237,7 +237,7 @@ def run_combinations(
     print_timings: bool = False,
     compute_empirical_radii: bool = False,
 ):
-    solver = get_solver(method=args.method)
+    solver = get_solver(method=args.method, compute_discrete_bound=args.compute_discrete_bound, compute_moment_bound=args.compute_moment_bound)
 
     distribution = get_distribution(**vars(args))
     support_assumption = get_support_assumption(**vars(args))
@@ -280,9 +280,7 @@ def run_combinations(
                 start = time.time()
                 data_driven_radii.append((N, M), DataDrivenRadius(
                     quantization=quantizations.at((N, M)),
-                    solver=solver, 
-                    compute_moment_bound=args.compute_moment_bound, 
-                    compute_discrete_bound=args.compute_discrete_bound
+                    solver=solver
                 ))
                 radius_computation_times.append((N, M), torch.as_tensor(time.time() - start))
                 if print_timings:

@@ -140,3 +140,68 @@ def lp_maximization( # TODO depreciate
         raise RuntimeError(f"Solver status: {prob.status}")
 
     return prob.value, w.value
+
+
+def sample_vertex(lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor: # TODO robustify, kill after N attempts
+    n = lower.numel()
+
+    while True:
+        # Choose one free variable index
+        free_idx = torch.randint(0, n, (1,)).item()
+
+        # Randomly assign lower or upper bounds to others
+        x = torch.where(torch.rand(n) < 0.5, lower, upper)
+
+        # Compute value needed for sum(x)=1
+        residual = 1.0 - (x.sum() - x[free_idx])
+
+        # Set free variable
+        x[free_idx] = residual
+
+        # Check feasibility
+        if lower[free_idx] <= x[free_idx] <= upper[free_idx]:
+            return x
+
+
+def euclidean_projection_to_vertex(
+    w: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    tol: float = 1e-6,
+    max_iter: int = 1000
+):
+
+    # Start with all lower bounds
+    w_proj = lower.clone()
+    total = lower.sum()
+    remaining = 1.0 - total
+
+    if remaining < -tol:
+        raise ValueError("Lower bounds already sum to more than 1, thus infeasible.")
+
+    if abs(remaining) < tol:
+        return w_proj
+
+    # Sort indices by how much w prefers to go up
+    order = torch.argsort(w - lower, descending=True)
+
+    # Incrementally raise values toward upper bounds
+    for k in order:
+        cap = (upper[k] - lower[k]).item()
+        if remaining > cap + tol:
+            # Fill this variable fully to its upper bound
+            w_proj[k] = upper[k]
+            remaining -= cap
+        else:
+            w_proj[k] = lower[k] + remaining
+            break
+
+    # Clip for numerical safety
+    w_proj = torch.clamp(w_proj, lower, upper)
+
+    assert (w_proj >= 0.0 - tol).all()
+    assert 1.0 - tol <= w_proj.sum() <= 1.0 + tol
+    assert (w_proj - lower >= -tol).all()
+    assert (w_proj - upper <= tol).all()
+
+    return w_proj

@@ -19,13 +19,19 @@ if __name__ == '__main__':
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=30,
+        num_clusters=5,
         beta=1e-4,
-        method='full_search',
-        plot=True
+        method='joint_optimization_milp',
+        plot=False, 
+        compute_discrete_bound=False, 
+        compute_moment_bound=True
     )
 
-    solver = get_solver(method=args.method)
+    solver = get_solver(
+        method=args.method, 
+        compute_discrete_bound=args.compute_discrete_bound, 
+        compute_moment_bound=args.compute_moment_bound
+    )
 
     support_assumption = get_support_assumption(**vars(args))
 
@@ -60,4 +66,6 @@ if __name__ == '__main__':
           f"\t Fournier: {fournier_bound:.4f} \n"
           f"\t Ours : {data_driven_output.radius:.4f} \n"
         )
+
+    print("Process finished.")
 

@@ -1,10 +1,10 @@
 import torch
 import gurobipy as gp
 
-from .templates import MaxMinLP, MaxMinLPResult
+from solvers.templates import DiscreteResult, DiscreteSolver
 
 
-class BlackBox(MaxMinLP):
+class BlackBox(DiscreteSolver):
     def __init__(self, time_limit: int = 60):
         super().__init__()
         self.time_limit = time_limit
@@ -15,7 +15,7 @@ class BlackBox(MaxMinLP):
         lower: torch.Tensor,
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor
-    ) -> MaxMinLPResult:
+    ) -> DiscreteResult:
         M = cost.shape[0]
 
         # Create model
@@ -55,6 +55,6 @@ class BlackBox(MaxMinLP):
         if model.status == gp.GRB.OPTIMAL  or model.status == gp.GRB.SUBOPTIMAL or model.status == gp.GRB.TIME_LIMIT:
             w_opt = torch.tensor([w[i].X for i in range(M)])
             objective_value = model.ObjVal
-            return MaxMinLPResult(objective_opt=objective_value, w_opt=w_opt)
+            return DiscreteResult(bound=torch.as_tensor(objective_value).pow(0.5), w_opt=w_opt)
         else:
             raise RuntimeError(f"Gurobi ended with status {model.status}")

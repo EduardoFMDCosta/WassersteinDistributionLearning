@@ -2,82 +2,46 @@ import torch
 import math
 import ot
 
-from quantization import UncertainQuantization
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from optimization_utils import o_maximization
-from solvers import MaxMinLP
-
-
-def bound_moment(
-        quantization: UncertainQuantization,
-) -> torch.Tensor:
-    bound, _ = o_maximization(quantization.partition.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
-    return bound.pow(0.5)
-
-
-def bound_discrete(
-    quantization: UncertainQuantization,
-    solver: MaxMinLP, 
-) -> torch.Tensor:
-    cost_matrix = quantization.partition.distance_locs.pow(2)
-
-    bound = solver.solve(
-        cost=cost_matrix.detach(),
-        lower=quantization.lower_probs,
-        upper=quantization.upper_probs,
-        empirical_marginal=quantization.probs 
-    ).objective_opt
-
-    return torch.as_tensor(bound) ** 0.5
+from solvers import Solver, Result
 
 
 class DataDrivenRadius:
+    _radius = torch.tensor(torch.nan)
     _moment_bound = torch.tensor(torch.nan)
     _discrete_bound = torch.tensor(torch.nan)
 
     def __init__(
             self, 
             quantization: UncertainQuantization, 
-            solver: MaxMinLP, 
-            compute_moment_bound: bool = True,
-            compute_discrete_bound: bool = True
+            solver: Solver,
         ):
+        self._result =  solver.solve(quantization=quantization)
         
-        if compute_moment_bound:
-            self._moment_bound = bound_moment(quantization=quantization)
-        if compute_discrete_bound:
-            self._discrete_bound = bound_discrete(quantization=quantization, solver=solver)
-
         self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 
     @property
     def moment_bound(self) -> torch.Tensor:
-        return self._moment_bound
+        return self._result.moment_bound
     
     @property
     def discrete_bound(self) -> torch.Tensor:
-        return self._discrete_bound
+        return self._result.discrete_bound
 
     @property
     def radius(self) -> torch.Tensor:
-        if self.moment_bound.isnan() or self.discrete_bound.isnan():
-            return torch.tensor(torch.nan)
-        else:
-            return self.moment_bound + self.discrete_bound
+        return self._result.bound
     
     @property
     def lower_bound(self):
         return self._lower_bound
-    
-    def __repr__(self):
-        return self.radius
 
 
 def fournier_radius(
-        support: HyperRectangle,
-        nsamples: int,
-        beta: float
+    support: HyperRectangle,
+    nsamples: int,
+    beta: float
 ) -> float:
     # See Proposition A.2. in Boissard and Le Gouic (2014)
     support_euclidean_diameter = support.width.norm(p=2).item()

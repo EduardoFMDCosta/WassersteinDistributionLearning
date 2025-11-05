@@ -4,7 +4,7 @@ from .max_oracle_gradient_descent import MaxOracleGradientDescent
 from .plain_vanilla import PlainVanilla
 from .stochastic_vertice_ascent import StochasticVerticeAscent
 from .diagonal_constrained_tp import DiagonalConstrainedTP
-
+from .scalar_strategy import ScalarStrategy
 
 class GetDiscreteSolver:
     mapping = dict(
@@ -13,7 +13,8 @@ class GetDiscreteSolver:
         plain_vanilla=PlainVanilla,
         diagonal_constrained_tp=DiagonalConstrainedTP,
         max_oracle_gradient_descent=MaxOracleGradientDescent,
-        black_box=BlackBox
+        black_box=BlackBox, 
+        scalar_strategy=ScalarStrategy
     )
 
     def __call__(self, method: str, **kwargs):

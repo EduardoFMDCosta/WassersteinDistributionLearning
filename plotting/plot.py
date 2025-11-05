@@ -287,7 +287,7 @@ def plot_quantization( # TODO extract plot partition
     ax: Optional[plt.Axes] = None,
     title: str = ''
 ):
-    ax = plot_partition(partition=quantization.partition, ax=ax, title=title)
+    ax = plot_partition(partition=quantization, ax=ax, title=title)
     ax.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
     ax.legend()
     ax.axis('equal')

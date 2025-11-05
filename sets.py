@@ -42,7 +42,35 @@ class HyperRectangle:
 
 class BoundedVoronoiPartition:
     def __init__(
-            self, 
+        self, 
+        support: HyperRectangle, 
+        cluster_centers: torch.Tensor,
+        cluster_radii: torch.Tensor
+    ):
+        self.support = support
+        self.cluster_centers = cluster_centers
+        self.outer_center = support.center.unsqueeze(0)
+        self.cluster_radii = cluster_radii
+        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+    
+    def __len__(self):
+        return self.locs.size(0)
+
+    @property
+    def ndim(self):
+        return self.support.ndim
+    
+    @property
+    def locs(self):
+        return torch.cat((self.cluster_centers, self.outer_center), dim=0)
+
+    @property
+    def radii(self):
+        return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+
+    @classmethod
+    def from_samples(
+            cls,
             support: HyperRectangle, 
             samples: torch.Tensor, 
             M: int, 
@@ -66,11 +94,6 @@ class BoundedVoronoiPartition:
             cluster_centers = samples
             max_sample_distances = torch.zeros(M)
 
-        self.support = support
-        self.ndim = support.ndim
-        self.cluster_centers = cluster_centers
-        self.outer_loc = support.center.unsqueeze(0)
-
         distance_centers = torch.cdist(cluster_centers, cluster_centers, p=2)
 
         # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
@@ -88,21 +111,11 @@ class BoundedVoronoiPartition:
             distance_closest_neighbor = torch.topk(distance_centers, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
             radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)
         
-        self.cluster_radii = radii
-        
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
-        
-
-    def __len__(self):
-        return self.locs.size(0)
-    
-    @property
-    def locs(self):
-        return torch.cat((self.cluster_centers, self.outer_loc), dim=0)
-
-    @property
-    def radii(self):
-        return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+        return cls(
+            support=support,
+            cluster_centers=cluster_centers,
+            cluster_radii=radii
+        )
 
 
 def compute_inner_cluster_max_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:

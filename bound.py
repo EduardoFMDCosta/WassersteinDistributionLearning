@@ -19,7 +19,7 @@ class DataDrivenRadius:
         ):
         self._result =  solver.solve(quantization=quantization)
         
-        self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
+        self._lower_bound = (quantization.upper_probs[-1] * (quantization.support.width.norm() / 2).pow(2)).sqrt()
 
     @property
     def moment_bound(self) -> torch.Tensor:

@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     # Generate Partitions
     samples_partition = distribution.sample((args.num_samples_training,))
-    partition = BoundedVoronoiPartition(
+    partition = BoundedVoronoiPartition.from_samples(
         support=support_assumption,
         samples=samples_partition,
         M=args.num_clusters
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
         for _ in range(num_iters):
             result = Solver().solve(
-                cost=quantization.partition.distance_locs ** 2,
+                cost=quantization.distance_locs ** 2,
                 lower=quantization.lower_probs,
                 upper=quantization.upper_probs,
                 empirical_marginal=quantization.probs

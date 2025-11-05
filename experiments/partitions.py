@@ -110,7 +110,7 @@ def generate_partitions(
     for (N, M) in combinations:
         print(f"Generating partition for N={N}, M={M}")
         assert N <= samples.size(0), "Not enough samples provided to generate partition."
-        partitions.append((N, M), BoundedVoronoiPartition(
+        partitions.append((N, M), BoundedVoronoiPartition.from_samples(
             support=support_assumption,
             samples=samples[:N],
             M=M,

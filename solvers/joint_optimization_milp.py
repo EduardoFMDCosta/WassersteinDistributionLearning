@@ -114,7 +114,7 @@ def solve_milp_cvxpy(
     # Bounds on w
     constraints += [w >= lower, w <= upper]
 
-    # Big-M linearization for min(w[i], empirical_distribution[i])
+    # Big-M linearization for min(w[i], empirical_distribution[i]) # TODO use m.addGenConstrMin
     M = upper - lower  # tight big-M
     for i in range(n):
         constraints.append(m[i] <= w[i])

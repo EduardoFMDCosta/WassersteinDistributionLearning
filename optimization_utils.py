@@ -142,7 +142,7 @@ def lp_maximization( # TODO depreciate
     return prob.value, w.value
 
 
-def sample_vertex(lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor:
+def sample_vertex(lower: torch.Tensor, upper: torch.Tensor) -> torch.Tensor: # TODO robustify, kill after N attempts
     n = lower.numel()
 
     while True:

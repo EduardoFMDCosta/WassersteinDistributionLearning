@@ -123,20 +123,20 @@ class Quantizations(_GridDict[UncertainQuantization]):
         return torch.tensor([(self.data[key].upper_probs - self.data[key].lower_probs).std() for key in self.keys()])
 
     @property
-    def mean_cluster_radii(self):
-        return self._mean_stack('cluster_radii')
+    def mean_region_l2_radii(self):
+        return self._mean_stack('region_l2_radii')
 
     @property
-    def std_cluster_radii(self):
-        return self._std_stack('cluster_radii')
+    def std_region_l2_radii(self):
+        return self._std_stack('region_l2_radii')
 
     @property
-    def min_cluster_radii(self):
-        return self._min_stack('cluster_radii')
+    def min_region_l2_radii(self):
+        return self._min_stack('region_l2_radii')
 
     @property
-    def max_cluster_radii(self):
-        return self._max_stack('cluster_radii')
+    def max_region_l2_radii(self):
+        return self._max_stack('region_l2_radii')
 
     @property
     def mean_distances_locs(self):

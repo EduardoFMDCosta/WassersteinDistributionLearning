@@ -44,12 +44,12 @@ class BoundedVoronoiPartition:
     def __init__(
         self, 
         support: HyperRectangle, 
-        cluster_locs: torch.Tensor,
-        cluster_radii: torch.Tensor
+        region_locs: torch.Tensor,
+        region_l2_radii: torch.Tensor
     ):
         self.support = support
-        self.cluster_locs = cluster_locs
-        self.cluster_radii = cluster_radii
+        self.region_locs = region_locs
+        self.region_l2_radii = region_l2_radii
         self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
     
     def __len__(self):
@@ -61,11 +61,11 @@ class BoundedVoronoiPartition:
     
     @property
     def locs(self):
-        return torch.cat((self.cluster_locs, self.support.center.unsqueeze(0)), dim=0)
+        return torch.cat((self.region_locs, self.support.center.unsqueeze(0)), dim=0)
 
     @property
     def radii(self):
-        return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+        return torch.cat((self.region_l2_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
 
     @classmethod
     def from_samples(
@@ -112,8 +112,8 @@ class BoundedVoronoiPartition:
         
         return cls(
             support=support,
-            cluster_locs=cluster_locs,
-            cluster_radii=radii
+            region_locs=cluster_locs,
+            region_l2_radii=radii
         )
 
 
@@ -123,7 +123,7 @@ def compute_inner_cluster_max_radii(samples: torch.Tensor, cluster_locs: torch.T
     
     Args:
         samples: Sample points (n_samples, n_features)
-        cluster_locs: Cluster center locations (k, n_features)  
+        region_locs: Cluster center locations (k, n_features)  
         labels: Cluster assignments for each sample (n_samples,)
         
     Returns:

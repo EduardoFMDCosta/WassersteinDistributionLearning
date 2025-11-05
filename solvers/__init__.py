@@ -2,9 +2,9 @@ from .joint_optimization_milp import JointOptimizationMilp
 from .triangle_inequality_vertex import TriangleInequalityFromVertex
 from .independent import IndependentSolver
 from .discrete_solvers import get_discrete_solver
-from .templates import Solver
+from .templates import Solver, Result
 
-__all__ = ['get_solver', 'get_discrete_solver', 'Solver']
+__all__ = ['get_solver', 'get_discrete_solver', 'Solver', 'Result']
 
 
 class GetSolver:

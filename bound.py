@@ -4,15 +4,7 @@ import ot
 
 from sets import HyperRectangle
 from quantization import UncertainQuantization
-from solvers import Solver
-
-
-def bound(
-    quantization: UncertainQuantization,
-    solver: Solver,
-):
-    bounds = solver.solve(quantization=quantization)
-    return bounds
+from solvers import Solver, Result
 
 
 class DataDrivenRadius:
@@ -25,31 +17,25 @@ class DataDrivenRadius:
             quantization: UncertainQuantization, 
             solver: Solver,
         ):
-        bounds = bound(quantization=quantization, solver=solver)
-        self._radius = bounds.bound
-        self._moment_bound = bounds.moment_bound
-        self._discrete_bound = bounds.discrete_bound
-
+        self._result =  solver.solve(quantization=quantization)
+        
         self._lower_bound = (quantization.upper_probs[-1] * (quantization.partition.support.width.norm() / 2).pow(2)).sqrt()
 
     @property
     def moment_bound(self) -> torch.Tensor:
-        return self._moment_bound
+        return self._result.moment_bound
     
     @property
     def discrete_bound(self) -> torch.Tensor:
-        return self._discrete_bound
+        return self._result.discrete_bound
 
     @property
     def radius(self) -> torch.Tensor:
-        return self._radius
+        return self._result.bound
     
     @property
     def lower_bound(self):
         return self._lower_bound
-    
-    def __repr__(self):
-        return self.radius
 
 
 def fournier_radius(

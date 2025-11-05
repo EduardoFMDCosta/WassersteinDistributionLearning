@@ -15,12 +15,11 @@ class Result:
         w_opt: Optional[torch.Tensor] = None        
     ):
         if bound is None and moment_bound is not None and discrete_bound is not None:
-            self.bound = moment_bound + discrete_bound
-        else:
-            self.bound = bound
-
-        self.moment_bound = moment_bound
-        self.discrete_bound = discrete_bound
+            bound = moment_bound + discrete_bound
+    
+        self.bound = torch.tensor(torch.nan) if bound is None else bound
+        self.moment_bound = torch.tensor(torch.nan) if moment_bound is None else moment_bound
+        self.discrete_bound = torch.tensor(torch.nan) if discrete_bound is None else discrete_bound
         self.w_opt = w_opt
     
 

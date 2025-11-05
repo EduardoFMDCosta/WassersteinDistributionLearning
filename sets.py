@@ -45,7 +45,7 @@ class BoundedVoronoiPartition:
         self, 
         support: HyperRectangle, 
         region_locs: torch.Tensor,
-        region_l2_radii: torch.Tensor
+        region_l2_radii: torch.Tensor  # TODO provide either l2 or l1 (based on what is used in .from_samples)
     ):
         self.support = support
         self.region_locs = region_locs
@@ -66,6 +66,18 @@ class BoundedVoronoiPartition:
     @property
     def l2_radii(self):
         return torch.cat((self.region_l2_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+    
+    @property
+    def l2_distance_locs_to_region(self):
+        return self.l2_distance_locs_to_locs + self.region_l2_radii.unsqueeze(-1)
+    
+    @property
+    def l1_radii(self):
+        return (2**0.5) * self.l2_radii
+    
+    @property
+    def l1_distance_locs_to_region(self):
+        return self.l1_distance_locs_to_locs + self.l1_radii.unsqueeze(-1)
 
     @classmethod
     def from_samples(

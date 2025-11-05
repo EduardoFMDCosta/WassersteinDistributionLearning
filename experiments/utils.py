@@ -280,9 +280,7 @@ def run_combinations(
                 start = time.time()
                 data_driven_radii.append((N, M), DataDrivenRadius(
                     quantization=quantizations.at((N, M)),
-                    solver=solver, 
-                    compute_moment_bound=args.compute_moment_bound, 
-                    compute_discrete_bound=args.compute_discrete_bound
+                    solver=solver
                 ))
                 radius_computation_times.append((N, M), torch.as_tensor(time.time() - start))
                 if print_timings:

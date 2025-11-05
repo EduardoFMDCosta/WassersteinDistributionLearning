@@ -4,15 +4,19 @@ from confidence import ClopperPearsonConfidence
 from sets import BoundedVoronoiPartition
 
 
-class Quantization:
+class Quantization(BoundedVoronoiPartition):
     def __init__(
             self, 
             partition: BoundedVoronoiPartition, 
             samples: torch.Tensor
     ):
-        self.partition = partition
+        super().__init__(
+            support=partition.support,
+            cluster_centers=partition.cluster_centers,
+            cluster_radii=partition.cluster_radii
+        )
+        
         self.samples = samples
-        self.nsamples = samples.size(0)
 
         centers_to_samples_distance = torch.cdist(partition.cluster_centers, samples, p=2)
         mask = centers_to_samples_distance > partition.cluster_radii.unsqueeze(1)
@@ -21,7 +25,6 @@ class Quantization:
         labels = torch.argmin(centers_to_samples_distance, dim=0)
 
         self.cluster_counts = torch.bincount(labels[~in_outer], minlength=len(partition) - 1)
-
         self.outer_counts = self.nsamples - self.cluster_counts.sum()
         assert self.outer_counts == sum(in_outer) >= 0, "Inconsistent outer counts"
 
@@ -34,23 +37,8 @@ class Quantization:
         return self.counts.float() / self.counts.sum()
     
     @property
-    def locs(self):
-        return self.partition.locs
-
-    @property
-    def ndim(self):
-        return self.partition.ndim
-    
-    @property
-    def cluster_radii(self):
-        return self.partition.cluster_radii
-    
-    @property
-    def distance_locs(self):
-        return self.partition.distance_locs
-
-    def __len__(self):
-        return len(self.partition)
+    def nsamples(self): # TODO rename num_samples
+        return self.samples.size(0)
 
 
 class UncertainQuantization(Quantization):

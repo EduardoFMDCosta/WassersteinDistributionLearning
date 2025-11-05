@@ -20,13 +20,13 @@ class IndependentSolver(Solver):
     ) -> Result:
 
         if self.compute_moment_bound:
-            moment_bound, _ = o_maximization(quantization.partition.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
+            moment_bound, _ = o_maximization(quantization.radii.pow(2), quantization.lower_probs, quantization.upper_probs)
             moment_bound = moment_bound.pow(0.5)
         else:
             moment_bound = torch.tensor(torch.nan)
 
         if self.compute_discrete_bound:
-            cost_matrix = quantization.partition.distance_locs.pow(2)
+            cost_matrix = quantization.distance_locs.pow(2)
 
             discrete_bound = self.discrete_solver.solve(
                 cost=cost_matrix.detach(),

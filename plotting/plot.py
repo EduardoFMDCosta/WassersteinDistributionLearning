@@ -133,11 +133,11 @@ def plot_quantization_slice(
             label='std dev'
         )
     elif stat == 'radii':
-        ax.plot(options, data_sliced.mean_cluster_radii, label='avg cluster radii', color='black')
+        ax.plot(options, data_sliced.mean_region_l2_radii, label='avg cluster radii', color='black')
         ax.fill_between(
             options,
-            data_sliced.mean_cluster_radii - data_sliced.std_cluster_radii,
-            data_sliced.mean_cluster_radii + data_sliced.std_cluster_radii,
+            data_sliced.mean_region_l2_radii - data_sliced.std_region_l2_radii,
+            data_sliced.mean_region_l2_radii + data_sliced.std_region_l2_radii,
             color='black',
             alpha=0.2,
             label='std dev'
@@ -268,13 +268,13 @@ def plot_partition(
     # Plot Voronoi cells
     if len(partition) <= 110 and isinstance(partition, BoundedVoronoiPartition):
         ax = utils_plot.plot_clipped_voronoi_2d(
-            centers=partition.cluster_centers,
-            max_diameters=partition.cluster_radii * 2,
+            centers=partition.region_locs,
+            max_diameters=partition.region_l2_radii * 2,
             ax=ax
         )
 
     # Plot locs
-    ax.scatter(*partition.locs.t(), s=5, color="red", label="Cluster Centers")
+    ax.scatter(*partition.locs.t(), s=5, color="red", label="Cluster locs")
 
     ax.legend()
     ax.axis('equal')

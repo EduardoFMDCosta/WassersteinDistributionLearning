@@ -44,14 +44,14 @@ class BoundedVoronoiPartition:
     def __init__(
         self, 
         support: HyperRectangle, 
-        cluster_centers: torch.Tensor,
-        cluster_radii: torch.Tensor
+        region_locs: torch.Tensor,
+        region_l2_radii: torch.Tensor  # TODO provide either l2 or l1 (based on what is used in .from_samples)
     ):
         self.support = support
-        self.cluster_centers = cluster_centers
-        self.outer_center = support.center.unsqueeze(0)
-        self.cluster_radii = cluster_radii
-        self.distance_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.region_locs = region_locs
+        self.region_l2_radii = region_l2_radii
+        self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
     
     def __len__(self):
         return self.locs.size(0)
@@ -62,11 +62,23 @@ class BoundedVoronoiPartition:
     
     @property
     def locs(self):
-        return torch.cat((self.cluster_centers, self.outer_center), dim=0)
+        return torch.cat((self.region_locs, self.support.center.unsqueeze(0)), dim=0)
 
     @property
-    def radii(self):
-        return torch.cat((self.cluster_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+    def l2_radii(self):
+        return torch.cat((self.region_l2_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+    
+    @property
+    def l2_distance_locs_to_region(self):
+        return self.l2_distance_locs_to_locs + self.region_l2_radii.unsqueeze(-1)
+    
+    @property
+    def l1_radii(self):
+        return (2**0.5) * self.l2_radii
+    
+    @property
+    def l1_distance_locs_to_region(self):
+        return self.l1_distance_locs_to_locs + self.l1_radii.unsqueeze(-1)
 
     @classmethod
     def from_samples(
@@ -86,52 +98,52 @@ class BoundedVoronoiPartition:
             kmeans_torch = KMeans(n_clusters=M)
             cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
 
-            cluster_centers = cluster_result.centers.squeeze(0)
+            cluster_locs = cluster_result.centers.squeeze(0)
             labels = cluster_result.labels.squeeze(0)
 
-            max_sample_distances = compute_inner_cluster_max_radii(samples, cluster_centers, labels)    
+            max_sample_distances = compute_inner_cluster_max_l2_radii(samples, cluster_locs, labels)    
         else:
-            cluster_centers = samples
+            cluster_locs = samples
             max_sample_distances = torch.zeros(M)
 
-        distance_centers = torch.cdist(cluster_centers, cluster_centers, p=2)
+        distance_locs = torch.cdist(cluster_locs, cluster_locs, p=2)
 
-        # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster centers.
+        # Set the radii to half the diameter of each Voronoi cell in R^n with respect to the cluster locs.
         # For unbounded cells, the diameter will be infinite.
         if use_voronoi_radii:
-            radii = compute_voronoi_radius(cluster_centers)
+            l2_radii = compute_voronoi_radius(cluster_locs)
         else:
-            radii = torch.full((M,), torch.inf)
+            l2_radii = torch.full((M,), torch.inf)
 
-        radii.clamp_(max=radius_scale_factor * max_sample_distances)
-        radii.clamp_(max=torch.norm(support.width * 0.5).item())
+        l2_radii.clamp_(max=radius_scale_factor * max_sample_distances)
+        l2_radii.clamp_(max=torch.norm(support.width * 0.5).item())
 
         if not use_voronoi_radii: # TODO test if robust for small M and num_neigh
             num_neigh = max(int(M*0.05), 5)
-            distance_closest_neighbor = torch.topk(distance_centers, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
-            radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)
+            distance_closest_neighbor = torch.topk(distance_locs, num_neigh, dim=1, largest=False).values[:, num_neigh-1]
+            l2_radii.clamp_(min=radius_scale_factor * distance_closest_neighbor / 2)
         
         return cls(
             support=support,
-            cluster_centers=cluster_centers,
-            cluster_radii=radii
+            region_locs=cluster_locs,
+            region_l2_radii=l2_radii
         )
 
 
-def compute_inner_cluster_max_radii(samples: torch.Tensor, cluster_centers: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def compute_inner_cluster_max_l2_radii(samples: torch.Tensor, cluster_locs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
     """
-    Compute the maximum distance from samples to their assigned cluster centers.
+    Compute the maximum distance from samples to their assigned cluster locs.
     
     Args:
         samples: Sample points (n_samples, n_features)
-        cluster_centers: Cluster center locations (k, n_features)  
+        region_locs: Cluster center locations (k, n_features)  
         labels: Cluster assignments for each sample (n_samples,)
         
     Returns:
-        radii: Maximum distance for each cluster (k,)
+        l2_radii: Maximum distance for each cluster (k,)
     """
-    k = cluster_centers.size(0)
-    sample_to_center_distance = torch.norm(samples - cluster_centers[labels], dim=-1)
+    k = cluster_locs.size(0)
+    sample_to_center_distance = torch.norm(samples - cluster_locs[labels], dim=-1)
     return torch.zeros(k).scatter_reduce(0, labels, sample_to_center_distance, reduce='amax', include_self=False)
 
 
@@ -147,7 +159,7 @@ def compute_voronoi_radius(points: torch.Tensor) -> torch.Tensor:
 
     Returns
     -------
-    radii : (N,) torch.Tensor of float64
+    l2_radii : (N,) torch.Tensor of float64
         Half the maximum pairwise Euclidean distance between
         the cell's Voronoi vertices (i.e., the radius). 
         Unbounded cells return inf.
@@ -165,19 +177,19 @@ def compute_voronoi_radius(points: torch.Tensor) -> torch.Tensor:
     points_np = points.detach().cpu().numpy()
     
     vor = Voronoi(points_np, qhull_options="QJ")
-    radii = np.full(points_np.shape[0], np.inf)
+    l2_radii = np.full(points_np.shape[0], np.inf)
     bounded_mask = np.zeros(points_np.shape[0], dtype=bool)
 
     for i, reg_idx in enumerate(vor.point_region):
         region = vor.regions[reg_idx]
         if not region:
-            radii[i] = 0.0
+            l2_radii[i] = 0.0
             continue
 
         finite_idx = [v for v in region if v != -1]
         if len(finite_idx) == 0:
             # Extremely degenerate; no finite vertices found.
-            radii[i] = 0.0
+            l2_radii[i] = 0.0
             continue
 
         verts = vor.vertices[np.array(finite_idx, dtype=int)]
@@ -186,7 +198,7 @@ def compute_voronoi_radius(points: torch.Tensor) -> torch.Tensor:
             bounded_mask[i] = False
         else:
             # Bounded: radius is half the true diameter via vertex–vertex pairs.
-            radii[i] = (pdist(verts).max() / 2.0) if len(verts) > 1 else 0.0
+            l2_radii[i] = (pdist(verts).max() / 2.0) if len(verts) > 1 else 0.0
             bounded_mask[i] = True
 
-    return torch.from_numpy(radii).to(dtype=points.dtype)
+    return torch.from_numpy(l2_radii).to(dtype=points.dtype)

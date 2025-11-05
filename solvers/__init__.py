@@ -3,6 +3,7 @@ from .triangle_inequality_vertex import TriangleInequalityFromVertex
 from .independent import IndependentSolver
 from .discrete_solvers import get_discrete_solver
 from .templates import Solver, Result
+from .no_trianlge_inequality import NoTriangleIneq
 
 __all__ = ['get_solver', 'get_discrete_solver', 'Solver', 'Result']
 
@@ -10,7 +11,8 @@ __all__ = ['get_solver', 'get_discrete_solver', 'Solver', 'Result']
 class GetSolver:
     mapping = dict(
         joint_optimization_milp=JointOptimizationMilp,
-        triangle_inequality_vertex=TriangleInequalityFromVertex
+        triangle_inequality_vertex=TriangleInequalityFromVertex,
+        no_triangle_inequality=NoTriangleIneq,
     )
 
     def __call__(

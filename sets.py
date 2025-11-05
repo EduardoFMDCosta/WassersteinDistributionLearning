@@ -51,6 +51,7 @@ class BoundedVoronoiPartition:
         self.region_locs = region_locs
         self.region_l2_radii = region_l2_radii
         self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
     
     def __len__(self):
         return self.locs.size(0)

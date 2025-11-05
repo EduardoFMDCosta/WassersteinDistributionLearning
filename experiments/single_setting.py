@@ -22,10 +22,17 @@ if __name__ == '__main__':
         num_clusters=5,
         beta=1e-4,
         method='diagonal_constrained_tp',
-        plot=False
+        plot=False, 
+        compute_discrete_bound=False, 
+        compute_moment_bound=True
     )
 
     solver = get_solver(method=args.method)
+
+    if not args.compute_discrete_bound:
+        solver.disable_discrete_bound_computation()
+    if not args.compute_moment_bound:
+        solver.disable_moment_bound_computation()
 
     support_assumption = get_support_assumption(**vars(args))
 

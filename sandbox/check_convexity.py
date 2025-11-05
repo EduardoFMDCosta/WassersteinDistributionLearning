@@ -1,6 +1,6 @@
 import torch
 
-from solvers.legacy.max_oracle_gradient_descent import inner_lp_maximization
+from solvers.moment_bound_solvers.max_oracle_gradient_descent import inner_lp_maximization
 from quantization import UncertainQuantization
 from sets import BoundedVoronoiPartition
 

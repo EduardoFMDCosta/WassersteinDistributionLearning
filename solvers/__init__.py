@@ -1,6 +1,6 @@
 from .joint_optimization_milp import JointOptimizationMilp
 from .triangle_inequality_vertex import TriangleInequalityFromVertex
-from .triangle_inequality import TriangleInequalitySolver
+from .independent import IndependentSolver
 from .discrete_solvers import get_discrete_solver
 from .templates import Solver
 
@@ -17,7 +17,7 @@ class GetSolver:
         if method in self.mapping:
             return self.mapping[method](**kwargs)
         else:
-            return TriangleInequalitySolver(
+            return IndependentSolver(
                 discrete_solver=get_discrete_solver(method=method, **kwargs)
             )
     

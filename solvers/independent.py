@@ -6,7 +6,7 @@ from quantization import UncertainQuantization
 from solvers.templates import Solver, Result, DiscreteSolver
 
 
-class TriangleInequalitySolver(Solver):
+class IndependentSolver(Solver):
     def __init__(self, discrete_solver: DiscreteSolver) -> None:
         super().__init__()
         self.discrete_solver = discrete_solver

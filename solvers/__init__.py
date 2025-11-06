@@ -17,19 +17,14 @@ class GetSolver:
 
     def __call__(
         self,
-        method: str, 
-        compute_discrete_bound: bool = True,
-        compute_moment_bound: bool = True,
+        method: str,
         **kwargs
     ):
         if method in self.mapping:
             solver = self.mapping[method](**kwargs)
         else:
-            solver = IndependentSolver(
-                discrete_solver=get_discrete_solver(method=method, **kwargs)
-            )
-        solver.compute_discrete_bound = compute_discrete_bound
-        solver.compute_moment_bound = compute_moment_bound
+            discrete_solver = get_discrete_solver(method=method, **kwargs)
+            solver = IndependentSolver(discrete_solver=discrete_solver)
         return solver
     
     @property

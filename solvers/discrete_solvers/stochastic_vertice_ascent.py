@@ -157,6 +157,6 @@ class StochasticVerticeAscent(DiscreteSolver):
 
         pbar.close()
 
-        return DiscreteResult(bound=torch.as_tensor(objective_opt).pow(0.5), w_opt=w_opt)
+        return DiscreteResult(bound=torch.as_tensor(objective_opt).pow(1 / self.wasserstein_order), w_opt=w_opt)
     
 

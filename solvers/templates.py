@@ -24,8 +24,17 @@ class Result:
     
 
 class Solver(ABC):
+    _wasserstein_order: int =2
     _compute_moment_bound = True
     _compute_discrete_bound = True
+
+    @property
+    def wasserstein_order(self) -> int:
+        return self._wasserstein_order
+    
+    @wasserstein_order.setter
+    def wasserstein_order(self, value: int) -> None:
+        self._wasserstein_order = value
 
     @property
     def compute_moment_bound(self) -> bool:
@@ -68,6 +77,16 @@ class DiscreteResult:
     w_opt: Optional[torch.Tensor] = None
 
 class DiscreteSolver(ABC):
+    _wasserstein_order: int =2
+
+    @property
+    def wasserstein_order(self) -> int:
+        return self._wasserstein_order
+    
+    @wasserstein_order.setter
+    def wasserstein_order(self, value: int) -> None:
+        self._wasserstein_order = value
+
     @abstractmethod
     def solve(
         self,

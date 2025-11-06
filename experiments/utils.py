@@ -75,7 +75,7 @@ def run_combinations(
     print_timings: bool = False,
     compute_empirical_radii: bool = False,
 ):
-    solver = get_solver(method=args.method, compute_discrete_bound=args.compute_discrete_bound, compute_moment_bound=args.compute_moment_bound)
+    solver = get_solver(method=args.method)
 
     distribution = get_distribution(**vars(args))
 
@@ -114,13 +114,21 @@ def run_combinations(
                 start = time.time()
                 data_driven_radii.append((N, M), DataDrivenRadius(
                     quantization=quantizations.at((N, M)),
-                    solver=solver
+                    solver=solver, 
+                    wasserstein_order=args.wasserstein_order,
+                    compute_discrete_bound=args.compute_discrete_bound,
+                    compute_moment_bound=args.compute_moment_bound
                 ))
                 radius_computation_times.append((N, M), torch.as_tensor(time.time() - start))
                 if print_timings:
                     print(f"Data-driven bounding completed in {radius_computation_times.at((N, M)):.2f} seconds")
 
-                fournier_radii.append((N, M), compute_fournier_radius(support=partition.support, nsamples=2*N, beta=args.beta))
+                fournier_radii.append((N, M), compute_fournier_radius(
+                    support=partition.support, 
+                    nsamples=2*N, 
+                    wasserstein_order=args.wasserstein_order,
+                    beta=args.beta,
+                ))
 
                 computation_times.append((N, M), quantization_times.at((N, M)) + radius_computation_times.at((N, M)))
 

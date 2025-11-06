@@ -129,18 +129,21 @@ def fournier_radius(
 
     return moment_bound + tau
 
-# TODO: Allow different \rho in empirical radius
 class EmpiricalRadius:
     def __init__(
         self,
         quantization: UncertainQuantization,
         dist: torch.distributions.Distribution,
+        wasserstein_order: int
     ):
 
         emp_dist = dist.sample((10 * quantization.nsamples,))
 
-        self._radius_samples = ot.solve_sample(X_a=emp_dist, X_b=quantization.samples).value.sqrt().item()
-        self._radius_quantization = ot.solve_sample(X_a=emp_dist, X_b=quantization.locs, b=quantization.probs).value.sqrt().item()
+        metric = {1: "euclidean", 2: "sqeuclidean"}
+        assert wasserstein_order in metric, "Empirical computation not available for this Wasserstein order."
+
+        self._radius_samples = ot.solve_sample(X_a=emp_dist, X_b=quantization.samples, metric=metric[wasserstein_order]).value.pow(1 / wasserstein_order).item()
+        self._radius_quantization = ot.solve_sample(X_a=emp_dist, X_b=quantization.locs, b=quantization.probs, metric=metric[wasserstein_order]).value.pow(1 / wasserstein_order).item()
 
     @property
     def radius_samples(self) -> float:

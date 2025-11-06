@@ -1,3 +1,5 @@
+import os
+import sys
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 
@@ -161,3 +163,11 @@ class EmpiricalRadii(_GridDict[EmpiricalRadius]):
 
     def radius_quantization_at(self, key: Tuple[int, int]) -> float:
         return self.data[key].radius_quantization
+
+
+# to pickle load from other files..
+setattr(sys.modules.get('__main__'), 'TimeLogger', TimeLogger)
+setattr(sys.modules.get('__main__'), 'DataDrivenRadii', DataDrivenRadii)
+setattr(sys.modules.get('__main__'), 'FournierRadii', FournierRadii)
+setattr(sys.modules.get('__main__'), 'Quantizations', Quantizations)
+setattr(sys.modules.get('__main__'), 'EmpiricalRadii', EmpiricalRadii)

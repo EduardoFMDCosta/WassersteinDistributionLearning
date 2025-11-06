@@ -21,8 +21,7 @@
               "settings": {
                   "0": {
                       "support_linf_radius_assumed": -0.5,
-                      "support_linf_radius": [[-0.15, -0.15, -0.15],
-                                  [0.15, 0.15, 0.15]]
+                      "support_linf_radius": 0.15
                   }
               }
           }

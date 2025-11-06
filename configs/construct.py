@@ -77,8 +77,8 @@ def construct_mixture_trunc_mult_norm(
     component_distribution = TruncatedMultivariateNormal(
         loc=loc,
         scale=scale,
-        a=torch.ones(num_dims, len(weight)) * -support_linf_radius,
-        b=torch.ones(num_dims, len(weight)) * support_linf_radius
+        a=torch.ones(len(weight), num_dims) * -support_linf_radius,
+        b=torch.ones(len(weight), num_dims) * support_linf_radius
     )
     return MixtureTruncatedMultivariateNormal(mixture_distribution=mixture_distribution, component_distribution=component_distribution)
 

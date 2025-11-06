@@ -37,13 +37,14 @@ if __name__ == '__main__':
     num_steps = 5
     ratio = 0.5
     
-    num_cluster_options = [5, 6]
+    num_cluster_options = [5,6,7,8,9,10]
     for num_clusters in num_cluster_options:
         max_vertices = num_vertices_omega_space_vertices(num_clusters)
-        print(f"vertices = {max_vertices}")
+        max_inits = max(int(max_vertices * ratio / num_steps), 1)
+        print(f"vertices = {max_vertices}, inits = {max_inits}")
 
         fs_solver = IndependentSolver(discrete_solver=FullSearch(max_vertices=max_vertices))
-        sva_solver = IndependentSolver(discrete_solver=StochasticVerticeAscent(num_inits=int(max_vertices * ratio / num_steps), num_steps=num_steps))
+        sva_solver = IndependentSolver(discrete_solver=StochasticVerticeAscent(num_inits=max_inits, num_steps=num_steps))
 
         partition = get_partition(args=args, num_samples=args.num_samples_training, num_clusters=num_clusters)    
         quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
@@ -56,6 +57,9 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.plot(num_cluster_options, fs_radii.discrete_bound, label='Full Search')
     ax.plot(num_cluster_options, sva_radii.discrete_bound, label='Stochastic Vertice Ascent')
+    ax.set_xlabel('Number of clusters M')
+    ax.set_ylabel('e2')
+    ax.set_title(f"sva underparametrized by factor {ratio} (N={args.num_samples})")
     ax.legend()
 
     plt.show()

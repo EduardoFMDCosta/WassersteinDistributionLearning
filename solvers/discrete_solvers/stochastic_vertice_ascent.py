@@ -123,7 +123,7 @@ class StochasticVerticeAscent(DiscreteSolver):
         objective_opt = -float("inf")
         w_opt = None
 
-        pbar = tqdm(total=self.num_steps, desc="Cutting Plane Outer Loop")
+        pbar = tqdm(total=self.num_steps, desc="Cutting Plane Outer Loop", disable=not self.verbose)
 
         for d in range(self.num_inits):
             msg = f"[CuttingPlane] iteration={d}"

@@ -91,11 +91,11 @@ if __name__ == '__main__':
         setting=0,
         beta=1e-6,
         method='full_search', 
-        save=True,
+        save=False,
     )
     
-    M_options = [10, 15]  # [10, 25, 75, 100, 200, 500, 1000]
-    N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
+    N_options = [1000] # [1000, 2500, 5000, 7500, 10000]
+    M_options = [5, 20] # [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
 
     quantizations = load_data(args.quantizations_file, Quantizations, N_options, M_options)
     data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii, N_options, M_options)
@@ -104,13 +104,13 @@ if __name__ == '__main__':
 
     # Plot slice of statistics
     plot_slice(args, data_driven_radii, quantizations, num_samples=1000)
-    plot_slice(args, data_driven_radii, quantizations, num_clusters=10)
+    # plot_slice(args, data_driven_radii, quantizations, num_clusters=10)
 
-    # Plot grid
-    plot_grid(args, data_driven_radii)
+    # # Plot grid
+    # plot_grid(args, data_driven_radii)
 
-    # Plot Quantizations
-    plot_quantization(args, quantizations)
+    # # Plot Quantizations
+    # plot_quantization(args, quantizations)
 
-    # Generate CSV
-    plot.generate_table(data_driven_radii, fournier_radii, empirical_radii, args)
+    # # Generate CSV
+    # plot.generate_table(data_driven_radii, fournier_radii, empirical_radii, args)

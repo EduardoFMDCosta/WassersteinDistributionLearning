@@ -17,8 +17,8 @@ if __name__ == '__main__':
     )
 
     # We assume num_samples_training = num_samples
-    M_options = [10, 15]  # [10, 25, 75, 100, 200, 500, 1000]
-    N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
+    N_options = [1000] # [1000, 2500, 5000, 7500, 10000]
+    M_options = [5, 20] # [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
 
     # TODO add TimeLogger
     (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True)

@@ -7,9 +7,9 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 echo "START"
 
 echo "Uniform"
-python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 0
-python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 1
-python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 2
+# python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 0
+# python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 1
+# python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 2
 python -m experiments.partitions --distribution Uniform --num_dims 3 --setting 0
 
 echo "Gaussians"

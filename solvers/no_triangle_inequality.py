@@ -16,9 +16,10 @@ class NoTriangleIneq(Solver):
     def solve(
         self,
         quantization: UncertainQuantization,
+        wasserstein_order: int,
     ) -> Result:
         
-        cost = quantization.l2_distance_locs_to_region.pow(2)
+        cost = quantization.l2_distance_locs_to_region.pow(wasserstein_order)
         lower = quantization.lower_probs
         upper = quantization.upper_probs
         empirical_marginal = quantization.probs
@@ -58,4 +59,4 @@ class NoTriangleIneq(Solver):
         if m.Status != GRB.OPTIMAL:
             raise RuntimeError(f"Gurobi did not find an optimal solution. status={m.Status}")
 
-        return Result(bound=torch.as_tensor(m.ObjVal).pow(0.5))
+        return Result(bound=torch.as_tensor(m.ObjVal).pow(1 / wasserstein_order))

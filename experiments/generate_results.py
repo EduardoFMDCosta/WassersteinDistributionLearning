@@ -13,6 +13,7 @@ if __name__ == '__main__':
         setting=0,
         beta=1e-6,
         method='full_search', 
+        wasserstein_order=2,
         save=True,
     )
 
@@ -21,10 +22,11 @@ if __name__ == '__main__':
     M_options = [5, 20] # [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
 
     # TODO add TimeLogger
-    (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True)
+    (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = \
+        run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True, time_limit=60*5)
 
     if args.save:
-        pickle_dump(quantizations, args.quantizations_file)
+        # pickle_dump(quantizations, args.quantizations_file)
         pickle_dump(data_driven_radii, args.data_driven_radii_file)
         pickle_dump(fournier_radii, args.fournier_radii_file)
         pickle_dump(empirical_radii, args.empirical_radii_file)

@@ -125,8 +125,8 @@ if __name__ == '__main__':
         plot=False, 
     )    
 
-    num_samples_options = [1000, 2500, 5000, 7500, 10000]  # [500, 1000, 5000, 10000]
-    num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
+    num_samples_options = [1000, 2500, 5000, 7500, 10000, 25000]  # [500, 1000, 5000, 10000]
+    num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 2000]
 
     partitions = get_dict_of_partitions(
         args=args,

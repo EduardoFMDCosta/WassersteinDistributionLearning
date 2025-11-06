@@ -16,7 +16,14 @@ class DataDrivenRadius:
             self, 
             quantization: UncertainQuantization, 
             solver: Solver,
+            wasserstein_order: int,
+            compute_discrete_bound: bool = True,
+            compute_moment_bound: bool = True,
         ):
+        solver.wasserstein_order = wasserstein_order
+        solver.compute_discrete_bound = compute_discrete_bound
+        solver.compute_moment_bound = compute_moment_bound
+
         self._result =  solver.solve(quantization=quantization)
         
         self._lower_bound = (quantization.upper_probs[-1] * (quantization.support.width.norm() / 2).pow(2)).sqrt()

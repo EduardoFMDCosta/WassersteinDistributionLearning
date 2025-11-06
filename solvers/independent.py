@@ -38,3 +38,12 @@ class IndependentSolver(Solver):
             discrete_bound = torch.tensor(torch.nan)
 
         return Result(moment_bound=moment_bound, discrete_bound=discrete_bound)
+
+    @property
+    def wasserstein_order(self) -> int:
+        return self._wasserstein_order
+
+    @wasserstein_order.setter
+    def wasserstein_order(self, value: int) -> None:
+        self._wasserstein_order = value
+        self.discrete_solver.wasserstein_order = value

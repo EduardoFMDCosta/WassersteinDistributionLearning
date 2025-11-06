@@ -18,20 +18,13 @@ class GetSolver:
     def __call__(
         self,
         method: str,
-        wasserstein_order: int,
-        compute_discrete_bound: bool = True,
-        compute_moment_bound: bool = True,
         **kwargs
     ):
         if method in self.mapping:
             solver = self.mapping[method](**kwargs)
-            solver.wasserstein_order = wasserstein_order
         else:
             discrete_solver = get_discrete_solver(method=method, **kwargs)
-            discrete_solver.wasserstein_order = wasserstein_order
             solver = IndependentSolver(discrete_solver=discrete_solver)
-        solver.compute_discrete_bound = compute_discrete_bound
-        solver.compute_moment_bound = compute_moment_bound
         return solver
     
     @property

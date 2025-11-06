@@ -71,12 +71,20 @@ def parse_arguments(
     args.__dict__.update(vars(dynamics_params))
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    args.results_dir = os.path.join(base_dir, "results", args.distribution.lower())
+    args.results_dir = os.path.join(base_dir, "results", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
+    args.quantizations_file = os.path.join(args.results_dir, args.method, "quantizations")
+    args.data_driven_radii_file = os.path.join(args.results_dir, args.method, "data_driven_radii")
+    args.fournier_radii_file = os.path.join(args.results_dir, args.method, "fournier_radii")
+    args.empirical_radii_file = os.path.join(args.results_dir, args.method, "empirical_radii")
+
+    args.figures_dir = os.path.join(base_dir, "figures", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
+
     args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}.pickle")
 
     ensure_dir(args.results_dir)
+    ensure_dir(args.figures_dir)
     ensure_dir(os.path.dirname(args.partitions_file))
-
+    
     return args
 
 def ensure_dir(dirname):

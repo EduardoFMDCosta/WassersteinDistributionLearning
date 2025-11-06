@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import gurobipy as gp
 from gurobipy import GRB
@@ -107,9 +108,10 @@ class ScalarStrategy(DiscreteSolver):
         m.setObjective(obj, GRB.MAXIMIZE)
         m.update()
 
+        m.setParam("TimeLimit", self.time_limit if self.time_limit is not None else GRB.INFINITY)
         m.optimize()
         if m.Status != GRB.OPTIMAL:
-            raise RuntimeError(f"Gurobi did not find an optimal solution. status={m.Status}")
+            raise RuntimeError(f"Gurobi did not find an optimal solution within {self.time_limit} seconds (status {m.Status})")
 
         # Checks -------------------------------------------------------------------------------------------------------
         # alpha_t = torch.from_numpy(alpha.X).to(dtype=lower.dtype)

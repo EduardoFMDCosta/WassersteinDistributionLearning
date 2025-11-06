@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import cvxpy as cp
 import numpy as np
@@ -15,7 +16,8 @@ def lifted_lp_from_vertex_gurobi(
         upper: torch.Tensor,
         I: list,
         J: list,
-        tol: float = 1e-8
+        time_limit: Optional[float],
+        tol: float = 1e-8,
 ):
 
     # Convert to numpy
@@ -65,10 +67,12 @@ def lifted_lp_from_vertex_gurobi(
     obj += gp.quicksum(p_np[i] * t[i] for i in range(M))
 
     model.setObjective(obj, GRB.MINIMIZE)
+
+    model.setParam("TimeLimit", time_limit if time_limit is not None else GRB.INFINITY)
     model.optimize()
 
     if model.Status != GRB.OPTIMAL:
-        raise RuntimeError(f"Gurobi did not find an optimal solution (status {model.Status})")
+        raise RuntimeError(f"Gurobi did not find an optimal solution within {time_limit} seconds (status {model.Status})")
 
     result = {
         "objective": float(model.objVal) if model.status == GRB.OPTIMAL else None,
@@ -104,7 +108,8 @@ def compute_bound_given_vertex(
         vertex: torch.Tensor,
         wasserstein_order: int,
         tol: float,
-        use_gurobi: bool
+        use_gurobi: bool, 
+        time_limit: Optional[float],
 ):
     cost_matrix = quantization.l2_distance_locs_to_region.pow(wasserstein_order)  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
 
@@ -139,7 +144,8 @@ def compute_bound_given_vertex(
                                                   lower=quantization.lower_probs,
                                                   upper=quantization.upper_probs,
                                                   I=I,
-                                                  J=J)
+                                                  J=J,
+                                                  time_limit=time_limit)
         obj_val = result["objective"]
 
         if obj_val > best_obj:
@@ -153,7 +159,8 @@ def compute_worst_to_vertex(
         wasserstein_order: int,
         num_iterations: int,
         tol: float,
-        use_gurobi: bool
+        use_gurobi: bool,
+        time_limit: Optional[float]
 ):
 
     vertex = initial_vertex
@@ -161,7 +168,7 @@ def compute_worst_to_vertex(
     best_obj = float(torch.inf)
     for iteration in range(num_iterations):
         # Compute value with current index sets
-        result = compute_bound_given_vertex(quantization=quantization, vertex=vertex, wasserstein_order=wasserstein_order, tol=tol, use_gurobi=use_gurobi)
+        result = compute_bound_given_vertex(quantization=quantization, vertex=vertex, wasserstein_order=wasserstein_order, tol=tol, use_gurobi=use_gurobi, time_limit=time_limit)
         bound = result["bound"]
 
         # Store if improvement
@@ -191,13 +198,21 @@ class TriangleInequalityFromVertex(Solver):
     def solve(
         self,
         quantization: UncertainQuantization,
-    ) -> Result:
+    ) -> Result: # TODO to be improved, sequential formulation inconcenient for setting parameters
 
         # Get nearest vertex to empirical
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
         # Compute moment bound
-        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, wasserstein_order=self.wasserstein_order, num_iterations=self.num_iterations, tol=self.tol, use_gurobi=self.use_gurobi)
+        moment_bound = compute_worst_to_vertex(
+            quantization=quantization, 
+            initial_vertex=vertex, 
+            wasserstein_order=self.wasserstein_order, 
+            num_iterations=self.num_iterations, 
+            tol=self.tol, 
+            use_gurobi=self.use_gurobi, 
+            time_limit=self.time_limit
+        )
 
         # Compute discrete bound
         cost_matrix = quantization.l2_distance_locs_to_locs.pow(self.wasserstein_order)

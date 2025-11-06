@@ -122,9 +122,11 @@ def solve_milp_min_diagonal_gurobi(
     m.addConstr(gp.quicksum(w[i] for i in range(n)) == 1.0, name="sum_w_eq_1")
 
     # Optimize
+    m.setParam("TimeLimit", time_limit if time_limit is not None else gp.GRB.INFINITY)
+    
     m.optimize()
-    if m.Status not in (gp.GRB.OPTIMAL, gp.GRB.SUBOPTIMAL):
-        raise RuntimeError(f"Gurobi ended with status {m.Status}")
+    if m.Status != gp.GRB.OPTIMAL:
+        raise RuntimeError(f"Gurobi did not find an optimal solution within {time_limit} seconds (status {m.Status})")
 
     obj_val = float(m.ObjVal)
 
@@ -137,14 +139,12 @@ def solve_milp_min_diagonal_gurobi(
 class DiagonalConstrainedTP(DiscreteSolver):
     def __init__(
         self, 
-        time_limit: Optional[float] = None,
         mip_gap: Optional[float] = None,
         verbose: bool = False, 
         use_gurobi: bool = True
     ):
         super().__init__()
 
-        self.time_limit = time_limit
         self.mip_gap = mip_gap
         self.verbose = verbose
         self.use_gurobi = use_gurobi

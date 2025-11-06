@@ -72,8 +72,10 @@ def run_combinations(
     M_options: List[int], 
     N_options: List[int], 
     max_memory_mb: int = 2000, 
+    time_limit: Optional[float] = None,
     print_timings: bool = False,
     compute_empirical_radii: bool = False,
+    test_kmeans_feasibility: bool = False
 ):
     solver = get_solver(method=args.method)
 
@@ -87,17 +89,19 @@ def run_combinations(
         samples_quantization = distribution.sample((N,))
 
         for M in M_options:
-            is_feasible, reasons, stats = assess_kmeans_feasibility(
-                N=N, k=M, num_dims=2, 
-                max_memory_mb=max_memory_mb, 
-                max_operations=1e9
-            )
-            if not is_feasible:
-                print(f"Skipping M={M}, N={N}. Reasons: {'; '.join(reasons)}")
-                print(f"  Stats: {stats['memory_mb']:.1f}MB, {stats['operations']:.1e} ops, ~{stats['estimated_time_s']:.1f}s")
-                continue
-
-            print(f"Proceeding with M={M}, N={N} (estimated: {stats['memory_mb']:.1f}MB, ~{stats['estimated_time_s']:.1f}s)")
+            if test_kmeans_feasibility:
+                is_feasible, reasons, stats = assess_kmeans_feasibility(
+                    N=N, k=M, num_dims=2, 
+                    max_memory_mb=max_memory_mb, 
+                    max_operations=1e9
+                )
+                if not is_feasible:
+                    print(f"Skipping M={M}, N={N}. Reasons: {'; '.join(reasons)}")
+                    print(f"  Stats: {stats['memory_mb']:.1f}MB, {stats['operations']:.1e} ops, ~{stats['estimated_time_s']:.1f}s")
+                    continue
+                print(f"Proceeding M={M}, N={N} (estimated: {stats['memory_mb']:.1f}MB, ~{stats['estimated_time_s']:.1f}s)")
+            else:
+                print(f"Processing M={M}, N={N}")
             
             try:
                 start = time.time()
@@ -117,7 +121,8 @@ def run_combinations(
                     solver=solver, 
                     wasserstein_order=args.wasserstein_order,
                     compute_discrete_bound=args.compute_discrete_bound,
-                    compute_moment_bound=args.compute_moment_bound
+                    compute_moment_bound=args.compute_moment_bound,
+                    time_limit=time_limit
                 ))
                 radius_computation_times.append((N, M), torch.as_tensor(time.time() - start))
                 if print_timings:

@@ -73,7 +73,7 @@ def parse_arguments(
     args.__dict__.update(vars(dynamics_params))
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    args.results_dir = os.path.join(base_dir, "results", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}", args.method)
+    args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}", args.method)
     args.quantizations_file = os.path.join(args.results_dir, "quantizations.pickle")
     args.data_driven_radii_file = os.path.join(args.results_dir, "data_driven_radii.pickle")
     args.fournier_radii_file = os.path.join(args.results_dir, "fournier_radii.pickle")

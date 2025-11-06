@@ -78,7 +78,7 @@ def fournier_radius(
             else:
                 moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
 
-            moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for Wasserstein with L2 norm
+            moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for L2 norm
         else:
             raise NotImplementedError
 
@@ -113,7 +113,7 @@ def fournier_radius(
             else:
                 moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
 
-            moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for Wasserstein with L2 norm
+            moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for L2 norm
         else:
             raise NotImplementedError
 

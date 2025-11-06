@@ -54,9 +54,9 @@ if __name__ == '__main__':
         quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
 
         # Compute bounds
-        data_worst.append((N, M), DataDrivenRadius(quantization=quantization, solver=solvers['worst']))
-        data_exact.append((N, M), DataDrivenRadius(quantization=quantization, solver=solvers['exact']))
-        data_bench.append((N, M), DataDrivenRadius(quantization=quantization, solver=solvers['bench']))
+        data_worst.append((N, M), DataDrivenRadius(quantization=quantization, solver=solvers['worst'], wasserstein_order=args.wasserstein_order))
+        data_exact.append((N, M), DataDrivenRadius(quantization=quantization, solver=solvers['exact'], wasserstein_order=args.wasserstein_order))
+        data_bench.append((N, M), DataDrivenRadius(quantization=quantization, solver=solvers['bench'], wasserstein_order=args.wasserstein_order))
 
     print(data_worst.discrete_bound)
     print(data_exact.discrete_bound)

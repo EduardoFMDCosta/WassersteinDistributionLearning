@@ -23,19 +23,14 @@ if __name__ == '__main__':
         num_clusters=30,
         wasserstein_order=1,
         beta=1e-4,
-        method='joint_optimization_milp',
+        method='full_search',
         plot=False,
         save=False,
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
 
-    solver = get_solver(
-        method=args.method,
-        wasserstein_order=args.wasserstein_order,
-        compute_discrete_bound=args.compute_discrete_bound, 
-        compute_moment_bound=args.compute_moment_bound
-    )
+    solver = get_solver(method=args.method)
 
     support_assumption = get_support_assumption(**vars(args))
 
@@ -61,7 +56,13 @@ if __name__ == '__main__':
         wasserstein_order=args.wasserstein_order,
         beta=args.beta
     )
-    data_driven_output = DataDrivenRadius(quantization=quantization, solver=solver)
+    data_driven_output = DataDrivenRadius(
+        quantization=quantization, 
+        solver=solver,
+        wasserstein_order=args.wasserstein_order,
+        compute_discrete_bound=args.compute_discrete_bound, 
+        compute_moment_bound=args.compute_moment_bound
+    )
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
           f"\t Fournier: {fournier_bound:.4f} \n"

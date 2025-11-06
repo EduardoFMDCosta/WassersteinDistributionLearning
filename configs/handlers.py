@@ -37,6 +37,7 @@ def parse_arguments(
     method: str = 'stochastic_vertice_ascent',
     num_samples_training: int = 1000,
     num_samples: int = 1000,
+    wasserstein_order: int = 2,
     beta: float = 1e-4,
     plot: bool = False,
     save: bool = False,
@@ -51,6 +52,7 @@ def parse_arguments(
     parser.add_argument('--num_samples', type=int, default=num_samples, help='Number of samples.')
     parser.add_argument('--num_clusters', type=int, default=num_clusters, help='Number of clusters (M).')
     parser.add_argument('--method', type=str, default=method, choices=get_solver.supported_methods + get_discrete_solver.supported_methods, help='Method to compute discrete-term of data-driven radius.')
+    parser.add_argument('--wasserstein_order', type=int, default=wasserstein_order, help='Wasserstein order, assuming L2 norm.')
     parser.add_argument('--beta', type=float, default=beta, help='Confidence level.')
     parser.add_argument('--plot', type=bool, default=plot, help='Plot charts.')
     parser.add_argument('--save', type=bool, default=save, help='Save results.')

@@ -21,16 +21,18 @@ if __name__ == '__main__':
         num_samples=1000,
         num_samples_training=1000,
         num_clusters=5,
+        wasserstein_order=1,
         beta=1e-4,
         method='joint_optimization_milp',
-        plot=True, 
+        plot=False,
         save=False,
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
 
     solver = get_solver(
-        method=args.method, 
+        method=args.method,
+        wasserstein_order=args.wasserstein_order,
         compute_discrete_bound=args.compute_discrete_bound, 
         compute_moment_bound=args.compute_moment_bound
     )

@@ -22,4 +22,4 @@ class PlainVanilla(DiscreteSolver):
         max_prob_diff = torch.max(upper_diff, lower_diff)
         max_dist, _ = torch.max(cost, dim=1)
 
-        return DiscreteResult(bound=torch.einsum('i,i->', max_dist, max_prob_diff))
+        return DiscreteResult(bound=torch.einsum('i,i->', max_dist, max_prob_diff).pow(1 / self.wasserstein_order))

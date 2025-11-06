@@ -128,4 +128,4 @@ class ScalarStrategy(DiscreteSolver):
         # vertices = torch.stack(get_vertices(lower, upper, max_vertices=10000, tol=1e-9))
         # print(f"w_star on vertice? {torch.isclose(vertices, w_star.unsqueeze(0)).all(dim=-1).any()}")
 
-        return DiscreteResult(bound=torch.as_tensor(m.ObjVal))
+        return DiscreteResult(bound=torch.as_tensor(m.ObjVal).pow(1 / self.wasserstein_order))

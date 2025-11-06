@@ -117,4 +117,4 @@ class MaxOracleGradientDescent(DiscreteSolver):
         _, w = o_maximization(alpha, lower, upper)
         objective_value = -best
 
-        return DiscreteResult(bound=torch.as_tensor(objective_value), w_opt=w)
+        return DiscreteResult(bound=torch.as_tensor(objective_value).pow(1 / self.wasserstein_order), w_opt=w)

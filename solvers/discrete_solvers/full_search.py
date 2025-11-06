@@ -77,4 +77,4 @@ class FullSearch(DiscreteSolver):
                 objective_opt = objective
                 w_opt = w
 
-        return DiscreteResult(bound=torch.as_tensor(objective_opt), w_opt=w_opt)
+        return DiscreteResult(bound=torch.as_tensor(objective_opt).pow(1 / self.wasserstein_order), w_opt=w_opt)

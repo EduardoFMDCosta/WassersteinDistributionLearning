@@ -16,11 +16,11 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        num_dims=2,
+        num_dims=100,
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=5,
+        num_clusters=30,
         wasserstein_order=1,
         beta=1e-4,
         method='joint_optimization_milp',
@@ -57,7 +57,8 @@ if __name__ == '__main__':
     # Compute bounds
     fournier_bound = fournier_radius(
         support=partition.support, 
-        nsamples=args.num_samples + args.num_samples_training, 
+        nsamples=args.num_samples + args.num_samples_training,
+        wasserstein_order=args.wasserstein_order,
         beta=args.beta
     )
     data_driven_output = DataDrivenRadius(quantization=quantization, solver=solver)

@@ -23,7 +23,7 @@ class BoundedVoronoiPartitionDict(_GridDict[BoundedVoronoiPartition]): # key = (
     def samples(self):
         return self._samples
 
-setattr(sys.modules.get('__main__'), 'BoundedVoronoiPartitionDict', BoundedVoronoiPartitionDict) # to pickle load from other files..
+setattr(sys.modules.get('__main__'), 'BoundedVoronoiPartitionDict', BoundedVoronoiPartitionDict)
 
 def get_partition(
     args, 

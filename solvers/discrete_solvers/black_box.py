@@ -5,9 +5,8 @@ from solvers.templates import DiscreteResult, DiscreteSolver
 
 
 class BlackBox(DiscreteSolver):
-    def __init__(self, time_limit: int = 60):
+    def __init__(self):
         super().__init__()
-        self.time_limit = time_limit
 
     def solve(
         self,
@@ -21,7 +20,7 @@ class BlackBox(DiscreteSolver):
         # Create model
         model = gp.Model("dual_transport")
         model.setParam("NonConvex", 2)
-        model.setParam("TimeLimit", self.time_limit)
+        model.setParam("TimeLimit", self.time_limit if self.time_limit is not None else gp.GRB.INFINITY)
 
         # Decision variables
         alpha = model.addVars(M, lb=-gp.GRB.INFINITY, name="alpha")
@@ -52,7 +51,7 @@ class BlackBox(DiscreteSolver):
         model.optimize()
 
         # Extract solution
-        if model.status == gp.GRB.OPTIMAL  or model.status == gp.GRB.SUBOPTIMAL or model.status == gp.GRB.TIME_LIMIT:
+        if model.status == gp.GRB.OPTIMAL  or model.status == gp.GRB.SUBOPTIMAL or model.status == gp.GRB.TIME_LIMIT: # TODO remove acceptance of SUBOPTIMAL and TIME_LIMIT solutions
             w_opt = torch.tensor([w[i].X for i in range(M)])
             objective_value = model.ObjVal
             return DiscreteResult(bound=torch.as_tensor(objective_value).pow(1 / self.wasserstein_order), w_opt=w_opt)

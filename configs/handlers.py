@@ -84,9 +84,8 @@ def parse_arguments(
     args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}.pickle")
 
     ensure_dir(args.results_dir)
-    ensure_dir(args.figures_dir)
     ensure_dir(os.path.dirname(args.partitions_file))
-    
+
     return args
 
 def ensure_dir(dirname):

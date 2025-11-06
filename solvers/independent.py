@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 
 from optimization_utils import o_maximization
@@ -47,3 +48,12 @@ class IndependentSolver(Solver):
     def wasserstein_order(self, value: int) -> None:
         self._wasserstein_order = value
         self.discrete_solver.wasserstein_order = value
+
+    @property
+    def time_limit(self) -> Optional[float]:
+        return self._time_limit
+    
+    @time_limit.setter
+    def time_limit(self, value: Optional[float]) -> None:
+        self._time_limit = value
+        self.discrete_solver.time_limit = value

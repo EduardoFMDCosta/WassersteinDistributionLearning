@@ -18,13 +18,15 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 # no_triangle_inequality
 # scalar_strategy
 
+echo "--W2--"
+
 echo "-- Uniform --"
 echo "dim = 2, setting = 0"
-# python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method stochastic_vertice_ascent
-python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method joint_optimization_milp
-python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method diagonal_constrained_tp 
-python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method triangle_inequality_vertex 
-python -m experiments.generate_results  --distribution Uniform --num_dims 2 --setting 0 --method scalar_strategy
+python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order 2 --method stochastic_vertice_ascent
+python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order 2 --method joint_optimization_milp
+python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order 2 --method diagonal_constrained_tp 
+python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order 2 --method triangle_inequality_vertex 
+python -m experiments.generate_results  --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order 2 --method scalar_strategy
 
 echo "dim = 2, setting = 1"
 echo "dim = 2, setting = 2"

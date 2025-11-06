@@ -15,25 +15,22 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     args = parse_arguments(
-        distribution="GaussianMixture",
-        num_dims=2,
+        distribution="Gaussian",
+        num_dims=100,
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=5,
+        num_clusters=30,
+        wasserstein_order=1,
         beta=1e-4,
-        method='no_triangle_inequality',
-        plot=True, 
+        method='full_search',
+        plot=False,
         save=False,
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
 
-    solver = get_solver(
-        method=args.method, 
-        compute_discrete_bound=args.compute_discrete_bound, 
-        compute_moment_bound=args.compute_moment_bound
-    )
+    solver = get_solver(method=args.method)
 
     support_assumption = get_support_assumption(**vars(args))
 
@@ -55,10 +52,17 @@ if __name__ == '__main__':
     # Compute bounds
     fournier_bound = fournier_radius(
         support=partition.support, 
-        nsamples=args.num_samples + args.num_samples_training, 
+        nsamples=args.num_samples + args.num_samples_training,
+        wasserstein_order=args.wasserstein_order,
         beta=args.beta
     )
-    data_driven_output = DataDrivenRadius(quantization=quantization, solver=solver)
+    data_driven_output = DataDrivenRadius(
+        quantization=quantization, 
+        solver=solver,
+        wasserstein_order=args.wasserstein_order,
+        compute_discrete_bound=args.compute_discrete_bound, 
+        compute_moment_bound=args.compute_moment_bound
+    )
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
           f"\t Fournier: {fournier_bound:.4f} \n"

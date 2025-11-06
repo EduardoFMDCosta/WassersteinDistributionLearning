@@ -99,11 +99,14 @@ def identify_sets(vertex: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor
         raise ValueError("vertex must correspond to a valid vertex (one free index)")
     return sorted(I), sorted(J), free[0]
 
-def compute_bound_given_vertex(quantization: UncertainQuantization,
-                     vertex: torch.Tensor,
-                     tol: float,
-                     use_gurobi: bool):
-    cost_matrix = quantization.l2_distance_locs_to_region.pow(2)  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+def compute_bound_given_vertex(
+        quantization: UncertainQuantization,
+        vertex: torch.Tensor,
+        wasserstein_order: int,
+        tol: float,
+        use_gurobi: bool
+):
+    cost_matrix = quantization.l2_distance_locs_to_region.pow(wasserstein_order)  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
 
     I_base, J_base, free_idx = identify_sets(vertex=vertex, lower=quantization.lower_probs, upper=quantization.upper_probs, tol=tol)
 
@@ -144,18 +147,21 @@ def compute_bound_given_vertex(quantization: UncertainQuantization,
 
     return {"bound": torch.as_tensor(best_obj)}
 
-def compute_worst_to_vertex(quantization: UncertainQuantization,
-                            initial_vertex: torch.Tensor,
-                            num_iterations: int,
-                            tol: float,
-                            use_gurobi: bool):
+def compute_worst_to_vertex(
+        quantization: UncertainQuantization,
+        initial_vertex: torch.Tensor,
+        wasserstein_order: int,
+        num_iterations: int,
+        tol: float,
+        use_gurobi: bool
+):
 
     vertex = initial_vertex
 
     best_obj = float(torch.inf)
     for iteration in range(num_iterations):
         # Compute value with current index sets
-        result = compute_bound_given_vertex(quantization=quantization, vertex=vertex, tol=tol, use_gurobi=use_gurobi)
+        result = compute_bound_given_vertex(quantization=quantization, vertex=vertex, wasserstein_order=wasserstein_order, tol=tol, use_gurobi=use_gurobi)
         bound = result["bound"]
 
         # Store if improvement
@@ -166,18 +172,21 @@ def compute_worst_to_vertex(quantization: UncertainQuantization,
             # Heuristic to generate candidate vertex
             vertex = sample_vertex(lower=quantization.lower_probs, upper=quantization.upper_probs)
 
-    return torch.as_tensor(best_obj).pow(0.5)
+    return torch.as_tensor(best_obj).pow(1 / wasserstein_order)
 
 
 class TriangleInequalityFromVertex(Solver):
     def __init__(
         self,
-        use_gurobi: bool = True
+        use_gurobi: bool = True,
+        num_iterations: int = 1,
+        tol: float = 1e-8,
     ):
         super().__init__()
 
         self.use_gurobi = use_gurobi
-        self.tol = 1e-8
+        self.num_iterations = num_iterations
+        self.tol = tol
 
     def solve(
         self,
@@ -188,11 +197,11 @@ class TriangleInequalityFromVertex(Solver):
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
         # Compute moment bound
-        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, num_iterations=1, tol=self.tol, use_gurobi=self.use_gurobi)
+        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, wasserstein_order=self.wasserstein_order, num_iterations=self.num_iterations, tol=self.tol, use_gurobi=self.use_gurobi)
 
         # Compute discrete bound
-        cost_matrix = quantization.l2_distance_locs_to_locs.pow(2)
+        cost_matrix = quantization.l2_distance_locs_to_locs.pow(self.wasserstein_order)
         _, discrete_bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex, empirical_distribution=quantization.probs)
-        discrete_bound = torch.as_tensor(discrete_bound).pow(0.5)
+        discrete_bound = torch.as_tensor(discrete_bound).pow(1 / self.wasserstein_order)
 
         return Result(moment_bound=moment_bound, discrete_bound=discrete_bound)

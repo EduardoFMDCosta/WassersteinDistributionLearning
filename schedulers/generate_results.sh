@@ -10,24 +10,30 @@ conda activate concentration_inequalities
 # optional but explicit
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
-wasserstein_orders = (1 2)
-methods = (
-    "stochastic_vertice_ascent"
-    "joint_optimization_milp"
-    "diagonal_constrained_tp"
-    "triangle_inequality_vertex"
-    "no_triangle_inequality"
-    "scalar_strategy"
-)
 
-echo "------------------------------------------------------ W2 -------------------------------------------------------"
-echo "-- Uniform --"
-echo "dim = 2, setting = 0"
-for method in "${methods[@]}"; do
-    python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 \
-        --wasserstein_order "${wasserstein_order}" \
-        --method "${method}"
-    done
+
+for rho in 2; do
+    for method in stochastic_vertice_ascent \
+        joint_optimization_milp \
+        diagonal_constrained_tp \
+        triangle_inequality_vertex \
+        no_triangle_inequality \
+        scalar_strategy; do
+
+        python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 \
+            --wasserstein_order "$rho" \
+            --method "$method"
+    done        
+done
+
+# echo "------------------------------------------------------ W2 -------------------------------------------------------"
+# echo "-- Uniform --"
+# echo "dim = 2, setting = 0"
+# for method in "${methods[@]}"; do
+#     python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 \
+#         --wasserstein_order "${wasserstein_order}" \
+#         --method "${method}"
+#     done
 
 
 # python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order 2 --method stochastic_vertice_ascent

@@ -103,12 +103,12 @@ class StochasticVerticeAscent(DiscreteSolver):
         self, 
         num_inits: int = 1000,
         num_steps: int = 1000, 
-        print_progress: bool = False
+        verbose: bool = False
     ):
         super().__init__()
         self.num_inits = num_inits
         self.num_steps = num_steps
-        self.print_progress = print_progress
+        self.verbose = verbose
 
     def solve(
         self,
@@ -149,7 +149,7 @@ class StochasticVerticeAscent(DiscreteSolver):
                 pbar.set_postfix_str(msg + ", " + msg_inner)
 
                 if epsilon < 1e-5:
-                    if self.print_progress:
+                    if self.verbose:
                         pbar.write(f"{msg} converged after {step + 1} iterations. Final objective: {objective:.4f}")
                     break
 

@@ -4,178 +4,118 @@ import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 
-from optimization_utils import euclidean_projection_to_vertex, ot_lp_solver
+from optimization_utils import euclidean_projection_to_vertex, ot_lp_solver, sample_vertex
 from quantization import UncertainQuantization
 from solvers.templates import Solver, Result
 
 def lifted_lp_from_vertex_gurobi(
-    cost: torch.Tensor,
-    p: torch.Tensor,
-    lower: torch.Tensor,
-    upper: torch.Tensor,
-    I: list,
-    J: list,
-    tol: float = 1e-8,
-    verbose: bool = False
+        cost: torch.Tensor,
+        p: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        I: list,
+        J: list,
+        tol: float = 1e-8
 ):
+
     # Convert to numpy
     cost_np = cost.detach().cpu().numpy()
     p_np = p.detach().cpu().numpy()
-    l_np = lower.detach().cpu().numpy()
-    u_np = upper.detach().cpu().numpy()
+    lower_np = lower.detach().cpu().numpy()
+    upper_np = upper.detach().cpu().numpy()
 
-    n = len(p_np)
-    mI, mJ = len(I), len(J)
+    M = cost_np.shape[0]
 
-    # Initialize model
-    model = gp.Model()
-    model.Params.OutputFlag = 1 if verbose else 0
-    model.Params.FeasibilityTol = tol
+    # Create model
+    model = gp.Model("lifted_lp")
+    model.Params.OutputFlag = 0
     model.Params.OptimalityTol = tol
-    model.Params.IntFeasTol = tol
+    model.Params.FeasibilityTol = tol
 
     # Variables
-    w = model.addMVar(n, lb=l_np, ub=u_np, name="w")
-    s = model.addMVar(mI, lb=0.0, name="s")
-    r = model.addMVar(mJ, lb=0.0, name="r")
-    t = model.addMVar((mI, mJ), lb=0.0, name="t")
+    mu = model.addVars(M, lb=0.0, name="mu")
+    nu = model.addVars(M, lb=0.0, name="nu")
+    alpha = model.addVars(len(I), lb=0.0, name="alpha")
+    beta = model.addVars(len(J), lb=0.0, name="beta")
+    t = model.addVars(M, lb=-GRB.INFINITY, name="t")
 
-    # Constraints
-    # s_k = w[i] - p[i] for i in I
-    for k, i in enumerate(I):
-        model.addConstr(s[k] == w[i] - p_np[i], name=f"s_def_{i}")
-    # r_k = p[j] - w[j] for j in J
-    for k, j in enumerate(J):
-        model.addConstr(r[k] == p_np[j] - w[j], name=f"r_def_{j}")
+    # Build constraints
+    for i in range(M):
+        for j in range(M):
+            # base: cost[i,j] + nu_j - mu_j
+            expr = (cost_np[i, j] + nu[j] - mu[j])
 
-    # Transport marginal constraints
-    if mI > 0 and mJ > 0:
-        # sum_j t[i, j] = s[i]
-        model.addConstrs((gp.quicksum(t[i, j] for j in range(mJ)) == s[i] for i in range(mI)), name="row_sums")
-        # sum_i t[i, j] = r[j]
-        model.addConstrs((gp.quicksum(t[i, j] for i in range(mI)) == r[j] for j in range(mJ)), name="col_sums")
+            # alpha_j term if j in I and i == j
+            if j in I and i == j:
+                idx_in_I = I.index(j)
+                expr = expr + alpha[idx_in_I]
 
-    # Objective construction
-    obj_expr = gp.LinExpr()
+            # beta_j term only if j in J: beta_{index_in_J} * ((1_{i==j} - 1))
+            if j in J:
+                idx_in_J = J.index(j)
+                coeff = (1 if i == j else 0) - 1
+                expr = expr + beta[idx_in_J] * coeff
 
-    # Diagonal terms for I
-    for i in I:
-        obj_expr += cost_np[i, i] * w[i]
+            # Add constraint t_i >= expr
+            model.addConstr(t[i] >= expr, name=f"max_constr_i{i}_j{j}")
 
-    # Constant diagonal terms for J
-    const_term = sum(cost_np[j, j] * p_np[j] for j in J)
+    # Objective:
+    obj = gp.quicksum(mu[j] * upper_np[j] - nu[j] * lower_np[j] for j in range(M))
+    obj -= gp.quicksum(alpha[pos] * p_np[I[pos]] for pos in range(len(I)))
+    obj += gp.quicksum(p_np[i] * t[i] for i in range(M))
 
-    # Transport term
-    if mI > 0 and mJ > 0:
-        C_IJ = cost_np[np.ix_(I, J)]
-        obj_expr += gp.quicksum(C_IJ[i, j] * t[i, j] for i in range(mI) for j in range(mJ))
-
-    # Maximize
-    model.setObjective(obj_expr + const_term, GRB.MAXIMIZE)
-
-    # Solve
+    model.setObjective(obj, GRB.MINIMIZE)
     model.optimize()
 
-    # Collect results
+    if model.Status != GRB.OPTIMAL:
+        raise RuntimeError(f"Gurobi did not find an optimal solution (status {model.Status})")
+
     result = {
         "objective": float(model.objVal) if model.status == GRB.OPTIMAL else None,
-        "w": torch.tensor(w.X, dtype=torch.float64),
         "status": model.Status
     }
     return result
 
 
 def lifted_lp_from_vertex_cvxpy(
-    cost: torch.Tensor,
-    p: torch.Tensor,
-    lower: torch.Tensor,
-    upper: torch.Tensor,
-    I: list,
-    J: list,
-    method: str = "cvxopt",
-    tol: float = 1e-8
-):
-    # Convert to numpy
-    cost_np = cost.detach().cpu().numpy()
-    p_np = p.detach().cpu().numpy()
-    l_np = lower.detach().cpu().numpy()
-    u_np = upper.detach().cpu().numpy()
+        cost: torch.Tensor,
+        p: torch.Tensor,
+        lower: torch.Tensor,
+        upper: torch.Tensor,
+        I: list,
+        J: list,
+        method: str = "cvxopt",
+        tol: float = 1e-8):
+    raise NotImplementedError
 
-    n = len(p_np)
-    mI, mJ = len(I), len(J)
-
-    # Variables
-    w = cp.Variable(n)
-    s = cp.Variable(mI, nonneg=True)
-    r = cp.Variable(mJ, nonneg=True)
-    t = cp.Variable((mI, mJ), nonneg=True)
-
-    # Constraints
-    cons = []
-    cons += [w >= l_np, w <= u_np]
-
-    # s_i = w_i - p_i  for i in I
-    for k, i in enumerate(I):
-        cons.append(s[k] == w[i] - p_np[i])
-    # r_j = p_j - w_j for j in J
-    for k, j in enumerate(J):
-        cons.append(r[k] == p_np[j] - w[j])
-
-    # transport marginal constraints
-    cons += [cp.sum(t, axis=1) == s,  # row sums = s_i
-             cp.sum(t, axis=0) == r]  # col sums = r_j
-
-    # Objective
-    obj_expr = 0
-    # diagonal terms for I
-    for i in I:
-        obj_expr += cost_np[i, i] * w[i]
-    # constant diagonal terms for J
-    const_term = sum(cost_np[j, j] * p_np[j] for j in J)
-    # transport term
-    if mI > 0 and mJ > 0:
-        C_IJ = cost_np[np.ix_(I, J)]
-        obj_expr += cp.sum(cp.multiply(C_IJ, t))
-
-    objective = cp.Maximize(obj_expr + const_term)
-
-    # Problem
-    prob = cp.Problem(objective, cons)
-    prob.solve(solver=method, verbose=False, feastol=tol, reltol=tol, abstol=tol)
-
-    result = {
-        "objective": float(prob.value),
-        "w": torch.tensor(w.value, dtype=torch.float64),
-        "status": prob.status,
-    }
-    return result
-
-def compute_worst_to_vertex(
-    quantization: UncertainQuantization,
-    vertex: torch.Tensor,
-    tol: float,
-    use_gurobi: bool
-):
+def identify_sets(vertex: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor, tol: float):
     n = vertex.shape[0]
-    cost_matrix = (quantization.l2_distance_locs_to_locs + quantization.l2_radii.unsqueeze(-1)).pow(2).T  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
 
-    # Identify fixed indices
-    I_fixed = torch.nonzero(vertex <= quantization.lower_probs + tol).flatten().tolist()
-    J_fixed = torch.nonzero(vertex >= quantization.upper_probs - tol).flatten().tolist()
-    free = list(set(range(n)) - set(I_fixed) - set(J_fixed))
+    I = torch.nonzero(vertex <= lower + tol).flatten().tolist()
+    J = torch.nonzero(vertex >= upper - tol).flatten().tolist()
+    free = list(set(range(n)) - set(I) - set(J))
+
     if len(free) != 1:
-        raise ValueError("There must be exactly one free index")
-    free_idx = free[0]
+        raise ValueError("vertex must correspond to a valid vertex (one free index)")
+    return sorted(I), sorted(J), free[0]
+
+def compute_bound_given_vertex(quantization: UncertainQuantization,
+                     vertex: torch.Tensor,
+                     tol: float,
+                     use_gurobi: bool):
+    cost_matrix = quantization.l2_distance_locs_to_region.pow(2)  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+
+    I_base, J_base, free_idx = identify_sets(vertex=vertex, lower=quantization.lower_probs, upper=quantization.upper_probs, tol=tol)
 
     # Run the LP twice, once assuming free belongs to I, once to J
     best_obj = -float('inf')
     for free_assignment in ["I", "J"]:
         if free_assignment == "I":
-            I = I_fixed + [free_idx]
-            J = J_fixed
+            I = I_base + [free_idx]
+            J = J_base
         else:
-            I = I_fixed
-            J = J_fixed + [free_idx]
+            I = I_base
+            J = J_base + [free_idx]
 
         # Convert to lists
         I = list(I)
@@ -202,6 +142,30 @@ def compute_worst_to_vertex(
         if obj_val > best_obj:
             best_obj = obj_val
 
+    return {"bound": torch.as_tensor(best_obj)}
+
+def compute_worst_to_vertex(quantization: UncertainQuantization,
+                            initial_vertex: torch.Tensor,
+                            num_iterations: int,
+                            tol: float,
+                            use_gurobi: bool):
+
+    vertex = initial_vertex
+
+    best_obj = float(torch.inf)
+    for iteration in range(num_iterations):
+        # Compute value with current index sets
+        result = compute_bound_given_vertex(quantization=quantization, vertex=vertex, tol=tol, use_gurobi=use_gurobi)
+        bound = result["bound"]
+
+        # Store if improvement
+        if bound < best_obj:
+            best_obj = bound
+
+        if num_iterations > 1:
+            # Heuristic to generate candidate vertex
+            vertex = sample_vertex(lower=quantization.lower_probs, upper=quantization.upper_probs)
+
     return torch.as_tensor(best_obj).pow(0.5)
 
 
@@ -224,7 +188,7 @@ class TriangleInequalityFromVertex(Solver):
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
         # Compute moment bound
-        moment_bound = compute_worst_to_vertex(quantization=quantization, vertex=vertex, tol=self.tol, use_gurobi=self.use_gurobi)
+        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, num_iterations=1, tol=self.tol, use_gurobi=self.use_gurobi)
 
         # Compute discrete bound
         cost_matrix = quantization.l2_distance_locs_to_locs.pow(2)

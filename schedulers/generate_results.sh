@@ -20,7 +20,7 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "-- Uniform --"
 echo "dim = 2, setting = 0"
-python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method stochastic_vertice_ascent
+# python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method stochastic_vertice_ascent
 python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method joint_optimization_milp
 python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method diagonal_constrained_tp 
 python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --method triangle_inequality_vertex 

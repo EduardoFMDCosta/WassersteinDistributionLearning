@@ -175,4 +175,4 @@ class DiagonalConstrainedTP(DiscreteSolver):
                 upper=upper
             )
             
-        return DiscreteResult(bound=torch.as_tensor(objective).pow(0.5), w_opt=w)
+        return DiscreteResult(bound=torch.as_tensor(objective), w_opt=w)

@@ -103,6 +103,7 @@ class BoundedVoronoiPartition:
 
             max_sample_distances = compute_inner_cluster_max_l2_radii(samples, cluster_locs, labels)    
         else:
+            M = nsamples
             cluster_locs = samples
             max_sample_distances = torch.zeros(M)
 

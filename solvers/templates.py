@@ -24,9 +24,18 @@ class Result:
     
 
 class Solver(ABC):
-    _wasserstein_order: int =2
+    _wasserstein_order: int = 2
     _compute_moment_bound = True
     _compute_discrete_bound = True
+    _time_limit: Optional[float] = None
+
+    @property
+    def time_limit(self) -> Optional[float]:
+        return self._time_limit
+    
+    @time_limit.setter
+    def time_limit(self, value: Optional[float]) -> None:
+        self._time_limit = value
 
     @property
     def wasserstein_order(self) -> int:
@@ -78,7 +87,16 @@ class DiscreteResult:
 
 class DiscreteSolver(ABC):
     _wasserstein_order: int =2
+    _time_limit: Optional[float] = None
 
+    @property
+    def time_limit(self) -> Optional[float]:
+        return self._time_limit
+    
+    @time_limit.setter
+    def time_limit(self, value: Optional[float]) -> None:
+        self._time_limit = value
+    
     @property
     def wasserstein_order(self) -> int:
         return self._wasserstein_order

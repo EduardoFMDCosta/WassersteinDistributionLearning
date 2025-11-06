@@ -10,7 +10,7 @@ from plotting.plot import plot_partition
 from configs.handlers import parse_arguments, pickle_load, pickle_dump
 from configs.construct import get_support_assumption, get_distribution
 
-from datastructures import _GridDict
+from experiments.datastructures import _GridDict
 
 
 class BoundedVoronoiPartitionDict(_GridDict[BoundedVoronoiPartition]): # key = (N, M)

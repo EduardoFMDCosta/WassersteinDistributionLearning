@@ -155,10 +155,9 @@ class JointOptimizationMilp(Solver):
         self,
         quantization: UncertainQuantization,
     ) -> Result:
-        wasserstein_order = self.wasserstein_order
 
-        inside_region_cost = quantization.l2_radii.pow(wasserstein_order)
-        cross_location_cost = quantization.l2_distance_locs_to_locs.pow(wasserstein_order)
+        inside_region_cost = quantization.l2_radii.pow(self.wasserstein_order)
+        cross_location_cost = quantization.l2_distance_locs_to_locs.pow(self.wasserstein_order)
 
         if not self.use_gurobi:
             total_value, w_opt, diag_term_value, transport_term_value = solve_milp_cvxpy(
@@ -178,10 +177,10 @@ class JointOptimizationMilp(Solver):
                 time_limit=self.time_limit,
             )
 
-        factor = 2 ** ((wasserstein_order - 1) / wasserstein_order)
-        obj = factor * torch.as_tensor(total_value).pow(1 / wasserstein_order)
-        obj_moment = factor * torch.as_tensor(diag_term_value).pow(1 / wasserstein_order)
-        obj_discrete = factor * torch.as_tensor(transport_term_value).pow(1 / wasserstein_order)
+        factor = 2 ** ((self.wasserstein_order - 1) / self.wasserstein_order)
+        obj = factor * torch.as_tensor(total_value).pow(1 / self.wasserstein_order)
+        obj_moment = factor * torch.as_tensor(diag_term_value).pow(1 / self.wasserstein_order)
+        obj_discrete = factor * torch.as_tensor(transport_term_value).pow(1 / self.wasserstein_order)
         w_opt = torch.as_tensor(w_opt)
 
         return Result(bound=obj, moment_bound=obj_moment, discrete_bound=obj_discrete, w_opt=w_opt)

@@ -189,17 +189,16 @@ class TriangleInequalityFromVertex(Solver):
         self,
         quantization: UncertainQuantization,
     ) -> Result:
-        wasserstein_order = self.wasserstein_order
 
         # Get nearest vertex to empirical
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
         # Compute moment bound
-        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, wasserstein_order=wasserstein_order, num_iterations=1, tol=self.tol, use_gurobi=self.use_gurobi)
+        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, wasserstein_order=self.wasserstein_order, num_iterations=1, tol=self.tol, use_gurobi=self.use_gurobi)
 
         # Compute discrete bound
-        cost_matrix = quantization.l2_distance_locs_to_locs.pow(wasserstein_order)
+        cost_matrix = quantization.l2_distance_locs_to_locs.pow(self.wasserstein_order)
         _, discrete_bound, _ = ot_lp_solver(cost=cost_matrix, w=vertex, empirical_distribution=quantization.probs)
-        discrete_bound = torch.as_tensor(discrete_bound).pow(1 / wasserstein_order)
+        discrete_bound = torch.as_tensor(discrete_bound).pow(1 / self.wasserstein_order)
 
         return Result(moment_bound=moment_bound, discrete_bound=discrete_bound)

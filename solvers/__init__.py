@@ -3,7 +3,7 @@ from .triangle_inequality_vertex import TriangleInequalityFromVertex
 from .independent import IndependentSolver
 from .discrete_solvers import get_discrete_solver
 from .templates import Solver, Result
-from .no_trianlge_inequality import NoTriangleIneq
+from .no_triangle_inequality import NoTriangleIneq
 
 __all__ = ['get_solver', 'get_discrete_solver', 'Solver', 'Result']
 

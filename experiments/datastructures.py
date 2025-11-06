@@ -141,12 +141,12 @@ class Quantizations(_GridDict[UncertainQuantization]):
         return self._max_stack('region_l2_radii')
 
     @property
-    def mean_distances_locs(self):
-        return self._mean_stack('distance_locs')
+    def mean_l2_distance_locs_to_locs(self):
+        return self._mean_stack('l2_distance_locs_to_locs')
 
     @property
-    def std_distances_locs(self):
-        return self._std_stack('distance_locs')
+    def std_l2_distance_locs_to_locs(self):
+        return self._std_stack('l2_distance_locs_to_locs')
 
 
 class EmpiricalRadii(_GridDict[EmpiricalRadius]):

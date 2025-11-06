@@ -54,8 +54,9 @@ def get_omega_space_vertices(
 
 
 class FullSearch(DiscreteSolver):
-    def __init__(self):
+    def __init__(self, max_vertices: int = 1000):
         super().__init__()
+        self.max_vertices = max_vertices
     
     def solve(
         self,
@@ -64,7 +65,7 @@ class FullSearch(DiscreteSolver):
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor,
     ) -> DiscreteResult:
-        vertices = get_omega_space_vertices(lower=lower, upper=upper)
+        vertices = get_omega_space_vertices(lower=lower, upper=upper, max_vertices=self.max_vertices)
 
         objective_opt = -float("inf")
         w_opt = None

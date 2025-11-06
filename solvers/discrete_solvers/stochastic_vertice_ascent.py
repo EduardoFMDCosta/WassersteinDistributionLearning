@@ -99,8 +99,13 @@ def project_to_omega_subspace(
 
 
 class StochasticVerticeAscent(DiscreteSolver):
-    def __init__(self, num_steps: int = 1000):
+    def __init__(
+        self, 
+        num_inits: int = 1000,
+        num_steps: int = 1000
+    ):
         super().__init__()
+        self.num_inits = num_inits
         self.num_steps = num_steps
 
     def solve(
@@ -118,7 +123,7 @@ class StochasticVerticeAscent(DiscreteSolver):
 
         pbar = tqdm(total=self.num_steps, desc="Cutting Plane Outer Loop")
 
-        for d in range(self.num_steps):
+        for d in range(self.num_inits):
             msg = f"[CuttingPlane] iteration={d}"
             pbar.set_postfix_str(msg)
 

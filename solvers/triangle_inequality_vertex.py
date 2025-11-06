@@ -178,12 +178,15 @@ def compute_worst_to_vertex(
 class TriangleInequalityFromVertex(Solver):
     def __init__(
         self,
-        use_gurobi: bool = True
+        use_gurobi: bool = True,
+        num_iterations: int = 1,
+        tol: float = 1e-8,
     ):
         super().__init__()
 
         self.use_gurobi = use_gurobi
-        self.tol = 1e-8
+        self.num_iterations = num_iterations
+        self.tol = tol
 
     def solve(
         self,
@@ -194,7 +197,7 @@ class TriangleInequalityFromVertex(Solver):
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
         # Compute moment bound
-        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, wasserstein_order=self.wasserstein_order, num_iterations=1, tol=self.tol, use_gurobi=self.use_gurobi)
+        moment_bound = compute_worst_to_vertex(quantization=quantization, initial_vertex=vertex, wasserstein_order=self.wasserstein_order, num_iterations=self.num_iterations, tol=self.tol, use_gurobi=self.use_gurobi)
 
         # Compute discrete bound
         cost_matrix = quantization.l2_distance_locs_to_locs.pow(self.wasserstein_order)

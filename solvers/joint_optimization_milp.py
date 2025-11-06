@@ -67,7 +67,11 @@ def solve_milp_gurobi(
 
     # Optimize
     model.setParam("OutputFlag", kwargs.get("verbose", False))
+    model.setParam("TimeLimit", time_limit if time_limit is not None else GRB.INFINITY)
     model.optimize()
+
+    if model.Status != GRB.OPTIMAL:
+        raise RuntimeError(f"Gurobi did not find an optimal solution within {time_limit} seconds (status {model.Status})")
 
     # Extract results
     total_value = model.objVal
@@ -143,12 +147,9 @@ def solve_milp_cvxpy(
 class JointOptimizationMilp(Solver):
     def __init__(
         self,
-        time_limit: Optional[float] = None,
         use_gurobi: bool = True
     ):
         super().__init__()
-
-        self.time_limit = time_limit
         self.use_gurobi = use_gurobi
 
     def solve(

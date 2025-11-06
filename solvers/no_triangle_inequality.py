@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import gurobipy as gp
 from gurobipy import GRB
@@ -54,8 +55,10 @@ class NoTriangleIneq(Solver):
         m.setObjective(obj, GRB.MINIMIZE)
         m.update()
 
+        m.setParam("TimeLimit", self.time_limit if self.time_limit is not None else GRB.INFINITY)
+
         m.optimize()
         if m.Status != GRB.OPTIMAL:
-            raise RuntimeError(f"Gurobi did not find an optimal solution. status={m.Status}")
+            raise RuntimeError(f"Gurobi did not find an optimal solution within {self.time_limit} seconds (status {m.Status})")
 
         return Result(bound=torch.as_tensor(m.ObjVal).pow(1 / self.wasserstein_order))

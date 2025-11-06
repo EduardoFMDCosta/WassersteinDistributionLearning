@@ -29,9 +29,7 @@ class GetSolver:
         else:
             discrete_solver = get_discrete_solver(method=method, **kwargs)
             discrete_solver.wasserstein_order = wasserstein_order
-            solver = IndependentSolver(
-                discrete_solver=get_discrete_solver(method=method, **kwargs)
-            )
+            solver = IndependentSolver(discrete_solver=discrete_solver)
         solver.compute_discrete_bound = compute_discrete_bound
         solver.compute_moment_bound = compute_moment_bound
         return solver

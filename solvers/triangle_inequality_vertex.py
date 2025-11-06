@@ -188,8 +188,8 @@ class TriangleInequalityFromVertex(Solver):
     def solve(
         self,
         quantization: UncertainQuantization,
-        wasserstein_order: int,
     ) -> Result:
+        wasserstein_order = self.wasserstein_order
 
         # Get nearest vertex to empirical
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)

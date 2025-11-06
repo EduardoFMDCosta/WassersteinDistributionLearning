@@ -154,8 +154,8 @@ class JointOptimizationMilp(Solver):
     def solve(
         self,
         quantization: UncertainQuantization,
-        wasserstein_order: int,
     ) -> Result:
+        wasserstein_order = self.wasserstein_order
 
         inside_region_cost = quantization.l2_radii.pow(wasserstein_order)
         cross_location_cost = quantization.l2_distance_locs_to_locs.pow(wasserstein_order)

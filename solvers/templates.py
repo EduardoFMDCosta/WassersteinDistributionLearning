@@ -59,7 +59,6 @@ class Solver(ABC):
     def solve(
         self,
         quantization: UncertainQuantization,
-        wasserstein_order: int,
     ) -> Result:
         pass
 

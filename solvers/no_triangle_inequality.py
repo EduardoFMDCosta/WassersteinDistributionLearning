@@ -16,8 +16,8 @@ class NoTriangleIneq(Solver):
     def solve(
         self,
         quantization: UncertainQuantization,
-        wasserstein_order: int,
     ) -> Result:
+        wasserstein_order = self.wasserstein_order
         
         cost = quantization.l2_distance_locs_to_region.pow(wasserstein_order)
         lower = quantization.lower_probs

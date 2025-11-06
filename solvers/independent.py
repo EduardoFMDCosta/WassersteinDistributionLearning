@@ -17,8 +17,8 @@ class IndependentSolver(Solver):
     def solve(
         self,
         quantization: UncertainQuantization,
-        wasserstein_order: int,
     ) -> Result:
+        wasserstein_order = self.wasserstein_order
 
         if self.compute_moment_bound:
             moment_bound, _ = o_maximization(quantization.l2_radii.pow(wasserstein_order), quantization.lower_probs, quantization.upper_probs)

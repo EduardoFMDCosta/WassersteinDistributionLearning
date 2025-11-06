@@ -1,7 +1,5 @@
 import torch
 import time
-import os
-import csv
 from argparse import Namespace
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 
@@ -135,49 +133,3 @@ def run_combinations(
 
     return (quantizations, data_driven_radii, fournier_radii, empirical_radii), (quantization_times, radius_computation_times, computation_times)
 
-def generate_table(
-    data_driven_radii: DataDrivenRadii,
-    fournier_radii: FournierRadii,
-    empirical_radii: EmpiricalRadii,
-    args
-): 
-    # Prepare CSV file name
-    csv_path = os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
-
-    # Prepare rows
-    rows = []
-    for (N, M) in data_driven_radii.keys():
-        rows.append({
-            "Distribution": args.distribution,
-            "Dimension": args.num_dims,
-            "Support radius": args.support_linf_radius,
-            "N": N,
-            "M": M,
-            "Moment bound": f"{data_driven_radii.moment_bound_at((N, M))}",
-            "Discrete bound": f"{data_driven_radii.discrete_bound_at((N, M))}",
-            "Ours": f"{data_driven_radii.radius_at((N, M))}",
-            "Fournier": f"{fournier_radii.radius_at((N, M))}",
-            "Empirical (samples)": f"{empirical_radii.radius_samples_at((N, M))}",
-            "Empirical (locs)": f"{empirical_radii.radius_quantization_at((N, M))}",
-        })
-
-    # Write to CSV
-    with open(csv_path, mode="w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "Distribution",
-                "Dimension",
-                "Support radius",
-                "N",
-                "M",
-                "Moment bound",
-                "Discrete bound",
-                "Ours",
-                "Fournier",
-                "Empirical (samples)",
-                "Empirical (locs)",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(rows)

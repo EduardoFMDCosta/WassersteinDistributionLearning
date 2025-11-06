@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from configs.handlers import parse_arguments
-from experiments.utils import run_combinations, generate_table
+from experiments.utils import run_combinations
 import plotting.plot as plot
 
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
 
     # Generate CSV
     if args.save:
-        generate_table(data_driven_radii, fournier_radii, empirical_radii, args)
+        plot.generate_table(data_driven_radii, fournier_radii, empirical_radii, args)
 
     # Illustrate Quantizations
     if args.num_dims == 2:

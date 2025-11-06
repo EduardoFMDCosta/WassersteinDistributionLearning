@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+conda activate concentration_inequalities
+
 # optional but explicit
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 

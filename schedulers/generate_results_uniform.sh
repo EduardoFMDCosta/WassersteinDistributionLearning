@@ -11,7 +11,7 @@ conda activate concentration_inequalities
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 
-for rho in 1; do
+for rho in 1 2; do
 echo "---------------- W${rho} -------------------"
 for method in stochastic_vertice_ascent \
     joint_optimization_milp \

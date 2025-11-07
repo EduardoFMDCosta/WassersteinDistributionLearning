@@ -35,6 +35,7 @@ echo "-- Gaussian --"
     # echo "dim = 100, setting = 0"
     # python -m experiments.generate_results --distribution Gaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method"
 
+echo "Finnished"
 done        
 done
 

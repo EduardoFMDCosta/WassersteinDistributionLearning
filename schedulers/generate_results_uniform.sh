@@ -35,6 +35,7 @@ echo "-- Uniform --"
     # echo "dim = 3, setting = 0"
     # python -m experiments.generate_results --distribution Uniform --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method"
 
+echo "Finnished"
 done        
 done
 

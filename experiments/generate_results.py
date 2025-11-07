@@ -29,10 +29,10 @@ if __name__ == '__main__':
 
     # TODO add TimeLogger
     (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = \
-        run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True, time_limit=60*5, generate_partition_if_missing=False)
+        run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=False, time_limit=60*5, generate_partition_if_missing=False)
 
     if args.save:
         # pickle_dump(quantizations, args.quantizations_file)
         pickle_dump(data_driven_radii, args.data_driven_radii_file)
         pickle_dump(fournier_radii, args.fournier_radii_file)
-        pickle_dump(empirical_radii, args.empirical_radii_file)
+        # pickle_dump(empirical_radii, args.empirical_radii_file)

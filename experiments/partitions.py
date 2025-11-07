@@ -43,6 +43,7 @@ def get_dict_of_partitions(
     num_samples_options: Optional[List[int]] = None, 
     num_clusters_options: Optional[List[int]] = None, 
     return_all_available_combinations: bool = False,
+    generate_partition_if_missing: bool = True,
 ) -> BoundedVoronoiPartitionDict:
 
     if os.path.exists(args.partitions_file):
@@ -68,12 +69,14 @@ def get_dict_of_partitions(
             missing_combinations.append((N, M))
     
     # Generate missing combinations
-    if len(missing_combinations) > 0:
+    if generate_partition_if_missing and len(missing_combinations) > 0:
         missing_partitions = generate_partitions(missing_combinations, args, samples=stored_partitions.samples)
         requested_partitions.attach_samples(missing_partitions.samples)
 
         for (N, M) in missing_combinations:
             requested_partitions.append((N, M), missing_partitions.at((N, M)))
+    else:
+        print(f"Warning: {len(missing_combinations)} requested partitions are missing and will not be generated.")
 
     # Add all other available combinations if requested
     if return_all_available_combinations:

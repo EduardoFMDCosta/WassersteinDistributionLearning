@@ -75,13 +75,14 @@ def run_combinations(
     time_limit: Optional[float] = None,
     print_timings: bool = False,
     compute_empirical_radii: bool = False,
-    test_kmeans_feasibility: bool = False
+    test_kmeans_feasibility: bool = False, 
+    generate_partition_if_missing: bool = False,
 ):
     solver = get_solver(method=args.method)
 
     distribution = get_distribution(**vars(args))
 
-    partitions = get_dict_of_partitions(args, num_samples_options=N_options, num_clusters_options=M_options)
+    partitions = get_dict_of_partitions(args, num_samples_options=N_options, num_clusters_options=M_options, generate_partition_if_missing=generate_partition_if_missing)
     
     quantization_times, radius_computation_times, computation_times = TimeLogger(), TimeLogger(), TimeLogger()
     quantizations, data_driven_radii, fournier_radii, empirical_radii = Quantizations(), DataDrivenRadii(), FournierRadii(), EmpiricalRadii()
@@ -89,6 +90,10 @@ def run_combinations(
         samples_quantization = distribution.sample((N,))
 
         for M in M_options:
+            if (N, M) not in partitions.keys():
+                print(f"Skipping M={M}, N={N} as partition is not available.")
+                continue
+
             if test_kmeans_feasibility:
                 is_feasible, reasons, stats = assess_kmeans_feasibility(
                     N=N, k=M, num_dims=2, 

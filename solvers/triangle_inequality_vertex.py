@@ -8,6 +8,8 @@ from gurobipy import GRB
 from optimization_utils import euclidean_projection_to_vertex, ot_lp_solver, sample_vertex
 from quantization import UncertainQuantization
 from solvers.templates import Solver, Result
+from solvers.discrete_solvers.stochastic_vertice_ascent import StochasticVerticeAscent
+
 
 def lifted_lp_from_vertex_gurobi(
         cost: torch.Tensor,
@@ -203,6 +205,13 @@ class TriangleInequalityFromVertex(Solver):
         # Get nearest vertex to empirical
         vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
 
+        return self.solve_for_vertex(quantization=quantization, vertex=vertex)
+
+    def solve_for_vertex(
+        self,
+        quantization: UncertainQuantization,
+        vertex: torch.Tensor,
+    ) -> Result:
         # Compute moment bound
         moment_bound = compute_worst_to_vertex(
             quantization=quantization, 
@@ -220,3 +229,27 @@ class TriangleInequalityFromVertex(Solver):
         discrete_bound = torch.as_tensor(discrete_bound).pow(1 / self.wasserstein_order)
 
         return Result(moment_bound=moment_bound, discrete_bound=discrete_bound)
+        
+
+class TriangleInequalityFromVertexBySVA(TriangleInequalityFromVertex):
+    def __init__(
+        self,
+        tol: float = 1e-8,
+        num_inits_sva: int = 100, 
+        num_steps_sva: int = 5,
+    ):
+        super().__init__(use_gurobi=True, num_iterations=1, tol=tol)
+        self.sva = StochasticVerticeAscent(num_inits=num_inits_sva, num_steps=num_steps_sva, verbose=False)
+    
+    def solve(
+        self,
+        quantization: UncertainQuantization,
+    ) -> Result:
+        
+        vertex = self.sva.solve(    
+            cost=quantization.l2_distance_locs_to_region.pow(self.wasserstein_order),
+            lower=quantization.lower_probs,
+            upper=quantization.upper_probs,
+            empirical_marginal=quantization.probs
+        ).w_opt
+        return self.solve_for_vertex(quantization=quantization, vertex=vertex)

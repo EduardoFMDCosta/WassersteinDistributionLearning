@@ -1,15 +1,17 @@
+import os
 import torch
 import time
 from argparse import Namespace
-from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
+from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union, Type
 
 from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, EmpiricalRadius
 from solvers import get_solver
 
+from configs.handlers import pickle_load
 from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_dict_of_partitions
-from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations
+from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict
 
 
 def estimate_memory_usage(N, M, num_dims=2):
@@ -151,3 +153,33 @@ def run_combinations(
 
     return (quantizations, data_driven_radii, fournier_radii, empirical_radii), (quantization_times, radius_computation_times, computation_times)
 
+
+def load_data(
+    file: str, 
+    Class: Type[_GridDict], 
+    num_samples_options: Optional[List[int]] = None, 
+    num_clusters_options: Optional[List[int]] = None,
+    skip_missing_combinations: bool = False,
+):
+    if os.path.exists(file):
+        stored_data = pickle_load(file)
+    else:
+        print(f"File not found at {file}.")
+        stored_data = Class()
+
+    if num_samples_options is None and num_clusters_options is None:
+        data = stored_data
+    elif num_samples_options is not None and num_clusters_options is not None:
+        combinations = [(N, M) for N in num_samples_options for M in num_clusters_options]
+        data = Class()
+        for N, M in combinations:
+            if (N, M) in stored_data.keys():
+                data.append((N, M), stored_data.at((N, M)))
+            elif skip_missing_combinations:
+                print(f"Skipping missing combination N={N}, M={M}.")
+            else:
+                raise KeyError(f"{type(data)} for N={N}, M={M} not found in stored partitions.")
+    else:
+        raise ValueError("Either both num_samples_options and num_clusters_options must be provided, or neither.")
+    
+    return data

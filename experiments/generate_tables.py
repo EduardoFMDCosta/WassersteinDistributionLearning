@@ -5,39 +5,9 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, TypeVar, Generic, Type
 
 from configs.handlers import parse_arguments, pickle_load
-from experiments.datastructures import Quantizations, DataDrivenRadii, FournierRadii, EmpiricalRadii, _GridDict
-import plotting.plot as plot
+from experiments.datastructures import Quantizations, DataDrivenRadii, FournierRadii, EmpiricalRadii
 
-
-def load_data( # TODO move to utils
-    file: str, 
-    Class: Type[_GridDict], 
-    num_samples_options: Optional[List[int]] = None, 
-    num_clusters_options: Optional[List[int]] = None,
-    skip_missing_combinations: bool = False,
-):
-    if os.path.exists(file):
-        stored_data = pickle_load(file)
-    else:
-        print(f"File not found at {file}.")
-        stored_data = Class()
-
-    if num_samples_options is None and num_clusters_options is None:
-        data = stored_data
-    elif num_samples_options is not None and num_clusters_options is not None:
-        combinations = [(N, M) for N in num_samples_options for M in num_clusters_options]
-        data = Class()
-        for N, M in combinations:
-            if (N, M) in stored_data.keys():
-                data.append((N, M), stored_data.at((N, M)))
-            elif skip_missing_combinations:
-                print(f"Skipping missing combination N={N}, M={M}.")
-            else:
-                raise KeyError(f"{type(data)} for N={N}, M={M} not found in stored partitions.")
-    else:
-        raise ValueError("Either both num_samples_options and num_clusters_options must be provided, or neither.")
-    
-    return data
+from experiments.utils import load_data
 
 
 @dataclass

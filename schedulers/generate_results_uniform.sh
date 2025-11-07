@@ -16,9 +16,7 @@ echo "---------------- W${rho} -------------------"
 for method in stochastic_vertice_ascent \
     joint_optimization_milp \
     diagonal_constrained_tp \
-    triangle_inequality_vertex \
-    no_triangle_inequality \
-    scalar_strategy; do
+    triangle_inequality_vertex; do
 
 echo "------- method = ${method} ---------"
 

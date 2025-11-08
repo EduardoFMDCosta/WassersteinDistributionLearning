@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from configs.handlers import parse_arguments
-from experiments.utils import run_combinations
+from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
 import plotting.plot as plot
 
 
@@ -17,7 +17,7 @@ if __name__ == '__main__':
         num_samples=1000,
         num_clusters=10,
         beta=1e-6,
-        method='full_search',
+        method='joint_optimization_milp',
         plot=True, 
         save=True,
         compute_moment_bound=True,
@@ -28,16 +28,15 @@ if __name__ == '__main__':
     # We assume num_samples_training = num_samples
     if investigate_clusters:
         N_options = [args.num_samples]
-        M_options = [10, 15]  # [10, 25, 75, 100, 200, 500, 1000]
+        M_options = [5, 20]  # [10, 25, 75, 100, 200, 500, 1000]
     else:
         N_options = [1000, 2500] #  [1000, 2500, 5000, 7500, 10000]
         M_options = [args.num_clusters]
 
-    (quantizations, data_driven_radii, fournier_radii, empirical_radii), _ = run_combinations(args, M_options=M_options, N_options=N_options, compute_empirical_radii=True)
+    combinations = [(N, M) for N in N_options for M in M_options]
 
-    # Generate CSV
-    if args.save:
-        plot.generate_table(data_driven_radii, fournier_radii, empirical_radii, args)
+    (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(args, combinations=combinations, generate_partition_if_missing=True)
+    fournier_radii = fournier_radii_for_combinations(args, combinations)
 
     # Illustrate Quantizations
     if args.num_dims == 2:

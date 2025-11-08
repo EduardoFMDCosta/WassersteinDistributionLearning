@@ -1,7 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
 
-from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius
 from solvers import get_solver

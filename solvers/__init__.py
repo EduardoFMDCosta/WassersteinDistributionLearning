@@ -1,5 +1,5 @@
 from .joint_optimization_milp import JointOptimizationMilp
-from .triangle_inequality_vertex import TriangleInequalityFromVertex
+from .triangle_inequality_vertex import TriangleInequalityFromVertex, TriangleInequalityFromVertexBySVA
 from .independent import IndependentSolver
 from .discrete_solvers import get_discrete_solver
 from .templates import Solver, Result
@@ -12,6 +12,7 @@ class GetSolver:
     mapping = dict(
         joint_optimization_milp=JointOptimizationMilp,
         triangle_inequality_vertex=TriangleInequalityFromVertex,
+        triangle_inequality_vertex_by_sva=TriangleInequalityFromVertexBySVA,
         no_triangle_inequality=NoTriangleIneq,
     )
 

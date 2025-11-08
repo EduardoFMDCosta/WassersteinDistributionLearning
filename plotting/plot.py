@@ -11,6 +11,7 @@ from sets import BoundedVoronoiPartition
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
 from experiments.datastructures import TimeLogger, DataDrivenRadii, Quantizations, FournierRadii, EmpiricalRadii
+from configs.handlers import ensure_dir
 
 colors = [
         "lightcoral",
@@ -214,8 +215,9 @@ def plot_confidence(nums_samples:list,
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
 
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
-        plt.savefig(os.path.join(results_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'confidence_bounds')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
 
     plt.show()
 
@@ -240,8 +242,9 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list, sa
 
     plt.tight_layout()
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
-        plt.savefig(os.path.join(results_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'confidence_bounds')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
 
     plt.show()
 

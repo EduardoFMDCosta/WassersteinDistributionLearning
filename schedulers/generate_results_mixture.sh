@@ -30,4 +30,5 @@ echo "-- GaussianMixture --"
 done        
 done
 
+echo "Finnished"
 

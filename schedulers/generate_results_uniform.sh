@@ -13,8 +13,7 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 for rho in 1 2; do
 echo "---------------- W${rho} -------------------"
-for method in stochastic_vertice_ascent \
-    joint_optimization_milp \
+for method in joint_optimization_milp \
     diagonal_constrained_tp \
     triangle_inequality_vertex; do
 

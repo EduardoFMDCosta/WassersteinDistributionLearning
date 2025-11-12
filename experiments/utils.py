@@ -77,7 +77,7 @@ def fournier_radii_for_combinations(
 ) -> FournierRadii:
     support = get_support_assumption(**vars(args))
 
-    fournier_radii = FournierRadii()
+    fournier_radii = load_data(args.fournier_radii_file, FournierRadii)
 
     for N in list(set([N for N, M in combinations])):
         fournier_radius = compute_fournier_radius(

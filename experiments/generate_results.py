@@ -39,5 +39,5 @@ if __name__ == '__main__':
     fournier_radii = fournier_radii_for_combinations(args, combinations)
 
     if args.save:
-        pickle_dump(data_driven_radii, args.data_driven_radii_file)
+        # pickle_dump(data_driven_radii, args.data_driven_radii_file)
         pickle_dump(fournier_radii, args.fournier_radii_file)

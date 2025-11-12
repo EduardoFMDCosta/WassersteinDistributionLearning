@@ -1,11 +1,12 @@
 import os
+import itertools
 import torch
 import csv
 from dataclasses import dataclass, field
-from typing import List, Dict, Tuple, Optional, TypeVar, Generic, Type
+from typing import List, Dict, Optional
 
-from configs.handlers import parse_arguments, pickle_load
-from experiments.datastructures import Quantizations, DataDrivenRadii, FournierRadii, EmpiricalRadii
+from configs.handlers import parse_arguments, load_json
+from experiments.datastructures import DataDrivenRadii, FournierRadii
 
 from experiments.utils import load_data
 
@@ -38,10 +39,14 @@ def generate_csv(
         )
         if (N, M) in fournier_radii.keys():
             row["fournier"] = f"{fournier_radii.radius_at((N, M))}"
+        else:
+            row["fournier"] = "N/A"
 
         for method in methods:
-            if (N, M) in data_driven_radii.at(method).keys():
+            if method in data_driven_radii.keys() and (N, M) in data_driven_radii.at(method).keys():
                 row[method] = f"{data_driven_radii.at(method).radius_at((N, M))}"
+            else:
+                row[method] = "N/A"
 
         rows.append(row)
 
@@ -66,25 +71,36 @@ if __name__ == '__main__':
         'scalar_strategy',
     ]
 
-    data_driven_radii = DataDrivenRadiiPerMethod()
-    for method in methods:    
-        args = parse_arguments(
-            distribution="Gaussian",
-            num_dims=2,
-            setting=0,
-            beta=1e-6,
-            wasserstein_order=1,
-            method=method,
-            save=False,
-        )
+    params = load_json("parameters")
+    settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
 
-        data_driven_radii.append(method, load_data(args.data_driven_radii_file, DataDrivenRadii))
-    
-    fournier_radii = load_data(args.fournier_radii_file, FournierRadii)
+    for (distribution, num_dims, setting), wasserstein_order in itertools.product(settings, [1,2]):
+        try:
+            data_driven_radii = DataDrivenRadiiPerMethod()
+            for method in methods:    
+                args = parse_arguments(
+                    distribution=distribution,
+                    num_dims=num_dims,
+                    setting=setting,
+                    beta=1e-6,
+                    wasserstein_order=wasserstein_order,
+                    method=method,
+                    save=False,
+                )
 
-    generate_csv(
-        methods=methods,
-        data_driven_radii=data_driven_radii,
-        fournier_radii=fournier_radii,
-        args=args,
-    )
+                data_driven_radii.append(method, load_data(args.data_driven_radii_file, DataDrivenRadii))
+            
+            fournier_radii = load_data(args.fournier_radii_file, FournierRadii)
+
+            generate_csv(
+                methods=methods,
+                data_driven_radii=data_driven_radii,
+                fournier_radii=fournier_radii,
+                args=args,
+            )
+            print(f"Generated CSV for distribution={distribution}, num_dims={num_dims}, setting={setting}, wasserstein_order={wasserstein_order}")
+
+        except Exception as e:
+            print(f"Failed to generate CSV for distribution={distribution}, num_dims={num_dims}, setting={setting}, wasserstein_order={wasserstein_order}: {e}")
+
+        

@@ -21,20 +21,20 @@ if __name__ == '__main__':
     # N_options = [1000]
     # M_options = [5, 20]
 
-    N_options = [1000, 2500, 5000, 7500, 10000]
-    M_options = [150, 200, 300, 500, 1000]
+    # N_options = [1000, 2500, 5000, 7500, 10000]
+    # M_options = [150, 200, 300, 500, 1000]
 
-    # N_options = [1000, 2500, 5000, 7500, 10000, 25000]
-    # M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 2000]
+    N_options = [1000, 2500, 5000, 7500, 10000, 25000]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 2000]
 
     combinations = [(N, M) for N in N_options for M in M_options]
 
-    (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(
-        args, 
-        combinations=combinations, 
-        time_limit=60*5, 
-        generate_partition_if_missing=False
-    )
+    # (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(
+    #     args, 
+    #     combinations=combinations, 
+    #     time_limit=60*5, 
+    #     generate_partition_if_missing=False
+    # )
 
     fournier_radii = fournier_radii_for_combinations(args, combinations)
 

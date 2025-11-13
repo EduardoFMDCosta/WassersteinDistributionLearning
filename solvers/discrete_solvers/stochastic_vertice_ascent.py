@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+import time
 
 from solvers.templates import DiscreteResult, DiscreteSolver
 from optimization_utils import ot_lp_solver, o_maximization
@@ -117,14 +118,13 @@ class StochasticVerticeAscent(DiscreteSolver):
         upper: torch.Tensor,
         empirical_marginal: torch.Tensor
     ) -> DiscreteResult:
-        M = cost.shape[0]
         delta = 1e-3
-
         objective_opt = -float("inf")
         w_opt = None
 
-        pbar = tqdm(total=self.num_steps, desc="Cutting Plane Outer Loop", disable=not self.verbose)
-
+        pbar = tqdm(total=self.num_steps, desc="Cutting Plane Outer Loop")
+        start_time = time.time()
+        time_limit = self.time_limit if self.time_limit is not None else float('inf')
         for d in range(self.num_inits):
             msg = f"[CuttingPlane] iteration={d}"
             pbar.set_postfix_str(msg)
@@ -162,6 +162,9 @@ class StochasticVerticeAscent(DiscreteSolver):
                 w_opt = w
 
             pbar.update(1)
+            if time.time() - start_time > time_limit:
+                pbar.write(f"Time limit of {time_limit} seconds reached. Stopping optimization.")
+                break
 
         pbar.close()
 

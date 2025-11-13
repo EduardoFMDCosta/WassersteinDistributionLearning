@@ -1,13 +1,7 @@
-import torch
-import cvxpy as cp
-import gurobipy as gp
-from gurobipy import GRB
-from typing import Optional
-
 from optimization_utils import o_maximization
 from quantization import UncertainQuantization
 from solvers.discrete_solvers import DiagonalConstrainedTP
-from solvers.joint_optimization_milp import solve_milp_cvxpy, solve_milp_gurobi, JointOptimizationMilp
+from solvers.joint_optimization_milp import JointOptimizationMilp
 from solvers.templates import Solver, Result
 
 class JointFullExpansionMilp(Solver):

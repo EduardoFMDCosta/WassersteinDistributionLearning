@@ -4,6 +4,7 @@ from torch_kmeans import KMeans
 import ot
 
 import matplotlib.pyplot as plt
+from configs.handlers import ensure_dir
 
 plt.rcParams.update({
     'font.size': 12,
@@ -131,8 +132,9 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'multiscale')
-        plt.savefig(os.path.join(results_dir, f"multiscale_behavior.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'multiscale')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"multiscale_behavior.pdf"), format='pdf')
 
     plt.show()
 

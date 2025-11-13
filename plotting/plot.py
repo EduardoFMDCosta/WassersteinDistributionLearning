@@ -1,5 +1,4 @@
 import os
-import csv
 from typing import Optional
 import torch
 import seaborn as sns
@@ -12,6 +11,7 @@ from sets import BoundedVoronoiPartition
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
 from experiments.datastructures import TimeLogger, DataDrivenRadii, Quantizations, FournierRadii, EmpiricalRadii
+from configs.handlers import ensure_dir
 
 colors = [
         "lightcoral",
@@ -215,8 +215,9 @@ def plot_confidence(nums_samples:list,
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
 
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
-        plt.savefig(os.path.join(results_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'confidence_bounds')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
 
     plt.show()
 
@@ -241,8 +242,9 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list, sa
 
     plt.tight_layout()
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
-        plt.savefig(os.path.join(results_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'confidence_bounds')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
 
     plt.show()
 
@@ -346,50 +348,3 @@ def plot_optimization_curves(values, best_values, grad_norms, lr_sizes):
 
     plt.tight_layout()
     plt.show()
-
-def generate_table(
-    data_driven_radii: DataDrivenRadii,
-    fournier_radii: FournierRadii,
-    empirical_radii: EmpiricalRadii,
-    args
-): 
-    # Prepare CSV file name
-    csv_path = os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
-
-    # Prepare rows
-    rows = []
-    for (N, M) in data_driven_radii.keys():
-        rows.append({
-            "Distribution": args.distribution,
-            "Dimension": args.num_dims,
-            "Support radius": args.support_linf_radius,
-            "N": N,
-            "M": M,
-            "Moment bound": f"{data_driven_radii.moment_bound_at((N, M))}",
-            "Discrete bound": f"{data_driven_radii.discrete_bound_at((N, M))}",
-            "Ours": f"{data_driven_radii.radius_at((N, M))}",
-            "Fournier": f"{fournier_radii.radius_at((N, M))}",
-            "Empirical (samples)": f"{empirical_radii.radius_samples_at((N, M))}",
-            "Empirical (locs)": f"{empirical_radii.radius_quantization_at((N, M))}",
-        })
-
-    # Write to CSV
-    with open(csv_path, mode="w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "Distribution",
-                "Dimension",
-                "Support radius",
-                "N",
-                "M",
-                "Moment bound",
-                "Discrete bound",
-                "Ours",
-                "Fournier",
-                "Empirical (samples)",
-                "Empirical (locs)",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(rows)

@@ -24,6 +24,22 @@
                       "support_linf_radius": 0.15
                   }
               }
+          },
+          "100": {
+            "settings": {
+                  "0": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.4841618928628149
+                  },
+                  "1": {
+                        "support_linf_radius_assumed": 0.5,
+                        "support_linf_radius": 0.49491774940645206
+                  },
+                  "3": {
+                        "support_linf_radius_assumed": 0.5,
+                        "support_linf_radius": 0.5
+                  }
+              }
           }
       }
   },

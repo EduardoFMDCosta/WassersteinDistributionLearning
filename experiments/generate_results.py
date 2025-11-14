@@ -13,6 +13,7 @@ if __name__ == '__main__':
         setting=0,
         beta=1e-6,
         method='joint_optimization_milp', 
+        num_samples_training=1000,
         wasserstein_order=2,
         save=True,
     )

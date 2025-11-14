@@ -1,24 +1,37 @@
 import os
 import sys
 from typing import Optional, List, Tuple
+from dataclasses import dataclass, field
+from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 import torch
 import matplotlib.pyplot as plt
 
 from sets import BoundedVoronoiPartition
 
 from plotting.plot import plot_partition
-from configs.handlers import parse_arguments, pickle_load, pickle_dump
+from configs.handlers import parse_arguments, pickle_dump, pickle_load
 from configs.construct import get_support_assumption, get_distribution
 
-from experiments.datastructures import _GridDict
 
+S = TypeVar("S", bound="BoundedVoronoiPartitionDict")
 
-class BoundedVoronoiPartitionDict(_GridDict[BoundedVoronoiPartition]): # key = (N, M)
-    _samples = None
+@dataclass
+class BoundedVoronoiPartitionDict: # key = (N_train, M)
+    _samples: Optional[torch.Tensor] = None
+    data: Dict[Tuple[int, int], BoundedVoronoiPartition] = field(default_factory=dict)
+    
+    def append(self, key: Tuple[int, int], rec: BoundedVoronoiPartition) -> None:
+        self.data[key] = rec
+
+    def at(self, key: Tuple[int, int]) -> BoundedVoronoiPartition:
+        return self.data[key]
+    
+    def keys(self, N_train: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int]]:
+        return [key for key in self.data.keys() if (N_train is None or key[0] == N_train) and (M is None or key[1] == M)]
 
     def attach_samples(self, samples):
         self._samples = samples
-    
+
     @property
     def samples(self):
         return self._samples
@@ -128,8 +141,9 @@ if __name__ == '__main__':
         plot=False, 
     )    
 
-    num_samples_options = [1000, 2500, 5000] # , 7500, 10000, 25000
+    num_samples_options = [1000, 5000] # , 7500, 10000, 25000
     num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 2000]
+
 
     partitions = get_dict_of_partitions(
         args=args,

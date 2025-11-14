@@ -141,7 +141,7 @@ class EmpiricalRadius:
         wasserstein_order: int
     ):
 
-        emp_dist = dist.sample((10 * quantization.nsamples,))
+        emp_dist = dist.sample((10 * quantization.num_samples,))
 
         metric = {1: "euclidean", 2: "sqeuclidean"}
         assert wasserstein_order in metric, "Empirical computation not available for this Wasserstein order."

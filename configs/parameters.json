@@ -109,17 +109,5 @@
               }
           }
       }
-  }, 
-  "Discrete": {
-      "num_dims": {
-          "2": {
-              "settings": {
-                  "0": {
-                      "support_linf_radius_assumed": 0.5,
-                      "support_size": 40
-                  }
-              }
-          }
-      }
   }
 }

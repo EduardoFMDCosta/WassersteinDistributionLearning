@@ -59,7 +59,7 @@
                   "0": {
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
-                      "variance": 0.03
+                      "variance": 0.027559643611311913
                   }
               }
           },
@@ -68,7 +68,7 @@
                   "0": {
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
-                      "variance": 0.03
+                      "variance": 0.022145232185721397
                   }
               }
           },
@@ -77,7 +77,7 @@
                   "0": {
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
-                      "variance": 0.03
+                      "variance": 0.01601838879287243
                   }
               }
           }

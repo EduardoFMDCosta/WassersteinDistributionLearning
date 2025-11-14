@@ -16,7 +16,7 @@ class Quantization(BoundedVoronoiPartition):
             region_l2_radii=partition.region_l2_radii
         )
         
-        self.samples = samples
+        self.num_samples = samples.size(0)
 
         locs_to_samples_distance = torch.cdist(partition.region_locs, samples, p=2)
         mask = locs_to_samples_distance > partition.region_l2_radii.unsqueeze(1)
@@ -25,7 +25,7 @@ class Quantization(BoundedVoronoiPartition):
         labels = torch.argmin(locs_to_samples_distance, dim=0)
 
         self.cluster_counts = torch.bincount(labels[~in_outer], minlength=len(partition) - 1)
-        self.outer_counts = self.nsamples - self.cluster_counts.sum()
+        self.outer_counts = self.num_samples - self.cluster_counts.sum()
         assert self.outer_counts == sum(in_outer) >= 0, "Inconsistent outer counts"
 
     @property
@@ -35,10 +35,6 @@ class Quantization(BoundedVoronoiPartition):
     @property
     def probs(self):
         return self.counts.float() / self.counts.sum()
-    
-    @property
-    def nsamples(self): # TODO rename num_samples
-        return self.samples.size(0)
 
 
 class UncertainQuantization(Quantization):
@@ -55,7 +51,7 @@ class UncertainQuantization(Quantization):
         self.confidence = ConfidenceClass(
             beta=beta / self.__len__(), 
             n_set=self.counts, 
-            n=self.nsamples
+            n=self.num_samples
         )
 
     @property

@@ -41,7 +41,7 @@ def construct_scale(
     variance: Union[float, List[float]]
 ) -> torch.Tensor:
     if isinstance(variance, float):
-        return torch.ones(num_dims) * (variance ** 0.5) * (1 / num_dims**0.5)
+        return torch.ones(num_dims) * (variance ** 0.5)
     else:
         return torch.as_tensor(variance) ** 0.5
 

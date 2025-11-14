@@ -1,7 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
 
-from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius
 from solvers import get_solver
@@ -16,11 +15,11 @@ if __name__ == '__main__':
 
     args = parse_arguments(
         distribution="Gaussian",
-        num_dims=100,
+        num_dims=2,
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=30,
+        num_clusters=20,
         wasserstein_order=1,
         beta=1e-4,
         method='full_search',

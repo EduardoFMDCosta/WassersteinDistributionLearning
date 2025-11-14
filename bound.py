@@ -135,6 +135,7 @@ def fournier_radius(
 class EmpiricalRadius:
     def __init__(
         self,
+        samples: torch.Tensor,
         quantization: UncertainQuantization,
         dist: torch.distributions.Distribution,
         wasserstein_order: int
@@ -145,7 +146,7 @@ class EmpiricalRadius:
         metric = {1: "euclidean", 2: "sqeuclidean"}
         assert wasserstein_order in metric, "Empirical computation not available for this Wasserstein order."
 
-        self._radius_samples = ot.solve_sample(X_a=emp_dist, X_b=quantization.samples, metric=metric[wasserstein_order]).value.pow(1 / wasserstein_order).item()
+        self._radius_samples = ot.solve_sample(X_a=emp_dist, X_b=samples, metric=metric[wasserstein_order]).value.pow(1 / wasserstein_order).item()
         self._radius_quantization = ot.solve_sample(X_a=emp_dist, X_b=quantization.locs, b=quantization.probs, metric=metric[wasserstein_order]).value.pow(1 / wasserstein_order).item()
 
     @property

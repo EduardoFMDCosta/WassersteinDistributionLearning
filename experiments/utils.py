@@ -142,7 +142,12 @@ def run_combinations(
                 continue
 
             if compute_empirical_radii:
-                empirical_radii.append((N, M), EmpiricalRadius(quantization=quantizations.at((N, M)), dist=distribution, wasserstein_order=args.wasserstein_order))
+                empirical_radii.append((N, M), EmpiricalRadius(
+                    samples=samples_quantization,
+                    quantization=quantizations.at((N, M)), 
+                    dist=distribution, 
+                    wasserstein_order=args.wasserstein_order
+                ))
 
     return (quantizations, data_driven_radii, fournier_radii, empirical_radii), (quantization_times, radius_computation_times, computation_times)
 

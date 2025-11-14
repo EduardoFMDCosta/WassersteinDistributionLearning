@@ -16,7 +16,7 @@ class Quantization(BoundedVoronoiPartition):
             region_l2_radii=partition.region_l2_radii
         )
         
-        self.samples = samples
+        self.nsamples = samples.size(0)  # TODO rename num_samples
 
         locs_to_samples_distance = torch.cdist(partition.region_locs, samples, p=2)
         mask = locs_to_samples_distance > partition.region_l2_radii.unsqueeze(1)
@@ -35,10 +35,6 @@ class Quantization(BoundedVoronoiPartition):
     @property
     def probs(self):
         return self.counts.float() / self.counts.sum()
-    
-    @property
-    def nsamples(self): # TODO rename num_samples
-        return self.samples.size(0)
 
 
 class UncertainQuantization(Quantization):

@@ -13,22 +13,31 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 for rho in 1 2; do
 echo "---------------- W${rho} -------------------"
-for method in joint_full_expansion_milp; do
+for method in joint_optimization_milp joint_full_expansion_milp diagonal_constrained_tp triangle_inequality_vertex; do
 
 echo "------- method = ${method} ---------"
 
 echo "-- Uniform --"
-    echo "dim = 2, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order "$rho" --method "$method"
+    # echo "dim = 2, setting = 0"
+    # python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 0 --wasserstein_order "$rho" --method "$method"
 
-    echo "dim = 2, setting = 1"
-    python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 1 --wasserstein_order "$rho" --method "$method"
+    # echo "dim = 2, setting = 1"
+    # python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 1 --wasserstein_order "$rho" --method "$method"
 
-    echo "dim = 2, setting = 2"
-    python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 2 --wasserstein_order "$rho" --method "$method"
+    # echo "dim = 2, setting = 2"
+    # python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 2 --wasserstein_order "$rho" --method "$method"
 
-    echo "dim = 3, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method"
+    # echo "dim = 3, setting = 0"
+    # python -m experiments.generate_results --distribution Uniform --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method"
+
+    echo "dim = 100, setting = 0"
+    python -m experiments.generate_results --distribution Uniform --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method"
+
+    echo "dim = 100, setting = 1"
+    python -m experiments.generate_results --distribution Uniform --num_dims 100 --setting 1 --wasserstein_order "$rho" --method "$method"
+
+    # echo "dim = 100, setting = 2"
+    # python -m experiments.generate_results --distribution Uniform --num_dims 100 --setting 2 --wasserstein_order "$rho" --method "$method"
 
 
 done        

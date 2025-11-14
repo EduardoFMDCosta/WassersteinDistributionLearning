@@ -18,8 +18,8 @@ echo "START"
 # python -m experiments.partitions --distribution Uniform --num_dims 2 --setting 2
 # python -m experiments.partitions --distribution Uniform --num_dims 3 --setting 0
 
-python -m experiments.partitions --distribution Uniform --num_dims 100 --setting 0
-python -m experiments.partitions --distribution Uniform --num_dims 100 --setting 1
+# python -m experiments.partitions --distribution Uniform --num_dims 100 --setting 0
+# python -m experiments.partitions --distribution Uniform --num_dims 100 --setting 1
 python -m experiments.partitions --distribution Uniform --num_dims 100 --setting 2
 
 # echo "Gaussians"

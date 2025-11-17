@@ -35,6 +35,7 @@ def data_driven_radii_for_combinations(
     samples_quantization = distribution.sample((N_max,))
 
     quantizations = Quantizations()
+    quantizations.samples = samples_quantization
     data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
 
     quantization_times, radius_computation_times = TimeLogger(), TimeLogger()

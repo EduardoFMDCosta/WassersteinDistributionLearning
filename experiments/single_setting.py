@@ -45,7 +45,11 @@ if __name__ == '__main__':
 
     # Plot samples and clusterized distribution
     if args.plot:
-        plot_quantization(quantization=quantization, title=f"M={args.num_clusters}, N={args.num_samples}")
+        plot_quantization(
+            quantization=quantization, 
+            samples=samples_quantization,
+            title=f"M={args.num_clusters}, N={args.num_samples}"
+        )
         plt.show()
 
     # Compute bounds

@@ -285,13 +285,15 @@ def plot_partition(
     return ax
 
 
-def plot_quantization( # TODO extract plot partition
+def plot_quantization(
     quantization: Quantization, 
+    samples: Optional[torch.Tensor] = None,
     ax: Optional[plt.Axes] = None,
     title: str = ''
 ):
     ax = plot_partition(partition=quantization, ax=ax, title=title)
-    ax.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
+    if samples is not None:
+        ax.scatter(*samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
     ax.legend()
     ax.axis('equal')
     ax.set_title(title)

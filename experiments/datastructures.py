@@ -80,6 +80,16 @@ class FournierRadii(_GridDict[Union[torch.Tensor, float]]):
 
 
 class Quantizations(_GridDict[UncertainQuantization]):
+    _samples: Optional[torch.Tensor] = None
+
+    @property
+    def samples(self) -> Optional[torch.Tensor]:
+        return self._samples
+    
+    @samples.setter
+    def samples(self, value: torch.Tensor) -> None:
+        self._samples = value
+        
     def _mean_stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
         return torch.tensor([getattr(self.data[key], attribute).float().mean() for key in self.keys(N_train=N_train, N=N, M=M)])
 

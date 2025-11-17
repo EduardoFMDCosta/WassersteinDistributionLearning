@@ -21,7 +21,7 @@ if __name__ == '__main__':
     if os.path.exists(args.data_driven_radii_file):
         data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
         print(f"Available combinations in {args.data_driven_radii_file}:")
-        for (N, M) in data_driven_radii.keys():
-            print(f"\t N={N}, M={M}")
+        for (N_train, N, M) in data_driven_radii.keys():
+            print(f"\t N_train={N_train}, N={N}, M={M}")
     else:
         print(f"No data found at {args.data_driven_radii_file}.")

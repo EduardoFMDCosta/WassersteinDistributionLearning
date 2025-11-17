@@ -32,19 +32,20 @@ def generate_csv(
     args,
 ):
     rows = []
-    for (N, M) in data_driven_radii.at(methods[0]).keys():
+    for (N_train, N, M) in data_driven_radii.at(methods[0]).keys():
         row = dict(
+            N_train=N_train,
             N=N,
             M=M,
         )
-        if (N, M) in fournier_radii.keys():
-            row["fournier"] = f"{fournier_radii.radius_at((N, M))}"
+        if (N_train, N, M) in fournier_radii.keys():
+            row["fournier"] = f"{fournier_radii.radius_at((N_train, N, M))}"
         else:
             row["fournier"] = "N/A"
 
         for method in methods:
-            if method in data_driven_radii.keys() and (N, M) in data_driven_radii.at(method).keys():
-                row[method] = f"{data_driven_radii.at(method).radius_at((N, M))}"
+            if method in data_driven_radii.keys() and (N_train, N, M) in data_driven_radii.at(method).keys():
+                row[method] = f"{data_driven_radii.at(method).radius_at((N_train, N, M))}"
             else:
                 row[method] = "N/A"
 
@@ -63,12 +64,10 @@ if __name__ == '__main__':
     torch.manual_seed(0)
 
     methods = [
-        'stochastic_vertice_ascent',
         'joint_optimization_milp',
-        'diagonal_constrained_tp',
-        'triangle_inequality_vertex',
-        'no_triangle_inequality',
-        'scalar_strategy',
+         'joint_full_expansion_milp', 
+         'diagonal_constrained_tp', 
+         'triangle_inequality_vertex',
     ]
 
     params = load_json("parameters")

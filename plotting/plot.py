@@ -56,6 +56,7 @@ def plot_time_logger(
 def plot_data_driven_radii_slice(
     ax, 
     data_driven_radii: DataDrivenRadii, 
+    num_samples_training: int,
     N: Optional[int] = None, 
     M: Optional[int] = None,
     cummulative: bool = False
@@ -63,9 +64,9 @@ def plot_data_driven_radii_slice(
     if (N is not None and M is not None) or (N is None and M is None):
         raise ValueError("Only N or M should be specified.")
 
-    data_sliced = data_driven_radii._slice(N=N, M=M)
-    idx = 1 if N is not None else 0
-    options = [key[idx] for key in data_driven_radii.keys()]
+    data_sliced = data_driven_radii._slice(N_train=num_samples_training, N=N, M=M)
+    idx = 2 if N is not None else 1
+    options = [key[idx] for key in data_sliced.keys()]
 
     if cummulative:
         ax.fill_between(options, 0, data_sliced.moment_bound, label='e1', alpha=0.4)
@@ -88,13 +89,15 @@ def plot_data_driven_radii_slice(
 def plot_data_driven_radii(
     ax, 
     data_driven_radii: DataDrivenRadii,
+    num_samples_training: int,
     field: str = 'radius',
     s: int = 200,
     title: Optional[str] = None,
     xlabel: Optional[str] = None, 
     ylabel: Optional[str] = None,
 ):
-    Ns, Ms = zip(*data_driven_radii.keys())
+    data_driven_radii = data_driven_radii._slice(N_train=num_samples_training)
+    _, Ns, Ms = zip(*data_driven_radii.keys())
     scatter = ax.scatter(Ns, Ms, c=getattr(data_driven_radii, field), s=s, cmap='coolwarm', alpha=1.0)
     ax.figure.colorbar(scatter, ax=ax)
     ax.set_xscale('log')
@@ -113,15 +116,16 @@ def plot_quantization_slice(
     ax, 
     quantizations: Quantizations, 
     stat: str,
+    num_samples_training: int,
     N: Optional[int] = None, 
     M: Optional[int] = None
 ):
     if (N is not None and M is not None) or (N is None and M is None):
         raise ValueError("Only N or M should be specified.")
     
-    data_sliced = quantizations._slice(N=N, M=M)
-    idx = 1 if N is not None else 0
-    options = [key[idx] for key in quantizations.keys()]
+    data_sliced = quantizations._slice(N_train=num_samples_training, N=N, M=M)
+    idx = 2 if N is not None else 1
+    options = [key[idx] for key in data_sliced.keys()]
 
     if stat == 'probs':
         ax.plot(options, data_sliced.mean_range_probs, label='avg probs range', color='black')

@@ -15,11 +15,12 @@ if __name__ == '__main__':
         num_dims=2,
         setting=0,
         num_samples=1000,
+        num_samples_training=1000,
         num_clusters=10,
         beta=1e-6,
         method='joint_optimization_milp',
         plot=True, 
-        save=True,
+        save=False,
         compute_moment_bound=True,
         compute_discrete_bound=True,
     )
@@ -41,8 +42,13 @@ if __name__ == '__main__':
     # Illustrate Quantizations
     if args.num_dims == 2:
         fig, ax = plt.subplots(ncols=len(quantizations.keys()), nrows=1, figsize=(6 * len(quantizations.keys()), 6))
-        for i, key in enumerate(quantizations.keys()):
-            ax[i] = plot.plot_quantization(ax=ax[i], quantization=quantizations.at(key), title=f"M={key[1]}, N={key[0]}")
+        for i, (N_train, N, M) in enumerate(quantizations.keys()):
+            ax[i] = plot.plot_quantization(
+                ax=ax[i], 
+                quantization=quantizations.at((N_train, N, M)), 
+                samples=quantizations.samples[:N] if quantizations.samples is not None else None,
+                title=f"M={M}, N={N}"
+            )
 
         if args.save:
             plt.savefig(os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_quantizations.png"))
@@ -52,12 +58,11 @@ if __name__ == '__main__':
     # Plot Statistics
     fig, ax = plt.subplots(5, 1, figsize=(6, 12), constrained_layout=True)
 
-    ax[0] = plot.plot_data_driven_radii_slice(ax[0], data_driven_radii, N=N_options[0], cummulative=True)
-    ax[1] = plot.plot_quantization_slice(ax[1], quantizations, stat='probs', N=N_options[0])
-    ax[2] = plot.plot_quantization_slice(ax[2], quantizations, stat='radii', N=N_options[0])
-    ax[3] = plot.plot_quantization_slice(ax[3], quantizations, stat='counts', N=N_options[0])
-    ax[4] = plot.plot_quantization_slice(ax[4], quantizations, stat='locs', N=N_options[0])
-
+    ax[0] = plot.plot_data_driven_radii_slice(ax[0], data_driven_radii, num_samples_training=args.num_samples_training , N=N_options[0], cummulative=True)
+    ax[1] = plot.plot_quantization_slice(ax[1], quantizations, stat='probs', num_samples_training=args.num_samples_training, N=N_options[0])
+    ax[2] = plot.plot_quantization_slice(ax[2], quantizations, stat='radii', num_samples_training=args.num_samples_training, N=N_options[0])
+    ax[3] = plot.plot_quantization_slice(ax[3], quantizations, stat='counts', num_samples_training=args.num_samples_training, N=N_options[0])
+    ax[4] = plot.plot_quantization_slice(ax[4], quantizations, stat='locs', num_samples_training=args.num_samples_training, N=N_options[0])
     ax[0].set_title(f"Number of {'samples (N)' if investigate_clusters else 'clusters (M)'} = {args.num_samples if investigate_clusters else args.num_clusters}")
     ax[4].set_xlabel(f"Number of {'clusters (M)' if investigate_clusters else 'samples (N)'}")
 

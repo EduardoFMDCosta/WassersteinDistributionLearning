@@ -175,13 +175,15 @@ def plot_quantization_slice(
 
 
 @torch.no_grad()
-def plot_confidence(nums_samples:list,
-                    empirical: list,
-                    hoeff_list: list[Confidence],
-                    duchi_list: list[Confidence],
-                    pearson_list: list[Confidence],
-                    actual_prob: Optional[torch.Tensor] = None,
-                    save=False):
+def plot_confidence(
+    nums_samples:list,
+    empirical: list,
+    hoeff_list: list[Confidence],
+    duchi_list: list[Confidence],
+    pearson_list: list[Confidence],
+    actual_prob: Optional[torch.Tensor] = None,
+    save=False
+):
 
     sns.set_style("darkgrid")
 

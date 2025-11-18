@@ -2,6 +2,7 @@ from typing import Optional
 import torch
 import math
 import ot
+from torch_kmeans import KMeans
 
 from sets import HyperRectangle
 from quantization import UncertainQuantization
@@ -47,90 +48,140 @@ class DataDrivenRadius:
     def lower_bound(self):
         return self._lower_bound
 
+class FournierRadius:
+    def __init__(
+            self,
+            samples: torch.Tensor,
+            support: HyperRectangle,
+            wasserstein_order: int,
+            beta: float,
+            quantization_size: Optional[int] = None,
+    ):
+        nsamples = samples.shape[0]
+        self._radius = self._fournier_radius(support=support,
+                                             nsamples=nsamples,
+                                             wasserstein_order=wasserstein_order,
+                                             beta=beta)
+        self._comparable_radius = self._comparable_fournier_radius(samples=samples,
+                                                                   wasserstein_order=wasserstein_order,
+                                                                   quantization_size=quantization_size)
 
-def fournier_radius(
-    support: HyperRectangle,
-    nsamples: int,
-    wasserstein_order: int,
-    beta: float
-) -> float:
-    # See Proposition A.2. in Boissard and Le Gouic (2014)
-    support_euclidean_diameter = support.width.norm(p=2).item()
-    log_inv_beta = math.log(1 / beta)
-    tau = support_euclidean_diameter * (2 * log_inv_beta / nsamples) ** (1 / (2 * wasserstein_order))
+    @staticmethod
+    def _fournier_radius(
+        support: HyperRectangle,
+        nsamples: int,
+        wasserstein_order: int,
+        beta: float
+    ) -> float:
+        # See Proposition A.2. in Boissard and Le Gouic (2014)
+        support_euclidean_diameter = support.width.norm(p=2).item()
+        log_inv_beta = math.log(1 / beta)
+        tau = support_euclidean_diameter * (2 * log_inv_beta / nsamples) ** (1 / (2 * wasserstein_order))
 
-    if wasserstein_order == 1:
-        constants = {
-            3: 3.72,
-            4: 2.45,
-            5: 2.09,
-            6: 1.94,
-            7: 1.87,
-            8: 1.84,
-            9: 1.82,
-            10: 1.81,  # for 10 <= d <= 75, we divide 3rd line of Table 3 by sqrt(d)
-            12: 1.82,
-            15: 1.84,
-            20: 1.87,
-            25: 1.89,
-            50: 1.95,
-            75: 1.96,
-            100: 1.98,
-            500: 2.00
-        }
+        if wasserstein_order == 1:
+            constants = {
+                3: 3.72,
+                4: 2.45,
+                5: 2.09,
+                6: 1.94,
+                7: 1.87,
+                8: 1.84,
+                9: 1.82,
+                10: 1.81,  # for 10 <= d <= 75, we divide 3rd line of Table 3 by sqrt(d)
+                12: 1.82,
+                15: 1.84,
+                20: 1.87,
+                25: 1.89,
+                50: 1.95,
+                75: 1.96,
+                100: 1.98,
+                500: 2.00
+            }
 
-        # See Table 1 in Fournier, 2023 (https://hal.science/hal-03768963/)
-        if isinstance(support, HyperRectangle):  # for infinite norm ball
-            if support.ndim == 1:
-                moment_bound = 2.42 / (nsamples ** (1 / 2))
-            elif support.ndim == 2:
-                moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.0) / (nsamples ** (1 / 2))
+            # See Table 1 in Fournier, 2023 (https://hal.science/hal-03768963/)
+            if isinstance(support, HyperRectangle):  # for infinite norm ball
+                if support.ndim == 1:
+                    moment_bound = 2.42 / (nsamples ** (1 / 2))
+                elif support.ndim == 2:
+                    moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.0) / (nsamples ** (1 / 2))
+                else:
+                    moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
+
+                moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for L2 norm
             else:
-                moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
+                raise NotImplementedError
 
-            moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for L2 norm
+        elif wasserstein_order == 2:
+            constants = {
+                5: 2.75,
+                6: 2.20,
+                7: 2.01,
+                8: 1.92,
+                9: 1.87,
+                10: 1.85, # for 10 <= d <= 75, we divide 3rd line of Table 4 by sqrt(d)
+                12: 1.83,
+                15: 1.84,
+                20: 1.87,
+                25: 1.89,
+                50: 1.95,
+                75: 1.96,
+                100: 1.98,
+                500: 2.00
+            }
+
+            # See Table 2 in Fournier, 2023 (https://hal.science/hal-03768963/)
+            if isinstance(support, HyperRectangle): # for infinite norm ball
+                if support.ndim == 1:
+                    moment_bound = 1.05 / (nsamples ** (1 / 4))
+                elif support.ndim == 2:
+                    moment_bound = 1.42 / (nsamples ** (1 / 4))
+                elif support.ndim == 3:
+                    moment_bound = 2.20 / (nsamples ** (1 / 4))
+                elif support.ndim == 4:
+                    moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.26) / (nsamples ** (1 / 4))
+                else:
+                    moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
+
+                moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for L2 norm
+            else:
+                raise NotImplementedError
+
         else:
             raise NotImplementedError
 
-    elif wasserstein_order == 2:
-        constants = {
-            5: 2.75,
-            6: 2.20,
-            7: 2.01,
-            8: 1.92,
-            9: 1.87,
-            10: 1.85, # for 10 <= d <= 75, we divide 3rd line of Table 4 by sqrt(d)
-            12: 1.83,
-            15: 1.84,
-            20: 1.87,
-            25: 1.89,
-            50: 1.95,
-            75: 1.96,
-            100: 1.98,
-            500: 2.00
-        }
+        return moment_bound + tau
 
-        # See Table 2 in Fournier, 2023 (https://hal.science/hal-03768963/)
-        if isinstance(support, HyperRectangle): # for infinite norm ball
-            if support.ndim == 1:
-                moment_bound = 1.05 / (nsamples ** (1 / 4))
-            elif support.ndim == 2:
-                moment_bound = 1.42 / (nsamples ** (1 / 4))
-            elif support.ndim == 3:
-                moment_bound = 2.20 / (nsamples ** (1 / 4))
-            elif support.ndim == 4:
-                moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.26) / (nsamples ** (1 / 4))
-            else:
-                moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
-
-            moment_bound = moment_bound * math.sqrt(support.ndim) # Adjustment for L2 norm
+    def _comparable_fournier_radius(
+            self,
+            samples: torch.Tensor,
+            wasserstein_order: int,
+            quantization_size: int
+    ) -> Optional[float]:
+        if quantization_size is None:
+            return None
         else:
-            raise NotImplementedError
+            # Perform K-means
+            kmeans_torch = KMeans(n_clusters=quantization_size)
+            cluster_result = kmeans_torch(samples.unsqueeze(0))
+            labels = cluster_result.labels.squeeze(0)
+            counts = torch.bincount(labels, minlength=quantization_size).float()
 
-    else:
-        raise NotImplementedError
+            # Get comparable empirical distribution
+            compressed_locs = cluster_result.centers.squeeze(0)
+            compressed_probs = counts / counts.sum()
 
-    return moment_bound + tau
+            metric = {1: "euclidean", 2: "sqeuclidean"}
+            compression_radius = ot.solve_sample(X_a=samples, X_b=compressed_locs, b=compressed_probs, metric=metric[wasserstein_order]).value.pow(1 / wasserstein_order).item()
+
+            return self._radius + compression_radius
+
+    @property
+    def radius(self) -> float:
+        return self._radius
+
+    @property
+    def comparable_radius(self) -> float:
+        return self._comparable_radius
 
 class EmpiricalRadius:
     def __init__(

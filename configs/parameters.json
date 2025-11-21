@@ -14,6 +14,14 @@
                   "2": {
                         "support_linf_radius_assumed": 0.5,
                         "support_linf_radius": 0.5
+                  },
+                  "3": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.2
+                  },
+                  "4": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.4
                   }
               }
           },
@@ -22,6 +30,54 @@
                   "0": {
                       "support_linf_radius_assumed": 0.5,
                       "support_linf_radius": 0.1709975946676697
+                  }
+              }
+          },
+          "10": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.36238983183884776
+                  },
+                  "1": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.4514402257237171
+                  }
+              }
+          },
+          "25": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.4395946557704449
+                  },
+                  "1": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.47997885388291195
+                  }
+              }
+          },
+          "50": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.46882547700100774
+                  },
+                  "1": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.48988715735509536
+                  }
+              }
+          },
+          "75": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.47899480607773626
+                  },
+                  "1": {
+                      "support_linf_radius_assumed": 0.5,
+                      "support_linf_radius": 0.49323517159177027
                   }
               }
           },
@@ -51,6 +107,16 @@
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
                       "variance": 0.03
+                  },
+                  "1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.01
+                  },
+                  "2": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.01
                   }
               }
           },

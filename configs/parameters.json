@@ -103,6 +103,11 @@
       "num_dims": {
           "2": {
               "settings": {
+                 "-1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.1
+                  },
                   "0": {
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
@@ -116,7 +121,22 @@
                   "2": {
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
-                      "variance": 0.01
+                      "variance": 0.001
+                  },
+                  "3": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.0001
+                  },
+                  "4": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.00001
+                  },
+                  "5": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.000001
                   }
               }
           },

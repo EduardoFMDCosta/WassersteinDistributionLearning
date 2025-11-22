@@ -31,6 +31,7 @@ if __name__ == '__main__':
         distribution="GaussianMixture",
         num_dims=3,
         setting=0,
+        wasserstein_order=1,
         num_samples_training=1000,
         beta=1e-6,
         method='diagonal_constrained_tp',
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     plt.show()
 
     # Plot composition
-    N_options = [5000, 10000000]
+    N_options = [5000, 1000000]
     fig, axes = plt.subplots(
         len(N_options), 1, figsize=(7, 4 * len(N_options)), sharex=True
     )

@@ -31,6 +31,7 @@ if __name__ == '__main__':
         distribution="Gaussian",
         num_dims=10,
         setting=0,
+        wasserstein_order=1,
         num_samples_training=1000,
         beta=1e-6,
         method='diagonal_constrained_tp',

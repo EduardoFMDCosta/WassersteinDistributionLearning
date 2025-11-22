@@ -67,3 +67,56 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     plt.show()
+
+    # Plot composition
+    N_options = [5000, 10000000]
+    fig, axes = plt.subplots(
+        len(N_options), 1, figsize=(7, 4 * len(N_options)), sharex=True
+    )
+
+    if len(N_options) == 1:
+        axes = [axes]  # make iterable
+
+    for ax, N in zip(axes, N_options):
+        moment_vals = []
+        discrete_vals = []
+        radius_vals = []
+
+        for M in M_options:
+            key = (args.num_samples_training, N, M)
+            entry = data_driven_radii.data[key]
+
+            moment_vals.append(entry.moment_bound)
+            discrete_vals.append(entry.discrete_bound)
+            radius_vals.append(entry.moment_bound + entry.discrete_bound)
+
+        # Plot the lines
+        ax.plot(M_options, radius_vals, color="black", linewidth=1.0)
+        ax.plot(M_options, moment_vals, color="black", linestyle="--", linewidth=1.0)
+
+        # Stacked area shading
+        ax.fill_between(
+            M_options,
+            0,
+            moment_vals,
+            alpha=0.3,
+            label=r"$\epsilon_1(D_N)$"
+        )
+
+        ax.fill_between(
+            M_options,
+            moment_vals,
+            radius_vals,
+            alpha=0.3,
+            label=r"$\epsilon_2(D_N)$"
+        )
+
+        ax.set_ylabel(fr"Our bound (for $N={N}$)")
+        ax.grid(True, linestyle="--", alpha=0.4)
+        ax.set_ylim(bottom=0.0)
+        ax.set_xlim(left=M_options[0])
+        ax.legend(loc="lower right")
+
+    axes[-1].set_xlabel(r"$M$")
+    plt.tight_layout()
+    plt.show()

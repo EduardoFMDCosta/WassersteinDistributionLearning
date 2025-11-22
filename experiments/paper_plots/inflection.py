@@ -116,7 +116,7 @@ if __name__ == '__main__':
         ax.grid(True, linestyle="--", alpha=0.4)
         ax.set_ylim(bottom=0.0)
         ax.set_xlim(left=M_options[0])
-        ax.legend(loc="lower right")
+        ax.legend(loc="lower left")
 
     axes[-1].set_xlabel(r"$M$")
     plt.tight_layout()

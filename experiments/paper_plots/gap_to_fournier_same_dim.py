@@ -33,7 +33,7 @@ if __name__ == '__main__':
         setting=0,
         num_samples_training=1000,
         beta=1e-6,
-        method='triangle_inequality_vertex',
+        method='diagonal_constrained_tp',
         plot=True,
         save=False,
         compute_moment_bound=True,

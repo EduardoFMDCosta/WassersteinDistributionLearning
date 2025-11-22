@@ -50,7 +50,7 @@ if __name__ == '__main__':
                                                                                generate_partition_if_missing=True)
     fournier_radii = fournier_radii_for_combinations(args, combinations)
 
-    # Plot inflection curves
+    # Plot gap to Fournier
     fig, ax = plt.subplots(figsize=(6, 4))
 
     for N in N_options:

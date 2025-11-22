@@ -4,25 +4,8 @@ import matplotlib.pyplot as plt
 from configs.handlers import parse_arguments
 from experiments.utils import data_driven_radii_for_combinations
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.size": 14,
-    "axes.labelsize": 16,
-    "axes.titlesize": 16,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "figure.dpi": 200,
-    "lines.linewidth": 2,
-    "lines.markersize": 6,
-})
-
-def sci_label(N):
-    s = f"{N:.0e}"
-    base, exp = s.split("e")
-    exp = int(exp)
-    return rf"${base} \times 10^{{{exp}}}$"
+from plot_utils import set_style, convert_to_sci_notation
+set_style()
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -55,11 +38,10 @@ if __name__ == '__main__':
     for N in N_options:
         y_vals = []
         for M in M_options:
-            key = (args.num_samples_training, N, M)
-            radius = data_driven_radii.data[key].radius
+            radius = data_driven_radii.data[(args.num_samples_training, N, M)].radius
             y_vals.append(radius)
 
-        ax.plot(M_options, y_vals, marker="o", label=sci_label(N))
+        ax.plot(M_options, y_vals, marker="o", label=fr"${convert_to_sci_notation(N)}$")
 
     ax.set_xlabel(r"$M$")
     ax.set_ylabel("Our bound")
@@ -84,12 +66,11 @@ if __name__ == '__main__':
         radius_vals = []
 
         for M in M_options:
-            key = (args.num_samples_training, N, M)
-            entry = data_driven_radii.data[key]
+            entry = data_driven_radii.data[(args.num_samples_training, N, M)]
 
             moment_vals.append(entry.moment_bound)
             discrete_vals.append(entry.discrete_bound)
-            radius_vals.append(entry.moment_bound + entry.discrete_bound)
+            radius_vals.append(entry.radius)
 
         # Plot the lines
         ax.plot(M_options, radius_vals, color="black", linewidth=1.0)
@@ -112,7 +93,7 @@ if __name__ == '__main__':
             label=r"$\epsilon_2(D_N)$"
         )
 
-        ax.set_ylabel(fr"Our bound (for $N={N}$)")
+        ax.set_ylabel(fr"Our bound (for $N={convert_to_sci_notation(N)}$)")
         ax.grid(True, linestyle="--", alpha=0.4)
         ax.set_ylim(bottom=0.0)
         ax.set_xlim(left=M_options[0])

@@ -4,19 +4,8 @@ import matplotlib.pyplot as plt
 from configs.handlers import parse_arguments
 from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.size": 14,
-    "axes.labelsize": 16,
-    "axes.titlesize": 16,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "figure.dpi": 200,
-    "lines.linewidth": 2,
-    "lines.markersize": 6,
-})
+from plot_utils import set_style, convert_to_sci_notation
+set_style()
 
 def get_args_for_setting(setting: int):
     args = parse_arguments(

@@ -4,19 +4,8 @@ import matplotlib.pyplot as plt
 from configs.handlers import parse_arguments
 from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
 
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.size": 14,
-    "axes.labelsize": 16,
-    "axes.titlesize": 16,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "figure.dpi": 200,
-    "lines.linewidth": 2,
-    "lines.markersize": 6,
-})
+from plot_utils import set_style
+set_style()
 
 def get_args_for_dimension(dimension: int):
     args = parse_arguments(
@@ -42,6 +31,7 @@ if __name__ == '__main__':
     dimensions = [3, 10, 100]
     M_options = [10]
 
+    # Collect data
     ratios = []
     for d in dimensions:
         args = get_args_for_dimension(d)
@@ -54,12 +44,12 @@ if __name__ == '__main__':
         # Get our best bound
         min_bound = 1e8
         for M in M_options:
-            key = (args.num_samples_training, args.num_samples, M)
-            radius = data_driven_radii.data[key].radius
+            radius = data_driven_radii.data[(args.num_samples_training, args.num_samples, M)].radius
             if radius < min_bound:
                 min_bound = radius
 
-        ratios.append(min_bound / fournier_radii.data[(args.num_samples_training, args.num_samples, M_options[0])])
+        ratio = min_bound / fournier_radii.data[(args.num_samples_training, args.num_samples, M_options[0])]
+        ratios.append(ratio)
 
     # Plot gap to Fournier
     fig, ax = plt.subplots(figsize=(6, 4))

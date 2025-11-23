@@ -30,10 +30,10 @@ def param_handler(
 
 
 def parse_arguments(
-    random_seed: int = 0,
     distribution: str,
     num_dims: int,
     setting: int,
+    random_seed: int = 0,
     num_clusters: int = 10,
     method: str = 'stochastic_vertice_ascent',
     num_samples_training: int = 1000,

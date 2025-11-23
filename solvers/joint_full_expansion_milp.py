@@ -1,3 +1,5 @@
+from typing import Optional
+
 from optimization_utils import o_maximization
 from quantization import UncertainQuantization
 from solvers.discrete_solvers import DiagonalConstrainedTP
@@ -11,6 +13,8 @@ class JointFullExpansionMilp(Solver):
     ):
         super().__init__()
         self.use_gurobi = use_gurobi
+        self.joint_optim_milp_solver = JointOptimizationMilp(use_gurobi=self.use_gurobi)
+        self.diagonal_constrained_tp_solver = DiagonalConstrainedTP(use_gurobi=self.use_gurobi)
 
     def solve(
         self,
@@ -21,14 +25,23 @@ class JointFullExpansionMilp(Solver):
         cross_location_cost = quantization.l2_distance_locs_to_locs.pow(self.wasserstein_order)
 
         factor = 2 ** (self.wasserstein_order - 1)
-        joint_optim_milp_solver = JointOptimizationMilp(use_gurobi=self.use_gurobi)
-        sum_of_power_rho = joint_optim_milp_solver.solve(quantization=quantization).bound.pow(self.wasserstein_order) / factor # we need to adjust for the factor penalty
+        
+        sum_of_power_rho = self.joint_optim_milp_solver.solve(quantization=quantization).bound.pow(self.wasserstein_order) / factor # we need to adjust for the factor penalty
 
         moment, _ = o_maximization(cost=inside_region_cost, lower=quantization.lower_probs, upper=quantization.upper_probs)
         moment = moment.pow(1 / self.wasserstein_order)
 
-        diagonal_constrained_tp_solver = DiagonalConstrainedTP(use_gurobi=self.use_gurobi)
-        discrete = diagonal_constrained_tp_solver.solve(cost=cross_location_cost, lower=quantization.lower_probs, upper=quantization.upper_probs, empirical_marginal=quantization.probs).bound
+        discrete = self.diagonal_constrained_tp_solver.solve(cost=cross_location_cost, lower=quantization.lower_probs, upper=quantization.upper_probs, empirical_marginal=quantization.probs).bound
 
         obj = (sum_of_power_rho + 2 * moment * discrete).pow(1 / self.wasserstein_order)
         return Result(bound=obj)
+    
+    @property
+    def time_limit(self) -> Optional[float]:
+        return self._time_limit
+    
+    @time_limit.setter
+    def time_limit(self, value: Optional[float]) -> None:
+        self._time_limit = value
+        self.joint_optim_milp_solver.time_limit = value
+        self.diagonal_constrained_tp_solver.time_limit = value

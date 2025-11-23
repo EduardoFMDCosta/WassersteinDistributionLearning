@@ -253,3 +253,12 @@ class TriangleInequalityFromVertexBySVA(TriangleInequalityFromVertex):
             empirical_marginal=quantization.probs
         ).w_opt
         return self.solve_for_vertex(quantization=quantization, vertex=vertex)
+
+    @property
+    def time_limit(self) -> Optional[float]:
+        return self._time_limit
+    
+    @time_limit.setter
+    def time_limit(self, value: Optional[float]) -> None:
+        self._time_limit = value
+        self.sva.time_limit = value

@@ -17,7 +17,7 @@ echo "---------------- num training samples: ${num_samples_training} -----------
 for rho in 1 2; do
 echo "---------------- W${rho} -------------------"
 
-for method in joint_optimization_milp joint_full_expansion_milp diagonal_constrained_tp triangle_inequality_vertex; do
+for method in diagonal_constrained_tp triangle_inequality_vertex; do
 echo "------- method = ${method} ---------"
 
 echo "-- GaussianMixture --"

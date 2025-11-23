@@ -8,8 +8,6 @@ from plot_utils import set_style, convert_to_sci_notation
 set_style()
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
         distribution="GaussianMixture",
         num_dims=3,

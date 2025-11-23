@@ -9,6 +9,7 @@ set_style()
 
 def get_args_for_dimension(dimension: int):
     args = parse_arguments(
+        random_seed=0,
         distribution="Uniform",
         num_dims=dimension,
         setting=0,
@@ -26,8 +27,6 @@ def get_args_for_dimension(dimension: int):
 
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     dimensions = [3, 10, 100]
     M_options = [10]
 

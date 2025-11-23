@@ -9,6 +9,7 @@ set_style()
 
 def get_args_for_setting(setting: int):
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=2,
         setting=setting,
@@ -26,8 +27,6 @@ def get_args_for_setting(setting: int):
 
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     settings = [0, 1, 2]
     M_options = [10, 20]
 

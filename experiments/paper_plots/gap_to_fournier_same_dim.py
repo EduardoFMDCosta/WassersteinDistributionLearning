@@ -8,9 +8,8 @@ from plot_utils import set_style, convert_to_sci_notation
 set_style()
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=10,
         setting=0,

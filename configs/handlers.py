@@ -30,6 +30,7 @@ def param_handler(
 
 
 def parse_arguments(
+    random_seed: int = 0,
     distribution: str,
     num_dims: int,
     setting: int,
@@ -45,6 +46,7 @@ def parse_arguments(
     compute_discrete_bound: bool = True
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
+    parser.add_argument('--random_seed', type=int, default=random_seed, help='Random seed for reproducibility.')
     parser.add_argument('--distribution', type=str, default=distribution, help='Distribution to generate samples.')
     parser.add_argument('--num_dims', type=int, default=num_dims, help='Dimension of the problem.')
     parser.add_argument('--setting', type=int, default=setting, help='Experiment setting.')
@@ -75,14 +77,16 @@ def parse_arguments(
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
 
-    args.quantizations_file = os.path.join(args.results_dir, "quantizations.pickle")
-    args.data_driven_radii_file = os.path.join(args.results_dir, args.method, "data_driven_radii.pickle")
-    args.fournier_radii_file = os.path.join(args.results_dir, "fournier_radii.pickle")
-    args.empirical_radii_file = os.path.join(args.results_dir, "empirical_radii.pickle")
+    random_seed_tag = '' if args.random_seed == 0 else f'_seed={args.random_seed}'
+
+    args.quantizations_file = os.path.join(args.results_dir, f"quantizations{random_seed_tag}.pickle")
+    args.data_driven_radii_file = os.path.join(args.results_dir, args.method, f"data_driven_radii{random_seed_tag}.pickle")
+    args.fournier_radii_file = os.path.join(args.results_dir, f"fournier_radii{random_seed_tag}.pickle")
+    args.empirical_radii_file = os.path.join(args.results_dir, f"empirical_radii{random_seed_tag}.pickle")
 
     args.figures_dir = os.path.join(base_dir, "figures")
 
-    args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}.pickle")
+    args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
 
     ensure_dir(args.results_dir)
     ensure_dir(os.path.dirname(args.data_driven_radii_file))

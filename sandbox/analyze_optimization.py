@@ -28,7 +28,6 @@ if __name__ == '__main__':
         method='max_oracle_gradient_descent',
         plot=False
     )
-    torch.manual_seed(args.random_seed)
 
     support_assumption = get_support_assumption(**vars(args))
 

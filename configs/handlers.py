@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import pickle
+import torch
 
 from solvers import get_solver, get_discrete_solver
 
@@ -77,6 +78,7 @@ def parse_arguments(
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
 
+    torch.manual_seed(args.random_seed)
     random_seed_tag = '' if args.random_seed == 0 else f'_seed={args.random_seed}'
 
     args.quantizations_file = os.path.join(args.results_dir, f"quantizations{random_seed_tag}.pickle")

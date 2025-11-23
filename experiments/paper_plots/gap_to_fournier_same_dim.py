@@ -9,6 +9,7 @@ set_style()
 
 if __name__ == '__main__':
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=10,
         setting=0,

@@ -27,9 +27,7 @@ if __name__ == '__main__':
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
-
-    torch.manual_seed(args.random_seed)
-
+    
     solver = get_solver(method=args.method)
 
     support_assumption = get_support_assumption(**vars(args))

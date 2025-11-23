@@ -23,6 +23,7 @@ It shows that...
 
 def lower_bound_eps2(num_clusters):
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=2,
         setting=0,
@@ -78,8 +79,6 @@ def lower_bound_eps2(num_clusters):
     return store
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     store = {}
     nums_clusters = [5, 10, 20, 30, 50, 100]
 

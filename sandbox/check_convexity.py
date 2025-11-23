@@ -54,8 +54,6 @@ if __name__ == '__main__':
         plot=False
     )
 
-    torch.manual_seed(args.random_seed)
-
     # Set parameters
     N_training = args.num_samples_training
     M = args.num_clusters

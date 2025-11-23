@@ -9,6 +9,7 @@ set_style()
 
 def get_args_for_dimension(dimension: int):
     args = parse_arguments(
+        random_seed=0,
         distribution="Uniform",
         num_dims=dimension,
         setting=0,

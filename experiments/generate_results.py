@@ -17,8 +17,6 @@ if __name__ == '__main__':
         save=True,
     )
 
-    torch.manual_seed(args.random_seed)
-
     # We assume num_samples_training = num_samples
     # N_options = [1000]
     # M_options = [5, 20]

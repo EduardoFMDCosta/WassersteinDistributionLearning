@@ -61,8 +61,6 @@ def generate_csv(
 
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     methods = [
         'joint_optimization_milp',
          'joint_full_expansion_milp', 

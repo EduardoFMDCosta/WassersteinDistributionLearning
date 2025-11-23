@@ -70,8 +70,6 @@ def plot_quantization(args, quantizations: Quantizations):
 
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
         distribution="Uniform",
         num_dims=2,

@@ -16,9 +16,8 @@ plt.rcParams.update({
 })
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=2,
         setting=0,
@@ -29,6 +28,7 @@ if __name__ == '__main__':
         method='max_oracle_gradient_descent',
         plot=False
     )
+    torch.manual_seed(args.random_seed)
 
     support_assumption = get_support_assumption(**vars(args))
 

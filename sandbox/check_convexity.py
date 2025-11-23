@@ -41,9 +41,8 @@ def is_convex_inequality(func, n_samples, tol=1e-8):
     return is_convex
 
 if __name__ == '__main__':
-    torch.manual_seed(10)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=2,
         setting=0,
@@ -54,6 +53,8 @@ if __name__ == '__main__':
         method='max_oracle_gradient_descent',
         plot=False
     )
+
+    torch.manual_seed(args.random_seed)
 
     # Set parameters
     N_training = args.num_samples_training

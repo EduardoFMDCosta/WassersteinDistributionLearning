@@ -131,15 +131,16 @@ def generate_partitions(
 
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=3,
         setting=0,
         save=True,
         plot=False, 
     )    
+
+    torch.manual_seed(args.random_seed)
 
     num_samples_options = [1000, 5000] # , 7500, 10000, 25000
     num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 2000]

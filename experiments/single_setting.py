@@ -11,9 +11,8 @@ from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_partition
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=2,
         setting=0,
@@ -28,6 +27,8 @@ if __name__ == '__main__':
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
+
+    torch.manual_seed(args.random_seed)
 
     solver = get_solver(method=args.method)
 

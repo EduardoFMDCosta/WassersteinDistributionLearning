@@ -1,3 +1,4 @@
+from .joint_diagonal_milp import JointDiagonalMilp
 from .joint_full_expansion_milp import JointFullExpansionMilp
 from .joint_optimization_milp import JointOptimizationMilp
 from .triangle_inequality_vertex import TriangleInequalityFromVertex, TriangleInequalityFromVertexBySVA
@@ -16,6 +17,7 @@ class GetSolver:
         triangle_inequality_vertex=TriangleInequalityFromVertex,
         triangle_inequality_vertex_by_sva=TriangleInequalityFromVertexBySVA,
         no_triangle_inequality=NoTriangleIneq,
+        joint_diagonal_milp=JointDiagonalMilp
     )
 
     def __call__(

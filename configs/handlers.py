@@ -63,8 +63,11 @@ def parse_arguments(
     parser.add_argument('--compute_discrete_bound', type=bool, default=compute_discrete_bound, help='Compute discrete-term of data-driven radius.')
     args = parser.parse_args()
 
-    if not method in get_solver.supported_methods + get_discrete_solver.supported_methods:
-        raise ValueError(f"Method {method} not supported. Supported methods: {get_solver.supported_methods}")
+    return process_args(args)
+
+def process_args(args):
+    if not args.method in get_solver.supported_methods + get_discrete_solver.supported_methods:
+        raise ValueError(f"Method {args.method} not supported. Supported methods: {get_solver.supported_methods}")
 
     dynamics_params = param_handler(
         param_name="parameters",
@@ -94,7 +97,6 @@ def parse_arguments(
     ensure_dir(os.path.dirname(args.data_driven_radii_file))
     ensure_dir(os.path.dirname(args.partitions_file))
     ensure_dir(args.figures_dir)
-
     return args
 
 def ensure_dir(dirname):

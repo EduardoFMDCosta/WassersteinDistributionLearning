@@ -25,6 +25,21 @@ class DataDrivenRadiiPerMethod:
         return [key for key in self.data.keys() if (method is None or key[0] == method)]
 
 
+def merge_key_lists(*lists_of_keys):
+    """
+    Merge multiple lists into one list without duplicates. Order is preserved: the first occurrence of each key is kept.
+    """
+    seen = set()
+    merged = []
+
+    for lst in lists_of_keys:
+        for key in lst:
+            if key not in seen:
+                seen.add(key)
+                merged.append(key)
+    return merged
+
+
 def generate_csv(
     methods: List[str],
     data_driven_radii: DataDrivenRadiiPerMethod,
@@ -32,7 +47,8 @@ def generate_csv(
     args,
 ):
     rows = []
-    for (N_train, N, M) in data_driven_radii.at(methods[0]).keys():
+    keys = merge_key_lists(*[data_driven_radii.at(method).keys() for method in methods])
+    for (N_train, N, M) in keys:
         row = dict(
             N_train=N_train,
             N=N,

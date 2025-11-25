@@ -15,6 +15,31 @@ from experiments.partitions import get_dict_of_partitions
 from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict
 
 
+def quantizations_for_combinations(
+    args: Namespace, 
+    combinations: List[Tuple[int, int]],  # List of (N, M) pairs
+    generate_partition_if_missing: bool = False,
+) -> Quantizations:
+    partitions = get_dict_of_partitions(
+        args, 
+        num_samples_options=[args.num_samples_training], 
+        num_clusters_options=[M for N, M in combinations], 
+        generate_partition_if_missing=generate_partition_if_missing
+    )
+
+    quantizations = Quantizations()
+    N_train = args.num_samples_training
+    for (N, M) in combinations:
+        if (N_train, M) not in partitions.keys():
+            print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
+            continue
+        else:
+            partition = partitions.at((N_train, M))
+
+            quantizations.append((N_train, N, M), load_quantization(args, partition=partition, N=N))
+
+    return quantizations
+
 def data_driven_radii_for_combinations(
     args: Namespace, 
     combinations: List[Tuple[int, int]],  # List of (N, M) pairs

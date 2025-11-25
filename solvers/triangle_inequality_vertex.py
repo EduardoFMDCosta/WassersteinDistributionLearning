@@ -12,69 +12,55 @@ from solvers.discrete_solvers.stochastic_vertice_ascent import StochasticVertice
 
 
 def lifted_lp_from_vertex_gurobi(
-        cost: torch.Tensor,
-        p: torch.Tensor,
-        lower: torch.Tensor,
-        upper: torch.Tensor,
-        I: list,
-        J: list,
-        time_limit: Optional[float],
-        tol: float = 1e-8,
+    cost: torch.Tensor,
+    p: torch.Tensor,
+    lower: torch.Tensor,
+    upper: torch.Tensor,
+    I: list,
+    J: list,
+    time_limit: Optional[float],
+    tol: float = 1e-8,
 ):
-
-    # Convert to numpy
     cost_np = cost.detach().cpu().numpy()
     p_np = p.detach().cpu().numpy()
     lower_np = lower.detach().cpu().numpy()
     upper_np = upper.detach().cpu().numpy()
 
-    M = cost_np.shape[0]
+    n = cost_np.shape[0]
 
-    # Create model
     model = gp.Model("lifted_lp")
-    model.Params.OutputFlag = 0
-    model.Params.OptimalityTol = tol
-    model.Params.FeasibilityTol = tol
+    if time_limit is not None:
+        model.setParam("TimeLimit", time_limit)
+    model.setParam("OutputFlag", 0)  # silent
 
     # Variables
-    mu = model.addVars(M, lb=0.0, name="mu")
-    nu = model.addVars(M, lb=0.0, name="nu")
-    alpha = model.addVars(len(I), lb=0.0, name="alpha")
-    beta = model.addVars(len(J), lb=0.0, name="beta")
-    t = model.addVars(M, lb=-GRB.INFINITY, name="t")
+    Pi = model.addVars(n, n, lb=0.0, name="Pi")
+    w = model.addVars(n, lb=lower_np, ub=upper_np, name="w")
 
-    # Build constraints
-    for i in range(M):
-        for j in range(M):
-            # base: cost[i,j] + nu_j - mu_j
-            expr = (cost_np[i, j] + nu[j] - mu[j])
+    # Objective
+    model.setObjective(
+        gp.quicksum(cost_np[i, j] * Pi[i, j] for i in range(n) for j in range(n)),
+        GRB.MAXIMIZE,
+    )
 
-            # alpha_j term if j in I and i == j
-            if j in I and i == j:
-                idx_in_I = I.index(j)
-                expr = expr + alpha[idx_in_I]
+    # Constraints
+    for j in range(n):
+        model.addConstr(gp.quicksum(Pi[i, j] for i in range(n)) == p_np[j],
+                        name=f"col_{j}")
 
-            # beta_j term only if j in J: beta_{index_in_J} * ((1_{i==j} - 1))
-            if j in J:
-                idx_in_J = J.index(j)
-                coeff = (1 if i == j else 0) - 1
-                expr = expr + beta[idx_in_J] * coeff
+    for i in range(n):
+        model.addConstr(gp.quicksum(Pi[i, j] for j in range(n)) == w[i],
+                        name=f"row_{i}")
 
-            # Add constraint t_i >= expr
-            model.addConstr(t[i] >= expr, name=f"max_constr_i{i}_j{j}")
+    for i in I:
+        model.addConstr(Pi[i, i] >= p_np[i] - tol,
+                        name=f"diag_p_{i}")
 
-    # Objective:
-    obj = gp.quicksum(mu[j] * upper_np[j] - nu[j] * lower_np[j] for j in range(M))
-    obj -= gp.quicksum(alpha[pos] * p_np[I[pos]] for pos in range(len(I)))
-    obj += gp.quicksum(p_np[i] * t[i] for i in range(M))
+    for j in J:
+        model.addConstr(Pi[j, j] >= w[j] - tol,
+                        name=f"diag_w_{j}")
 
-    model.setObjective(obj, GRB.MINIMIZE)
-
-    model.setParam("TimeLimit", time_limit if time_limit is not None else GRB.INFINITY)
     model.optimize()
-
-    if model.Status != GRB.OPTIMAL:
-        raise RuntimeError(f"Gurobi did not find an optimal solution within {time_limit} seconds (status {model.Status})")
 
     result = {
         "objective": float(model.objVal) if model.status == GRB.OPTIMAL else None,
@@ -113,7 +99,7 @@ def compute_bound_given_vertex(
         use_gurobi: bool, 
         time_limit: Optional[float],
 ):
-    cost_matrix = quantization.l2_distance_locs_to_region.pow(wasserstein_order)  # j,i # TODO: CHECK IF TRANSPOSE OR NOT
+    cost_matrix = quantization.l2_distance_locs_to_region.pow(wasserstein_order)
 
     I_base, J_base, free_idx = identify_sets(vertex=vertex, lower=quantization.lower_probs, upper=quantization.upper_probs, tol=tol)
 

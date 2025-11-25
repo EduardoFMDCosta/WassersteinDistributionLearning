@@ -42,15 +42,15 @@ def data_driven_radii_for_combinations(
 
     N_train = args.num_samples_training
     for (N, M) in combinations:
-        if (N, M) in data_driven_radii.keys():
-            print(f"Data-driven radius for M={M}, N={N} in stored data. Skipping computation.")
+        if (N_train, N, M) in data_driven_radii.keys():
+            print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
             continue
     
         if (N_train, M) not in partitions.keys():
-            print(f"Skipping M={M}, N={N_train} as partition is not available.")
+            print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
             continue
 
-        print(f"Processing M={M}, N={N}")
+        print(f"Processing N_train={N_train}, N={N}, M={M}")
         start = time.time()
         partition = partitions.at((N_train, M))
         quantizations.append((N_train, N, M),  UncertainQuantization(
@@ -72,7 +72,7 @@ def data_driven_radii_for_combinations(
             ))
             radius_computation_times.append((N_train, N, M), torch.as_tensor(time.time() - start))
         except Exception as e:
-            print(f"Unexpected error for M={M}, N={N}: {e}. Skipping this configuration.")
+            print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
             continue
 
     return (quantizations, data_driven_radii), (quantization_times, radius_computation_times)

@@ -69,7 +69,7 @@ def generate_csv(
 
     # Write to CSV
     file_name = f"W{args.wasserstein_order}_{args.distribution.lower()}_num_dims={args.num_dims}_setting={args.setting}_radii.csv"
-    csv_path = os.path.join(args.figures_dir, file_name)
+    csv_path = os.path.join(args.tables_dir, file_name)
     with open(csv_path, mode="w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=rows[0].keys(), delimiter=';')
         writer.writeheader()

@@ -33,7 +33,8 @@ if __name__ == '__main__':
         args, 
         combinations=combinations, 
         time_limit=60*5, 
-        generate_partition_if_missing=False
+        generate_partition_if_missing=False,
+        return_all_available_combinations=True
     )
 
     fournier_radii = fournier_radii_for_combinations(args, combinations)

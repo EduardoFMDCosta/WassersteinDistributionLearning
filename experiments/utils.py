@@ -20,6 +20,7 @@ def data_driven_radii_for_combinations(
     combinations: List[Tuple[int, int]],  # List of (N, M) pairs
     time_limit: Optional[float] = None,
     generate_partition_if_missing: bool = False,
+    return_all_available_combinations: bool = False,
 ) -> Tuple[DataDrivenRadii, TimeLogger]:
     solver = get_solver(method=args.method)
 
@@ -30,8 +31,11 @@ def data_driven_radii_for_combinations(
         generate_partition_if_missing=generate_partition_if_missing
     )
 
-    data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
+    stored_data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
+
+    data_driven_radii = DataDrivenRadii()
     time_logger = TimeLogger()
+
     N_train = args.num_samples_training
     for (N, M) in combinations:
         if (N_train, M) not in partitions.keys():
@@ -40,9 +44,9 @@ def data_driven_radii_for_combinations(
         else:
             partition = partitions.at((N_train, M))
 
-        if (N_train, N, M) in data_driven_radii.keys():
+        if (N_train, N, M) in stored_data_driven_radii.keys():
             print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
-            continue
+            data_driven_radii.append((N_train, N, M), stored_data_driven_radii.at((N_train, N, M)))
         else:
             print(f"Processing N_train={N_train}, N={N}, M={M}")
 
@@ -61,6 +65,11 @@ def data_driven_radii_for_combinations(
                 time_logger.append((N_train, N, M), torch.as_tensor(time.time() - start))
             except Exception as e:
                 print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
+
+    if return_all_available_combinations:
+        for (N_train, N, M) in stored_data_driven_radii.keys():
+            if (N_train, N, M) not in data_driven_radii.keys():
+                data_driven_radii.append((N_train, N, M), stored_data_driven_radii.at((N_train, N, M)))
 
     return data_driven_radii, time_logger
 

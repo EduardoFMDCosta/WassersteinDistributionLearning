@@ -83,7 +83,7 @@ def process_args(args):
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
-    args.figures_dir = os.path.join(base_dir, "figures", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
+    args.figures_dir = os.path.join(base_dir, "figures", args.distribution.lower(), f"dims_{args.num_dims}_setting_{args.setting}")
     args.tables_dir = os.path.join(base_dir, "tables")
 
     args.data_driven_radii_file = os.path.join(args.results_dir, args.method, f"data_driven_radii{random_seed_tag}.pickle")

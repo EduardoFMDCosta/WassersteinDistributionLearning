@@ -16,7 +16,7 @@ def solve_milp_gurobi(
     **kwargs
 ):
     n = len(empirical_distribution)
-    locs_to_region_cost = cost.detach().cpu().numpy()
+    cost = cost.detach().cpu().numpy()
     empirical_distribution = empirical_distribution.detach().cpu().numpy()
     lower = lower.detach().cpu().numpy()
     upper = upper.detach().cpu().numpy()
@@ -33,7 +33,7 @@ def solve_milp_gurobi(
     b = model.addVars(n, vtype=GRB.BINARY, name="b")
 
     # Objective
-    objective = gp.quicksum(locs_to_region_cost[i, j] * Pi[i, j] for i in range(n) for j in range(n))
+    objective = gp.quicksum(cost[i, j] * Pi[i, j] for i in range(n) for j in range(n))
     model.setObjective(objective, GRB.MAXIMIZE)
 
     # Column sums

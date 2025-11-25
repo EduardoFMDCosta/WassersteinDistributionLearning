@@ -25,18 +25,17 @@ if __name__ == '__main__':
         compute_discrete_bound=True,
     )
 
-    settings = [0, 1, 2]
+    settings = [-1, 0, 1, 2, 3, 4, 5]
     M_options = [10, 20]
 
     fig, ax = plt.subplots(figsize=(6, 4))
     for setting in settings:
         args.setting = setting
         args = process_args(args)
-        
+
         combinations = [(args.num_samples, M) for M in M_options]
 
-        (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(args, combinations=combinations,
-                                                                                   generate_partition_if_missing=True)
+        (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(args, combinations=combinations, generate_partition_if_missing=True)
         fournier_radii = fournier_radii_for_combinations(args, combinations)
 
         ratios = []

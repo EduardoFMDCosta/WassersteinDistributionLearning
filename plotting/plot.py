@@ -148,7 +148,7 @@ def plot_quantization_slice(
             label='std dev'
         )
     elif stat == 'counts':    
-        ax.plot(options, data_sliced.outer_counts, label='outer counts', marker='o', color='red')
+        ax.plot(options, data_sliced.outer_counts + 1, label='outer counts + 1', marker='o', color='red')
         ax.plot(options, data_sliced.mean_cluster_counts, label='avg cluster counts', marker='o', color='blue')
         ax.fill_between(
             options,
@@ -158,7 +158,8 @@ def plot_quantization_slice(
             alpha=0.2,
             label='std dev'
         )
-        ax.set_ylim(0., ax.get_ylim()[1])
+        ax.set_ylim(1., ax.get_ylim()[1])
+        ax.set_yscale('log')
     elif stat == 'locs':
         ax.plot(options, data_sliced.mean_l2_distance_locs_to_locs, label='avg distances', color='black')
         ax.fill_between(

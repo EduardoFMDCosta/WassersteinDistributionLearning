@@ -1,18 +1,19 @@
 import torch
 import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments
+from configs.handlers import parse_arguments, process_args
 from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
 
 from plot_utils import set_style, convert_to_sci_notation
 set_style()
 
-def get_args_for_setting(setting: int):
+
+if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Gaussian",
         num_dims=2,
-        setting=setting,
+        setting=0,
         wasserstein_order=1,
         num_samples_training=1000,
         num_samples=1000000,
@@ -23,16 +24,15 @@ def get_args_for_setting(setting: int):
         compute_moment_bound=True,
         compute_discrete_bound=True,
     )
-    return args
 
-
-if __name__ == '__main__':
     settings = [0, 1, 2]
     M_options = [10, 20]
 
     fig, ax = plt.subplots(figsize=(6, 4))
     for setting in settings:
-        args = get_args_for_setting(setting)
+        args.setting = setting
+        args = process_args(args)
+        
         combinations = [(args.num_samples, M) for M in M_options]
 
         (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(args, combinations=combinations,

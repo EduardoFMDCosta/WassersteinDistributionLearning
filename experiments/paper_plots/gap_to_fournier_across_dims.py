@@ -1,17 +1,18 @@
 import torch
 import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments
+from configs.handlers import parse_arguments, process_args
 from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
 
 from plot_utils import set_style
 set_style()
 
-def get_args_for_dimension(dimension: int):
+
+if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Uniform",
-        num_dims=dimension,
+        num_dims=2,
         setting=0,
         wasserstein_order=1,
         num_samples_training=1000,
@@ -23,17 +24,16 @@ def get_args_for_dimension(dimension: int):
         compute_moment_bound=True,
         compute_discrete_bound=True,
     )
-    return args
-
-
-if __name__ == '__main__':
+        
     dimensions = [3, 10, 100]
     M_options = [10]
 
     # Collect data
     ratios = []
     for d in dimensions:
-        args = get_args_for_dimension(d)
+        args.num_dims = d
+        process_args(args)
+
         combinations = [(args.num_samples, M) for M in M_options]
 
         (quantizations, data_driven_radii), _ = data_driven_radii_for_combinations(args, combinations=combinations,

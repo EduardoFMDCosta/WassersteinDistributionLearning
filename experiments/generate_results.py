@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     combinations = [(N, M) for N in N_options for M in M_options]
 
-    (_, data_driven_radii), _ = data_driven_radii_for_combinations(
+    data_driven_radii, _ = data_driven_radii_for_combinations(
         args, 
         combinations=combinations, 
         time_limit=60*5, 

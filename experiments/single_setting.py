@@ -7,8 +7,8 @@ from solvers import get_solver
 
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_partition
+from experiments.utils import load_quantization, load_quantization_samples
 
 if __name__ == '__main__':
     args = parse_arguments(
@@ -30,20 +30,15 @@ if __name__ == '__main__':
     
     solver = get_solver(method=args.method)
 
-    support_assumption = get_support_assumption(**vars(args))
-
-    # (Unknown) Generating probability
-    distribution = get_distribution(**vars(args))
-
     # Generate Partitioning
     partition = get_partition(args=args, num_samples=args.num_samples_training, num_clusters=args.num_clusters)
 
     # Generate Quantization
-    samples_quantization = distribution.sample((args.num_samples,))
-    quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
+    quantization = load_quantization(args=args, partition=partition, N=args.num_samples)
 
     # Plot samples and clusterized distribution
     if args.plot:
+        samples_quantization = load_quantization_samples(args, N=args.num_samples)
         plot_quantization(
             quantization=quantization, 
             samples=samples_quantization,

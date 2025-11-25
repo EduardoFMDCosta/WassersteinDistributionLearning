@@ -7,8 +7,9 @@ from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union, Ty
 from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, EmpiricalRadius
 from solvers import get_solver
+from sets import BoundedVoronoiPartition
 
-from configs.handlers import pickle_load
+from configs.handlers import pickle_load, pickle_dump
 from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_dict_of_partitions
 from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict
@@ -19,10 +20,8 @@ def data_driven_radii_for_combinations(
     combinations: List[Tuple[int, int]],  # List of (N, M) pairs
     time_limit: Optional[float] = None,
     generate_partition_if_missing: bool = False,
-) -> Tuple[Tuple[Quantizations, DataDrivenRadii], Tuple[TimeLogger, TimeLogger]]:
+) -> Tuple[DataDrivenRadii, TimeLogger]:
     solver = get_solver(method=args.method)
-
-    distribution = get_distribution(**vars(args))
 
     partitions = get_dict_of_partitions(
         args, 
@@ -31,51 +30,39 @@ def data_driven_radii_for_combinations(
         generate_partition_if_missing=generate_partition_if_missing
     )
 
-    N_max = max([N for N, M in combinations])
-    samples_quantization = distribution.sample((N_max,))
-
-    quantizations = Quantizations()
-    quantizations.samples = samples_quantization
     data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
-
-    quantization_times, radius_computation_times = TimeLogger(), TimeLogger()
-
+    time_logger = TimeLogger()
     N_train = args.num_samples_training
     for (N, M) in combinations:
-        if (N_train, N, M) in data_driven_radii.keys():
-            print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
-            continue
-    
         if (N_train, M) not in partitions.keys():
             print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
             continue
+        else:
+            partition = partitions.at((N_train, M))
 
-        print(f"Processing N_train={N_train}, N={N}, M={M}")
-        start = time.time()
-        partition = partitions.at((N_train, M))
-        quantizations.append((N_train, N, M),  UncertainQuantization(
-            partition=partition, 
-            samples=samples_quantization[:N], 
-            beta=args.beta
-        ))
-        quantization_times.append((N_train, N, M), torch.as_tensor(time.time() - start))
-
-        try:
-            start = time.time()
-            data_driven_radii.append((N_train, N, M), DataDrivenRadius(
-                quantization=quantizations.at((N_train, N, M)),
-                solver=solver, 
-                wasserstein_order=args.wasserstein_order,
-                compute_discrete_bound=args.compute_discrete_bound,
-                compute_moment_bound=args.compute_moment_bound,
-                time_limit=time_limit
-            ))
-            radius_computation_times.append((N_train, N, M), torch.as_tensor(time.time() - start))
-        except Exception as e:
-            print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
+        if (N_train, N, M) in data_driven_radii.keys():
+            print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
             continue
+        else:
+            print(f"Processing N_train={N_train}, N={N}, M={M}")
 
-    return (quantizations, data_driven_radii), (quantization_times, radius_computation_times)
+            quantization = load_quantization(args, partition=partition, N=N)
+
+            try:
+                start = time.time()
+                data_driven_radii.append((N_train, N, M), DataDrivenRadius(
+                    quantization=quantization,
+                    solver=solver, 
+                    wasserstein_order=args.wasserstein_order,
+                    compute_discrete_bound=args.compute_discrete_bound,
+                    compute_moment_bound=args.compute_moment_bound,
+                    time_limit=time_limit
+                ))
+                time_logger.append((N_train, N, M), torch.as_tensor(time.time() - start))
+            except Exception as e:
+                print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
+
+    return data_driven_radii, time_logger
 
 
 def fournier_radii_for_combinations(
@@ -130,3 +117,28 @@ def load_data(
         raise ValueError("Either both num_samples_options and num_clusters_options must be provided, or neither.")
     
     return data
+
+
+def load_quantization_samples(args, N: int) -> torch.Tensor:
+    if os.path.exists(args.quantization_samples_file):
+        stored_samples = pickle_load(args.quantization_samples_file)
+    else:
+        print(f"samples not available at {args.quantization_samples_file}.")
+        stored_samples = torch.empty((0, args.num_dims))
+
+    if stored_samples.shape[0] < N:
+        print(f"Generating additional samples {N - stored_samples.shape[0]} to reach {N} samples.")
+        distribution = get_distribution(**vars(args))
+        samples = torch.cat((stored_samples, distribution.sample((N - stored_samples.shape[0],))))
+        pickle_dump(samples, args.quantization_samples_file)
+    else:
+        samples = stored_samples[:N]
+    return samples
+
+
+def load_quantization(args, partition: BoundedVoronoiPartition, N: int) -> UncertainQuantization:
+    return UncertainQuantization(
+        partition=partition, 
+        samples=load_quantization_samples(args, N=N),
+        beta=args.beta
+    )

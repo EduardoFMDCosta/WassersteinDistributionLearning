@@ -78,25 +78,28 @@ def process_args(args):
 
     args.__dict__.update(vars(dynamics_params))
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
-
     torch.manual_seed(args.random_seed)
     random_seed_tag = '' if args.random_seed == 0 else f'_seed={args.random_seed}'
 
-    args.quantizations_file = os.path.join(args.results_dir, f"quantizations{random_seed_tag}.pickle")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
+    args.figures_dir = os.path.join(base_dir, "figures", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
+    args.tables_dir = os.path.join(base_dir, "tables")
+
     args.data_driven_radii_file = os.path.join(args.results_dir, args.method, f"data_driven_radii{random_seed_tag}.pickle")
     args.fournier_radii_file = os.path.join(args.results_dir, f"fournier_radii{random_seed_tag}.pickle")
     args.empirical_radii_file = os.path.join(args.results_dir, f"empirical_radii{random_seed_tag}.pickle")
 
-    args.figures_dir = os.path.join(base_dir, "figures")
-
     args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
+    args.quantization_samples_file = os.path.join(base_dir, "samples", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
 
     ensure_dir(args.results_dir)
+    ensure_dir(args.figures_dir)
+    ensure_dir(args.tables_dir)
     ensure_dir(os.path.dirname(args.data_driven_radii_file))
     ensure_dir(os.path.dirname(args.partitions_file))
-    ensure_dir(args.figures_dir)
+    ensure_dir(os.path.dirname(args.quantization_samples_file))
+
     return args
 
 def ensure_dir(dirname):

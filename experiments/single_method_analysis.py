@@ -38,7 +38,7 @@ if __name__ == '__main__':
         distribution="Gaussian", # PLACEHOLDER
         num_dims=2, # PLACEHOLDER
         setting=0,  # PLACEHOLDER
-        num_samples_training=1_000,
+        num_samples_training=5_000,
         method='diagonal_constrained_tp',
         save=True,
     )

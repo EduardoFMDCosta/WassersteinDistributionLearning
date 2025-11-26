@@ -117,7 +117,7 @@ if __name__ == '__main__':
         num_dims=2, # PLACEHOLDER
         setting=0, # PLACEHOLDER
         num_samples=10_000,
-        num_samples_training=1_000,
+        num_samples_training=5_000,
         num_clusters=10,
         save=True,
     )
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     params = load_json("parameters")
     settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
 
-    settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
+    # settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
     for distribution, num_dims, setting in settings:
         args.distribution = distribution
         args.num_dims = num_dims

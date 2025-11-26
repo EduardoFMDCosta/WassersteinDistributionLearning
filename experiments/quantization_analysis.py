@@ -1,76 +1,138 @@
 import os
+import itertools
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-from configs.handlers import parse_arguments
+from configs.handlers import parse_arguments, load_json, process_args
 from experiments.utils import quantizations_for_combinations
 import plotting.plot as plot
 
 
-if __name__ == '__main__':
-    args = parse_arguments(
-        random_seed=0,
-        distribution="Gaussian",
-        num_dims=2,
-        setting=2,
-        num_samples=1_000,
-        num_samples_training=1_000,
-        num_clusters=10,
-        plot=True, 
-        save=True,
-    )
-    investigate_clusters = True
-
-    if investigate_clusters:
-        N_options = [args.num_samples]
-        M_options = [5, 20, 30, 40, 50, 75]
-    else:
-        N_options = [1000, 2500]
-        M_options = [args.num_clusters]
-
+def main(args, M_options, N_options):
     combinations = [(N, M) for N in N_options for M in M_options]
 
     quantizations = quantizations_for_combinations(args, combinations=combinations, generate_partition_if_missing=False)
 
-    if investigate_clusters:
-        tag = f"N_train={args.num_samples_training}_N={args.num_samples}_M={M_options}"
-    else:
-        tag = f"N_train={args.num_samples_training}_N={N_options}_M={args.num_clusters}"
-    tag += f"_seed={args.random_seed}"
+    tag = f"N_train={args.num_samples_training}_seed={args.random_seed}"
 
     # Illustrate Quantizations
     if args.num_dims == 2:
-        fig, ax = plt.subplots(ncols=len(quantizations.keys()), nrows=1, figsize=(6 * len(quantizations.keys()), 6))
-        for i, (N_train, N, M) in enumerate(quantizations.keys()):
-            ax[i] = plot.plot_partition(
-                ax=ax[i], 
-                partition=quantizations.at((N_train, N, M)), 
-                # samples=quantizations.samples[:N] if quantizations.samples is not None else None,
-                title=f"M={M}, N={N}"
-            )
+        fig, ax = plt.subplots(ncols=len(M_options), nrows=len(N_options), figsize=(6 * len(M_options), 6 * len(N_options)))
+        for i, N in enumerate(N_options):
+            for j, M in enumerate(M_options):
+                if (args.num_samples_training, N, M) in quantizations.keys():
+                    ax[i, j] = plot.plot_partition(
+                        ax=ax[i, j], 
+                        partition=quantizations.at((args.num_samples_training, N, M)), 
+                        title=f"M={M}, N={N}"
+                    )
+                else:
+                    ax[i, j].set_visible(False)
 
         if args.save:
             plt.savefig(os.path.join(args.figures_dir, f"quantizations_{tag}.png"))
-        else:
-            plt.show()
+            plt.close('all')
 
     # Plot Statistics
     fig, ax = plt.subplots(4, 1, figsize=(6, 12), constrained_layout=True)
-    plot_args = dict(quantizations=quantizations, num_samples_training=args.num_samples_training)
-    if investigate_clusters:
-        plot_args.update(N=args.num_samples)
-    else:
-        plot_args.update(M=args.num_clusters)
 
-    ax[0] = plot.plot_quantization_slice(ax[0], stat='probs', **plot_args)
-    ax[1] = plot.plot_quantization_slice(ax[1], stat='radii', **plot_args)
-    ax[2] = plot.plot_quantization_slice(ax[2], stat='counts', **plot_args)
-    ax[3] = plot.plot_quantization_slice(ax[3], stat='locs', **plot_args)
-    ax[0].set_title(f"Number of {'samples (N)' if investigate_clusters else 'clusters (M)'} = {args.num_samples if investigate_clusters else args.num_clusters}")
-    ax[3].set_xlabel(f"Number of {'clusters (M)' if investigate_clusters else 'samples (N)'}")
+    cmap = plt.cm.coolwarm
+    colors = [cmap(i / (len(N_options) - 1)) for i in range(len(N_options))]
+    for N, color in zip(N_options, colors):
+        quantizations_slice = quantizations._slice(N_train=args.num_samples_training, N=N)
+        M_options_plot = [key[2] for key in quantizations_slice.keys()]
+
+        # Probs
+        ax[0].plot(M_options_plot, quantizations_slice.mean_range_probs, label=str(N), color=color, marker='o')
+        ax[0].fill_between(
+            M_options_plot,
+            quantizations_slice.mean_range_probs - quantizations_slice.std_range_probs,
+            quantizations_slice.mean_range_probs + quantizations_slice.std_range_probs,
+            color=color,
+            alpha=0.2,
+        )
+
+        # Counts
+        ax[1].plot(M_options_plot, quantizations_slice.outer_counts + 1, color=color, marker='*')
+        ax[1].plot(M_options_plot, quantizations_slice.mean_cluster_counts, color=color, marker='o')
+        ax[1].fill_between(
+            M_options_plot,
+            quantizations_slice.mean_cluster_counts - quantizations_slice.std_cluster_counts,
+            quantizations_slice.mean_cluster_counts + quantizations_slice.std_cluster_counts,
+            color=color,
+            alpha=0.2,
+        )
+
+        # l2 radii region
+        ax[2].plot(M_options_plot, quantizations_slice.mean_region_l2_radii, color=color, marker='o')
+        ax[2].fill_between(
+            M_options_plot,
+            quantizations_slice.mean_region_l2_radii - quantizations_slice.std_region_l2_radii,
+            quantizations_slice.mean_region_l2_radii + quantizations_slice.std_region_l2_radii,
+            color=color,
+            alpha=0.2,
+        )
+
+        # distance between locs
+        ax[3].plot(M_options_plot, quantizations_slice.mean_l2_distance_locs_to_locs, color=color, marker='o')
+        ax[3].fill_between(
+            M_options_plot,
+            quantizations_slice.mean_l2_distance_locs_to_locs - quantizations_slice.std_l2_distance_locs_to_locs,
+            quantizations_slice.mean_l2_distance_locs_to_locs + quantizations_slice.std_l2_distance_locs_to_locs,
+            color=color,
+            alpha=0.2,
+        )
+
+    ax[0].set_title(f"N_train: {args.num_samples_training}")
+    ax[0].legend(title=f"N", loc="upper right")
+
+    ax[1].set_ylim(1., ax[1].get_ylim()[1])
+    ax[1].set_yscale('log')
+    ax[1].legend(
+        handles=[
+            Line2D([0], [0], marker='*', color='none', markerfacecolor='black', markersize=10, label="outer count + 1"),
+            Line2D([0], [0], marker='o', color='none', markerfacecolor='black', markersize=8, label="avg cluster counts")
+        ],
+        title=f"N", 
+        loc="lower left"
+    )
+    
+    ax[3].set_xlabel(f"Number of clusters (M)")
 
     if args.save:
         plt.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}.png"))
-    else:
+        plt.close('all')
+            
+if __name__ == '__main__':
+    args = parse_arguments( # Only parse arguments once, updated afterwards
+        random_seed=0,
+        distribution='Gaussian', # PLACEHOLDER
+        num_dims=2, # PLACEHOLDER
+        setting=0, # PLACEHOLDER
+        num_samples=10_000,
+        num_samples_training=1_000,
+        num_clusters=10,
+        save=True,
+    )
+
+    M_options = [5, 20, 30, 40, 50, 75]
+    N_options = [1000, 5000, 10_000]
+
+    params = load_json("parameters")
+    settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
+
+    settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
+    for distribution, num_dims, setting in settings:
+        args.distribution = distribution
+        args.num_dims = num_dims
+        args.setting = setting
+        args = process_args(args)
+
+        try:
+            main(args, M_options=M_options, N_options=N_options)
+        except Exception as e:
+            print(f"Failed for distribution={distribution}, num_dims={num_dims}, setting={setting} with error: {e}")
+
+    if not args.save:
         plt.show()
-        

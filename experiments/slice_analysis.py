@@ -1,58 +1,66 @@
 import os
-import torch
+import itertools
 import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments
-from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
-import plotting.plot as plot
+from configs.handlers import parse_arguments, load_json, process_args
+from experiments.utils import data_driven_radii_for_combinations
+
+
+def main(args, M_options, N_options):
+    combinations = [(N, M) for N in N_options for M in M_options]
+
+    data, _ = data_driven_radii_for_combinations(args, combinations=combinations, generate_partition_if_missing=False, generate_data_driven_radii_if_not_stored=False)
+    
+    fig, ax = plt.subplots(figsize=(6, 5), constrained_layout=True)
+
+    cmap = plt.cm.coolwarm
+    colors = [cmap(i / (len(N_options) - 1)) for i in range(len(N_options))]
+    for N, color in zip(N_options, colors):
+        data_slice = data._slice(N_train=args.num_samples_training, N=N)
+        M_options_plot = [key[2] for key in data_slice.keys()]
+
+        ax.plot(M_options_plot, data_slice.radius, label=str(N), color=color, marker="o")
+
+    ax.set_title(f"{args.num_dims}D {args.distribution} (setting={args.setting}) using {args.method}")
+    ax.set_xlabel(f"Number of clusters (M)")
+    ax.grid(True, linestyle="--", alpha=0.4)
+    ax.legend(title=f"N", loc="upper right")
+
+    if args.save:
+        file_name = f"W{args.wasserstein_order}_N_train={args.num_samples_training}_seed={args.random_seed}_method={args.method}"
+        plt.savefig(os.path.join(args.figures_dir, f"{file_name}.png"))
+        plt.close("all")
 
 
 if __name__ == '__main__':
-    args = parse_arguments(
+    args = parse_arguments( # Only parse arguments once, updated afterwards
         random_seed=0,
-        distribution="Gaussian",
-        num_dims=2,
-        setting=2,
-        wasserstein_order=2,
-        num_samples=1_000,
+        distribution="Gaussian", # PLACEHOLDER
+        num_dims=2, # PLACEHOLDER
+        setting=0,  # PLACEHOLDER
         num_samples_training=1_000,
-        num_clusters=10,
-        beta=1e-6,
         method='diagonal_constrained_tp',
-        plot=True, 
         save=True,
-        compute_moment_bound=True,
-        compute_discrete_bound=True,
     )
-    investigate_clusters = True
+    
+    M_options = [5, 20, 30, 40, 50, 75]
+    N_options = [1000, 2500, 5000, 7500, 10000, 25000, 50000, 100000, 500000, 1000000]
 
-    if investigate_clusters:
-        N_options = [args.num_samples]
-        M_options = [5, 20, 30, 40, 50, 75]
-    else:
-        N_options = [1000, 2500]
-        M_options = [args.num_clusters]
+    params = load_json("parameters")
+    settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
 
-    combinations = [(N, M) for N in N_options for M in M_options]
+    settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
+    for (distribution, num_dims, setting), wasserstein_order in itertools.product(settings, [1,2]):
+        args.distribution = distribution
+        args.num_dims = num_dims
+        args.setting = setting
+        args.wasserstein_order = wasserstein_order
+        args = process_args(args)
 
-    data_driven_radii, _ = data_driven_radii_for_combinations(args, combinations=combinations, generate_partition_if_missing=False)
-    fournier_radii = fournier_radii_for_combinations(args, combinations)
+        try:
+            main(args, M_options=M_options, N_options=N_options)
+        except Exception as e:
+            print(f"Failed for distribution={distribution}, num_dims={num_dims}, setting={setting} with error: {e}")
 
-    # format plot
-    file_name = f"W{args.wasserstein_order}_{args.method}_seed={args.random_seed}"
-    if investigate_clusters:
-        file_name += f"_N_train={args.num_samples_training}_N={args.num_samples}_M={M_options}"
-    else:
-        file_name += f"_N_train={args.num_samples_training}_N={N_options}_M={args.num_clusters}"
-
-    # Plot Statistics
-    fig, ax = plt.subplots(figsize=(6, 3), constrained_layout=True)
-    ax = plot.plot_data_driven_radii_slice(ax, data_driven_radii, num_samples_training=args.num_samples_training , N=N_options[0], cummulative=True)
-    ax.set_title(f"Number of {'samples (N)' if investigate_clusters else 'clusters (M)'} = {args.num_samples if investigate_clusters else args.num_clusters}")
-    ax.set_xlabel(f"Number of {'clusters (M)' if investigate_clusters else 'samples (N)'}")
-
-    if args.save:
-        plt.savefig(os.path.join(args.figures_dir, f"{file_name}.png"))
-    else:
+    if not args.save:
         plt.show()
-        

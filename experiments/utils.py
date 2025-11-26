@@ -9,10 +9,10 @@ from bound import DataDrivenRadius, fournier_radius as compute_fournier_radius, 
 from solvers import get_solver
 from sets import BoundedVoronoiPartition
 
-from configs.handlers import pickle_load, pickle_dump
+from configs.handlers import pickle_load, pickle_dump, process_args
 from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_dict_of_partitions
-from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict
+from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii
 
 
 def quantizations_for_combinations(
@@ -179,3 +179,23 @@ def load_quantization(args, partition: BoundedVoronoiPartition, N: int) -> Uncer
         samples=load_quantization_samples(args, N=N),
         beta=args.beta
     )
+
+def load_list_of_data_driven_radii(
+    args, 
+    combinations, 
+    random_seed_options
+) -> ListOfDataDrivenRadii:
+    original_random_seed = args.random_seed
+    data = ListOfDataDrivenRadii()
+    for seed in random_seed_options:
+        args.random_seed = seed
+        args = process_args(args)
+        data.append(data_driven_radii_for_combinations(
+            args, 
+            combinations=combinations, 
+            generate_partition_if_missing=False, 
+            return_all_available_combinations=False,
+            generate_data_driven_radii_if_not_stored=False
+        )[0])
+    args.random_seed = original_random_seed
+    return data

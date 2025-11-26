@@ -69,6 +69,41 @@ class DataDrivenRadii(_GridDict[DataDrivenRadius]):
     def radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return self.data[key].radius
 
+@dataclass
+class ListOfDataDrivenRadii:
+    data: List[DataDrivenRadii] = field(default_factory=list)
+
+    def append(self, rec: DataDrivenRadii) -> None:
+        self.data.append(rec)
+    
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
+
+    def _slice(self: "ListOfDataDrivenRadii", N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> "ListOfDataDrivenRadii":
+        new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
+        return self.__class__(new_data)
+    
+    @property
+    def mean_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.radius_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.radius_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+    
+    def mean_radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.radius_at(key) for elem in self.data]).mean()
+    
+    def std_radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.radius_at(key) for elem in self.data]).std()
+
 
 class FournierRadii(_GridDict[Union[torch.Tensor, float]]):
     @property

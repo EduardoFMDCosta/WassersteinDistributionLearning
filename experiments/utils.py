@@ -46,6 +46,7 @@ def data_driven_radii_for_combinations(
     time_limit: Optional[float] = None,
     generate_partition_if_missing: bool = False,
     return_all_available_combinations: bool = False,
+    generate_data_driven_radii_if_not_stored: bool = True,
 ) -> Tuple[DataDrivenRadii, TimeLogger]:
     solver = get_solver(method=args.method)
 
@@ -72,7 +73,7 @@ def data_driven_radii_for_combinations(
         if (N_train, N, M) in stored_data_driven_radii.keys():
             print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
             data_driven_radii.append((N_train, N, M), stored_data_driven_radii.at((N_train, N, M)))
-        else:
+        elif generate_data_driven_radii_if_not_stored:
             print(f"Processing N_train={N_train}, N={N}, M={M}")
 
             quantization = load_quantization(args, partition=partition, N=N)
@@ -90,6 +91,8 @@ def data_driven_radii_for_combinations(
                 time_logger.append((N_train, N, M), torch.as_tensor(time.time() - start))
             except Exception as e:
                 print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
+        else:
+            pass
 
     if return_all_available_combinations:
         for (N_train, N, M) in stored_data_driven_radii.keys():

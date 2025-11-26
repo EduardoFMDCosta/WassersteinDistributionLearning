@@ -86,7 +86,7 @@ def plot_data_driven_radii_slice(
     return ax
 
 @torch.no_grad()
-def plot_data_driven_radii(
+def plot_data_driven_radii( # TODO depreciate
     ax, 
     data_driven_radii: DataDrivenRadii,
     num_samples_training: int,
@@ -112,7 +112,7 @@ def plot_data_driven_radii(
     return ax
 
 @torch.no_grad()
-def plot_quantization_slice(
+def plot_quantization_slice( # TODO depreciate
     ax, 
     quantizations: Quantizations, 
     stat: str,

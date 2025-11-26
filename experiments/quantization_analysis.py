@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from configs.handlers import parse_arguments, load_json, process_args
-from experiments.utils import quantizations_for_combinations
+from experiments.utils import quantizations_for_combinations, load_quantization_samples
 import plotting.plot as plot
 
 
-def main(args, M_options, N_options):
+def main(args, M_options, N_options, plot_samples = True):
     combinations = [(N, M) for N in N_options for M in M_options]
 
     quantizations = quantizations_for_combinations(args, combinations=combinations, generate_partition_if_missing=False)
@@ -20,11 +20,17 @@ def main(args, M_options, N_options):
     if args.num_dims == 2:
         fig, ax = plt.subplots(ncols=len(M_options), nrows=len(N_options), figsize=(6 * len(M_options), 6 * len(N_options)))
         for i, N in enumerate(N_options):
+            if plot_samples:
+                samples = load_quantization_samples(args, N)
+            else:
+                samples = None
+
             for j, M in enumerate(M_options):
                 if (args.num_samples_training, N, M) in quantizations.keys():
-                    ax[i, j] = plot.plot_partition(
+                    ax[i, j] = plot.plot_quantization(
                         ax=ax[i, j], 
-                        partition=quantizations.at((args.num_samples_training, N, M)), 
+                        quantization=quantizations.at((args.num_samples_training, N, M)), 
+                        samples=samples,
                         title=f"M={M}, N={N}"
                     )
                 else:
@@ -117,7 +123,7 @@ if __name__ == '__main__':
     )
 
     M_options = [5, 20, 30, 40, 50, 75]
-    N_options = [1000, 5000, 10_000]
+    N_options = [1000, 10_000, 100_000]
 
     params = load_json("parameters")
     settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]

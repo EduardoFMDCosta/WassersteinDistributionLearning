@@ -82,6 +82,7 @@ if __name__ == '__main__':
          'joint_full_expansion_milp', 
          'diagonal_constrained_tp', 
          'triangle_inequality_vertex',
+         'joint_diagonal_milp'
     ]
 
     params = load_json("parameters")

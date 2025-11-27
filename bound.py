@@ -84,7 +84,7 @@ def fournier_radius(
             if support.ndim == 1:
                 moment_bound = 2.42 / (nsamples ** (1 / 2))
             elif support.ndim == 2:
-                moment_bound = math.sqrt(0.73 * math.log(nsamples) + 1.0) / (nsamples ** (1 / 2))
+                moment_bound = (0.73 * math.log(nsamples) + 1.0) / (nsamples ** (1 / 2))
             else:
                 moment_bound = constants[support.ndim] / (nsamples ** (1 / support.ndim))
 

@@ -11,10 +11,10 @@ conda activate concentration_inequalities
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 
-for method in triangle_inequality_vertex; do
+for method in triangle_inequality_vertex joint_diagonal_milp; do
 echo "------------------------------------------------- method = ${method} -----------------------------------------------------"
 
-for num_samples_training in 1000 5000; do
+for num_samples_training in 5000; do
 echo "---------------- num training samples: ${num_samples_training} -------------------"
 
 for rho in 1 2; do

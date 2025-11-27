@@ -43,7 +43,6 @@ def main(args, M_options, N_options, random_seed_options = [0]):
 
 if __name__ == '__main__':
     args = parse_arguments( # Only parse arguments once, updated afterwards
-        random_seed=0,
         distribution="Gaussian", # PLACEHOLDER
         num_dims=2, # PLACEHOLDER
         setting=0,  # PLACEHOLDER

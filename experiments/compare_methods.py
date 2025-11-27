@@ -62,7 +62,6 @@ def main(args, M_options, N_options, method_to_compare, random_seed_options = [0
 if __name__ == '__main__':
     for method_to_compare in ['fournier', 'diagonal_constrained_tp', 'triangle_inequality_vertex']: # 'joint_optimization_milp', 'joint_full_expansion_milp'
         args = parse_arguments( # Only parse arguments once, updated afterwards
-            random_seed=0,
             distribution="Gaussian", # PLACEHOLDER
             num_dims=2, # PLACEHOLDER
             setting=0,  # PLACEHOLDER
@@ -73,6 +72,7 @@ if __name__ == '__main__':
 
         M_options = [5, 20, 30, 40, 50, 75]
         N_options = [1000, 2500, 5000, 7500, 10000, 25000, 50000, 100000, 500000, 1000000]
+        random_seed_options = [0]
 
         params = load_json("parameters")
         settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
@@ -86,7 +86,7 @@ if __name__ == '__main__':
             args = process_args(args)
 
             try:
-                main(args, M_options=M_options, N_options=N_options, method_to_compare=method_to_compare)
+                main(args, M_options=M_options, N_options=N_options, method_to_compare=method_to_compare, random_seed_options=random_seed_options)
             except Exception as e:
                 print(f"Failed for distribution={distribution}, num_dims={num_dims}, setting={setting} with error: {e}")
 

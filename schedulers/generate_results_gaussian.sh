@@ -11,7 +11,7 @@ conda activate concentration_inequalities
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 
-for method in triangle_inequality_vertex; do  # joint_diagonal_milp
+for method in triangle_inequality_vertex joint_diagonal_milp; do
 echo "------------------------------------------------- method = ${method} -----------------------------------------------------"
 
 for num_samples_training in 5000 1000; do
@@ -42,14 +42,14 @@ echo "-- Gaussian --"
     echo "dim = 2, setting = 5"
     python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 5 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
 
-    # echo "dim = 3, setting = 0"
-    # python -m experiments.generate_results --distribution Gaussian --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
+    echo "dim = 3, setting = 0"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
 
-    # echo "dim = 10, setting = 0"
-    # python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
+    echo "dim = 10, setting = 0"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
 
-    # echo "dim = 100, setting = 0"
-    # python -m experiments.generate_results --distribution Gaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
+    echo "dim = 100, setting = 0"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training"
 
 done        
 done

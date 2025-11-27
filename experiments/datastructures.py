@@ -98,11 +98,44 @@ class ListOfDataDrivenRadii:
             for key in self.keys()
         ])
     
+    @property
+    def mean_moment_bound(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.moment_bound_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_moment_bound(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.moment_bound_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_discrete_bound(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.discrete_bound_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
     def mean_radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return torch.stack([elem.radius_at(key) for elem in self.data]).mean()
     
     def std_radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return torch.stack([elem.radius_at(key) for elem in self.data]).std()
+    
+    def mean_moment_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.moment_bound_at(key) for elem in self.data]).mean()
+
+    def std_moment_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.moment_bound_at(key) for elem in self.data]).std()
+    
+    def mean_discrete_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.discrete_bound_at(key) for elem in self.data]).mean()
+    
+    def std_discrete_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.discrete_bound_at(key) for elem in self.data]).std()
 
 
 class FournierRadii(_GridDict[Union[torch.Tensor, float]]):

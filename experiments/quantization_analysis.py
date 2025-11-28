@@ -21,7 +21,7 @@ def main(args, M_options, N_options, plot_samples = True):
         fig, ax = plt.subplots(ncols=len(M_options), nrows=len(N_options), figsize=(6 * len(M_options), 6 * len(N_options)))
         for i, N in enumerate(N_options):
             if plot_samples:
-                samples = load_quantization_samples(args, N)
+                samples = load_quantization_samples(args, N, generate_samples_if_missing=False)
             else:
                 samples = None
 

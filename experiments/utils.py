@@ -64,16 +64,16 @@ def data_driven_radii_for_combinations(
 
     N_train = args.num_samples_training
     for (N, M) in combinations:
-        if (N_train, M) not in partitions.keys():
-            print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
-            continue
-        else:
-            partition = partitions.at((N_train, M))
-
         if (N_train, N, M) in stored_data_driven_radii.keys():
             print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
             data_driven_radii.append((N_train, N, M), stored_data_driven_radii.at((N_train, N, M)))
         elif generate_data_driven_radii_if_not_stored:
+            if (N_train, M) not in partitions.keys():
+                print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
+                continue
+            else:
+                partition = partitions.at((N_train, M))
+
             print(f"Processing N_train={N_train}, N={N}, M={M}")
 
             quantization = load_quantization(args, partition=partition, N=N)
@@ -156,14 +156,18 @@ def load_data(
     return data
 
 
-def load_quantization_samples(args, N: int) -> torch.Tensor:
+def load_quantization_samples(args, N: int, generate_samples_if_missing: bool = True) -> torch.Tensor:
     if os.path.exists(args.quantization_samples_file):
         stored_samples = pickle_load(args.quantization_samples_file)
-    else:
-        print(f"samples not available at {args.quantization_samples_file}.")
+    elif generate_samples_if_missing:
+        # print(f"generating samples to be stored at {args.quantization_samples_file}.")
         stored_samples = torch.empty((0, args.num_dims))
+    else:
+        raise ValueError(f"Quantization samples file not found at {args.quantization_samples_file}.")
 
-    if stored_samples.shape[0] < N:
+    if stored_samples.shape[0] < N and not generate_samples_if_missing:
+        raise ValueError(f"Not enough samples stored ({stored_samples.shape[0]}) to load {N} samples.")
+    elif stored_samples.shape[0] < N:
         print(f"Generating additional samples {N - stored_samples.shape[0]} to reach {N} samples.")
         distribution = get_distribution(**vars(args))
         samples = torch.cat((stored_samples, distribution.sample((N - stored_samples.shape[0],))))

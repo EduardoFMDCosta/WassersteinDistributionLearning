@@ -60,7 +60,7 @@ def main(args, M_options, N_options, method_to_compare, random_seed_options = [0
 
 
 if __name__ == '__main__':
-    for method_to_compare in ['fournier', 'diagonal_constrained_tp', 'triangle_inequality_vertex']: # 'joint_optimization_milp', 'joint_full_expansion_milp'
+    for method_to_compare in ['fournier', 'triangle_inequality_vertex']: # 'joint_optimization_milp', 'joint_full_expansion_milp', 'diagonal_constrained_tp'
         args = parse_arguments( # Only parse arguments once, updated afterwards
             distribution="Gaussian", # PLACEHOLDER
             num_dims=2, # PLACEHOLDER
@@ -72,12 +72,13 @@ if __name__ == '__main__':
 
         M_options = [5, 20, 30, 40, 50, 75]
         N_options = [1000, 2500, 5000, 7500, 10000, 25000, 50000, 100000, 500000, 1000000]
-        random_seed_options = [0]
+        random_seed_options = [0, 1, 2, 3] # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
         params = load_json("parameters")
         settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
+        settings = [elem for elem in settings if elem[0] == 'Uniform']
 
-        settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
+        # settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
         for (distribution, num_dims, setting), wasserstein_order in itertools.product(settings, [1,2]):
             args.distribution = distribution
             args.num_dims = num_dims

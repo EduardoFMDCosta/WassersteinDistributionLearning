@@ -93,6 +93,7 @@ if __name__ == '__main__':
             data_driven_radii = DataDrivenRadiiPerMethod()
             for method in methods:    
                 args = parse_arguments(
+                    random_seed= 0,
                     distribution=distribution,
                     num_dims=num_dims,
                     setting=setting,

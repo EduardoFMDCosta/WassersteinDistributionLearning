@@ -47,16 +47,17 @@ if __name__ == '__main__':
         num_dims=2, # PLACEHOLDER
         setting=0,  # PLACEHOLDER
         num_samples_training=5_000,
-        method='diagonal_constrained_tp',
+        method='joint_diagonal_milp',
         save=True,
     )
     
     M_options = [5, 20, 30, 40, 50, 75]
     N_options = [1000, 2500, 5000, 7500, 10000, 25000, 50000, 100000, 500000, 1000000]
-    random_seed_options = [0]
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # [0, 1, 2, 3]
 
     params = load_json("parameters")
     settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
+    settings = [elem for elem in settings if elem[0] == 'Gaussian']
 
     # settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
     for (distribution, num_dims, setting), wasserstein_order in itertools.product(settings, [1,2]):

@@ -16,7 +16,7 @@ if __name__ == '__main__':
         wasserstein_order=1,
         num_samples_training=1000,
         beta=1e-6,
-        method='diagonal_constrained_tp',
+        method='joint_diagonal_milp',
         plot=True,
         save=False,
         compute_moment_bound=True,
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     )
 
     N_options = [1000, 5000, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 200, 300]
     random_seed_options = [0]
 
     combinations = [(N, M) for N in N_options for M in M_options]

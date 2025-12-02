@@ -12,7 +12,7 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "START"
 
-for seed in 1 2 3 4 5 6 7 8 9; do
+for seed in 0 1 2 3 4 5 6 7 8 9; do
 echo "---------------- Random seed = ${seed} -------------------"
 
 python -m experiments.partitions --distribution GaussianMixture --num_dims 2 --setting 0 --random_seed "$seed"

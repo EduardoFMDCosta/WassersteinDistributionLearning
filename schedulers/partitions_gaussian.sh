@@ -15,7 +15,7 @@ echo "START"
 
 echo "------- num_dims = 2---------"
 
-for seed in 1 2 3 4 5 6 7 8 9; do
+for seed in 0 1 2 3 4 5 6 7 8 9; do
 echo "---------------- Random seed = ${seed} -------------------"
 
 python -m experiments.partitions --distribution Gaussian --num_dims 2 --setting -1 --random_seed "$seed"
@@ -31,7 +31,7 @@ done
 
 echo "------- num_dims > 2---------"
 
-for seed in 1 2 3 4 5 6 7 8 9; do
+for seed in 0 1 2 3 4 5 6 7 8 9; do
 echo "---------------- Random seed = ${seed} -------------------"
 python -m experiments.partitions --distribution Gaussian --num_dims 3 --setting 0 --random_seed "$seed"
 python -m experiments.partitions --distribution Gaussian --num_dims 10 --setting 0 --random_seed "$seed"

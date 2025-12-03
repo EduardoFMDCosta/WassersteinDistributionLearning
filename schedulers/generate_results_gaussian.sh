@@ -11,7 +11,7 @@ conda activate concentration_inequalities
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 
-for seed in 0 1 2 3 4 5 6 7 8 9; do
+for seed in 0 1 2 3 4 5 6 7; do
 echo "-------------------------------------------- Random seed = ${seed} -----------------------------------------------"
 
 for method in triangle_inequality_vertex joint_diagonal_milp; do
@@ -20,7 +20,7 @@ echo "------------------------------------------------- method = ${method} -----
 for num_samples_training in 5000; do
 echo "---------------- num training samples: ${num_samples_training} -------------------"
 
-for rho in 1 2; do
+for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
 echo "-- Gaussian --"

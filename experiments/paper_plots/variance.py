@@ -15,11 +15,11 @@ if __name__ == '__main__':
         distribution="Gaussian",
         num_dims=2,
         setting=0,
-        wasserstein_order=1,
-        num_samples_training=1000,
+        wasserstein_order=2,
+        num_samples_training=5000,
         num_samples=1000000,
         beta=1e-6,
-        method='diagonal_constrained_tp',
+        method='joint_diagonal_milp',
         plot=True,
         save=False,
         compute_moment_bound=True,
@@ -27,8 +27,8 @@ if __name__ == '__main__':
     )
 
     settings = [-1, 0, 1, 2, 3, 4, 5]
-    M_options = [5, 20]
-    random_seed_options = [0]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     fig, ax = plt.subplots(figsize=(6, 4))
     for setting in settings:
@@ -40,18 +40,29 @@ if __name__ == '__main__':
         data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
         fournier_radii = fournier_radii_for_combinations(args, combinations)
 
-        M_options_plot, ratios = list(), list()
-        for M in [key[2] for key in data.keys(N=args.num_samples, N_train=args.num_samples_training)]:
+        M_options_plot = [key[2] for key in data.keys(N=args.num_samples, N_train=args.num_samples_training)]
+        ratios, ratios_minus, ratios_plus = list(), list(), list()
+        for M in M_options_plot:
             key = (args.num_samples_training, args.num_samples, M)
 
             if key in fournier_radii.keys():
                 ratios.append(data.mean_radius_at(key) / fournier_radii.radius_at(key))
+                ratios_minus.append((data.mean_radius_at(key) - data.std_radius_at(key)) / fournier_radii.radius_at(key))
+                ratios_plus.append((data.mean_radius_at(key) + data.std_radius_at(key)) / fournier_radii.radius_at(key))
             else:
                 continue
 
         M_options_plot, ratios = torch.as_tensor(M_options_plot), torch.as_tensor(ratios)
+        ratios_minus, ratios_plus = torch.as_tensor(ratios_minus), torch.as_tensor(ratios_plus)
         idx = M_options_plot.argsort()
         ax.plot(M_options_plot[idx], ratios[idx], marker="o", label=rf"${setting}$")
+
+        ax.fill_between(
+            M_options_plot[idx],
+            ratios_minus[idx],
+            ratios_plus[idx],
+            alpha=0.2,
+        )
 
 
     ax.set_xlabel(r"$M$")

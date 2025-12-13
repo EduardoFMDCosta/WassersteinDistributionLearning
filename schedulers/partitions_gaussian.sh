@@ -38,4 +38,4 @@ python -m experiments.partitions --distribution Gaussian --num_dims 10 --setting
 python -m experiments.partitions --distribution Gaussian --num_dims 100 --setting 0 --random_seed "$seed"
 
 done
-echo "FINNISHED"
+echo "FINISHED"

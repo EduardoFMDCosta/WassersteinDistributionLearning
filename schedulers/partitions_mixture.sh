@@ -19,4 +19,4 @@ python -m experiments.partitions --distribution GaussianMixture --num_dims 2 --s
 python -m experiments.partitions --distribution GaussianMixture --num_dims 3 --setting 0 --random_seed "$seed"
 
 done
-echo "FINNISHED"
+echo "FINISHED"

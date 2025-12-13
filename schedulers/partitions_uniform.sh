@@ -52,4 +52,4 @@ python -m experiments.partitions --distribution Uniform --num_dims 100 --setting
 python -m experiments.partitions --distribution Uniform --num_dims 100 --setting 2 --random_seed "$seed"
 
 done
-echo "FINNISHED"
+echo "FINISHED"

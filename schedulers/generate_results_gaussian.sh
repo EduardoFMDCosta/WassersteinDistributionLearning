@@ -20,7 +20,7 @@ echo "------------------------------------------------- method = ${method} -----
 for num_samples_training in 5000; do
 echo "---------------- num training samples: ${num_samples_training} -------------------"
 
-for rho in 2; do
+for rho in 1 2; do
 echo "---------------- W${rho} -------------------"
 
 echo "-- Gaussian --"

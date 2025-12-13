@@ -26,6 +26,14 @@ if __name__ == '__main__':
         compute_discrete_bound=True,
     )
 
+    setting_variance_dict = {-1: 0.1,
+                             0: 0.03,
+                             1: 0.01,
+                             2: 0.001,
+                             3: 0.0001,
+                             4: 0.00001,
+                             5: 0.000001}
+
     settings = [-1, 0, 1, 2, 3, 4, 5]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -55,7 +63,7 @@ if __name__ == '__main__':
         M_options_plot, ratios = torch.as_tensor(M_options_plot), torch.as_tensor(ratios)
         ratios_minus, ratios_plus = torch.as_tensor(ratios_minus), torch.as_tensor(ratios_plus)
         idx = M_options_plot.argsort()
-        ax.plot(M_options_plot[idx], ratios[idx], marker="o", label=rf"${setting}$")
+        ax.plot(M_options_plot[idx], ratios[idx], marker="o", label=rf"${convert_to_sci_notation(setting_variance_dict[setting])}$")
 
         ax.fill_between(
             M_options_plot[idx],
@@ -65,10 +73,10 @@ if __name__ == '__main__':
         )
 
 
-    ax.set_xlabel(r"$M$")
-    ax.set_ylabel("Our bound / Fournier")
+    ax.set_xlabel(r"Support size $M$")
+    ax.set_ylabel("Ours / Fournier (2023)")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"Setting", loc="best")
+    ax.legend(title=r"Variance", loc="best")
 
     plt.tight_layout()
     plt.show()

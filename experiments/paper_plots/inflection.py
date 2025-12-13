@@ -40,7 +40,7 @@ if __name__ == '__main__':
         M_options_plot = torch.as_tensor([key[2] for key in data_slice.keys()])
         idx = M_options_plot.argsort()
 
-        ax.plot(M_options_plot[idx], data_slice.mean_radius[idx], label=str(N), color=color, marker="o")
+        ax.plot(M_options_plot[idx], data_slice.mean_radius[idx], label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
         ax.fill_between(
             M_options_plot[idx],
             data_slice.mean_radius[idx] - data_slice.std_radius[idx],
@@ -49,64 +49,10 @@ if __name__ == '__main__':
             alpha=0.2,
         )
 
-    ax.set_xlabel(r"$M$")
-    ax.set_ylabel("Our bound")
+    ax.set_xlabel(r"Support size $M$")
+    ax.set_ylabel("Ours")
     ax.grid(True, linestyle="--", alpha=0.4)
     ax.legend(title=r"$N$", loc="best")
 
     plt.tight_layout()
     plt.show()
-
-
-    ## TODO if to implement the composition plot, use mean_moment_bound, .., attributes of ListOfDataDrivenRadii to handle multiple seeds
-    # # Plot composition
-    # N_options = [5000, 1000000]
-    # fig, axes = plt.subplots(
-    #     len(N_options), 1, figsize=(7, 4 * len(N_options)), sharex=True
-    # )
-
-    # if len(N_options) == 1:
-    #     axes = [axes]  # make iterable
-
-    # for ax, N in zip(axes, N_options):
-    #     moment_vals = []
-    #     discrete_vals = []
-    #     radius_vals = []
-
-    #     for M in M_options:
-    #         entry = data_driven_radii.data[(args.num_samples_training, N, M)]
-
-    #         moment_vals.append(entry.moment_bound)
-    #         discrete_vals.append(entry.discrete_bound)
-    #         radius_vals.append(entry.radius)
-
-    #     # Plot the lines
-    #     ax.plot(M_options, radius_vals, color="black", linewidth=1.0)
-    #     ax.plot(M_options, moment_vals, color="black", linestyle="--", linewidth=1.0)
-
-    #     # Stacked area shading
-    #     ax.fill_between(
-    #         M_options,
-    #         0,
-    #         moment_vals,
-    #         alpha=0.3,
-    #         label=r"$\epsilon_1(D_N)$"
-    #     )
-
-    #     ax.fill_between(
-    #         M_options,
-    #         moment_vals,
-    #         radius_vals,
-    #         alpha=0.3,
-    #         label=r"$\epsilon_2(D_N)$"
-    #     )
-
-    #     ax.set_ylabel(fr"Our bound (for $N={convert_to_sci_notation(N)}$)")
-    #     ax.grid(True, linestyle="--", alpha=0.4)
-    #     ax.set_ylim(bottom=0.0)
-    #     ax.set_xlim(left=M_options[0])
-    #     ax.legend(loc="lower left")
-
-    # axes[-1].set_xlabel(r"$M$")
-    # plt.tight_layout()
-    # plt.show()

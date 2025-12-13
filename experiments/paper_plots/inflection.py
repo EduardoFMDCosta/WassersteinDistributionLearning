@@ -10,11 +10,11 @@ set_style()
 
 if __name__ == '__main__':
     args = parse_arguments(
-        distribution="GaussianMixture",
+        distribution="Gaussian",
         num_dims=3,
         setting=0,
-        wasserstein_order=1,
-        num_samples_training=1000,
+        wasserstein_order=2,
+        num_samples_training=5000,
         beta=1e-6,
         method='joint_diagonal_milp',
         plot=True,
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     )
 
     N_options = [1000, 5000, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 200, 300]
-    random_seed_options = [0]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     combinations = [(N, M) for N in N_options for M in M_options]
 

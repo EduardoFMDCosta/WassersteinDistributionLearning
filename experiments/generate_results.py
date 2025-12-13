@@ -33,7 +33,7 @@ if __name__ == '__main__':
     data_driven_radii, _ = data_driven_radii_for_combinations(
         args, 
         combinations=combinations, 
-        time_limit=60*2,
+        time_limit=60*5,
         generate_partition_if_missing=False,
         return_all_available_combinations=True
     )

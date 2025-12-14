@@ -1,3 +1,4 @@
+import os
 import torch
 import matplotlib.pyplot as plt
 
@@ -18,7 +19,7 @@ if __name__ == '__main__':
         beta=1e-6,
         method='joint_diagonal_milp',
         plot=True,
-        save=False,
+        save=True,
         compute_moment_bound=True,
         compute_discrete_bound=True,
     )
@@ -53,6 +54,10 @@ if __name__ == '__main__':
     ax.set_ylabel("Ours")
     ax.grid(True, linestyle="--", alpha=0.4)
     ax.legend(title=r"$N$", loc="best")
-
     plt.tight_layout()
+
+    if args.save:
+        file_name = f"inflection_W{args.wasserstein_order}_N_train={args.num_samples_training}_{args.method}"
+        plt.savefig(os.path.join(args.figures_dir, f"{file_name}.pdf"))
+
     plt.show()

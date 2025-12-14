@@ -39,7 +39,10 @@ if __name__ == '__main__':
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     fig, ax = plt.subplots(figsize=(6, 4))
-    for setting in settings:
+    cmap = plt.cm.coolwarm
+    colors = [cmap(i / (len(settings) - 1)) for i in range(len(settings))]
+
+    for setting, color in zip(settings, colors):
         args.setting = setting
         args = process_args(args)
 
@@ -63,13 +66,14 @@ if __name__ == '__main__':
         M_options_plot, ratios = torch.as_tensor(M_options_plot), torch.as_tensor(ratios)
         ratios_minus, ratios_plus = torch.as_tensor(ratios_minus), torch.as_tensor(ratios_plus)
         idx = M_options_plot.argsort()
-        ax.plot(M_options_plot[idx], ratios[idx], marker="o", label=rf"${convert_to_sci_notation(setting_variance_dict[setting])}$")
+        ax.plot(M_options_plot[idx], ratios[idx], label=rf"${convert_to_sci_notation(setting_variance_dict[setting])}$", color=color, marker="o")
 
         ax.fill_between(
             M_options_plot[idx],
             ratios_minus[idx],
             ratios_plus[idx],
             alpha=0.2,
+            color=color
         )
 
 

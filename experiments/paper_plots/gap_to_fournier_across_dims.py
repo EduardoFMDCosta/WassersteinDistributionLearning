@@ -32,7 +32,7 @@ if __name__ == '__main__':
     N_options = [1000, 5000, 10000, 100000, 1000000]
 
     # Plot gap to Fournier
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=(6, 4))
     cmap = plt.cm.coolwarm
     colors = [cmap(i / (len(N_options) - 1)) for i in range(len(N_options))]
 

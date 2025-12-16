@@ -284,10 +284,10 @@ def plot_partition(
         )
 
     # Plot locs
-    ax.scatter(*partition.locs.t(), s=5, color="red", label="Cluster locs")
+    ax.scatter(*partition.locs.t(), s=5, color="red", label=r"$\{c_i\}_{i=1}^M$")
 
-    ax.legend()
-    ax.axis('equal')
+    # ax.legend()
+    # ax.set_aspect('equal', adjustable='box')
     ax.set_title(title)
     return ax
 
@@ -298,11 +298,14 @@ def plot_quantization(
     ax: Optional[plt.Axes] = None,
     title: str = ''
 ):
-    ax = plot_partition(partition=quantization, ax=ax, title=title)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
     if samples is not None:
-        ax.scatter(*samples.t(), s=0.05, alpha=0.1, color="deepskyblue", label="Data")
-    ax.legend()
-    ax.axis('equal')
+        ax.scatter(*samples.t(), s=0.05, alpha=0.25, color="deepskyblue")
+    ax.scatter([], [], s=5, color="deepskyblue", label=r'$\mathcal{D}_N$') # For legend
+    ax = plot_partition(partition=quantization, ax=ax, title=title)
+    # ax.legend()
+    # ax.set_aspect('equal', adjustable='box')
     ax.set_title(title)
     return ax
 

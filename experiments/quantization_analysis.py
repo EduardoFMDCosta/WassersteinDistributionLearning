@@ -18,7 +18,7 @@ def main(args, M_options, N_options, plot_samples = True):
 
     # Illustrate Quantizations
     if args.num_dims == 2:
-        fig, ax = plt.subplots(ncols=len(M_options), nrows=len(N_options), figsize=(6 * len(M_options), 6 * len(N_options)))
+        fig, ax = plt.subplots(ncols=len(M_options), nrows=len(N_options), figsize=(5. * len(M_options), 6 * len(N_options)), squeeze=False)
         for i, N in enumerate(N_options):
             if plot_samples:
                 samples = load_quantization_samples(args, N, generate_samples_if_missing=False)
@@ -31,12 +31,13 @@ def main(args, M_options, N_options, plot_samples = True):
                         ax=ax[i, j], 
                         quantization=quantizations.at((args.num_samples_training, N, M)), 
                         samples=samples,
-                        title=f"M={M}, N={N}"
+                        # title=f"M={M}, N={N}"
                     )
                 else:
                     ax[i, j].set_visible(False)
 
         if args.save:
+            fig.tight_layout()
             plt.savefig(os.path.join(args.figures_dir, f"quantizations_{tag}.png"))
             plt.close('all')
 
@@ -44,7 +45,7 @@ def main(args, M_options, N_options, plot_samples = True):
     fig, ax = plt.subplots(4, 1, figsize=(6, 12), constrained_layout=True)
 
     cmap = plt.cm.coolwarm
-    colors = [cmap(i / (len(N_options) - 1)) for i in range(len(N_options))]
+    colors = [cmap(i / max(len(N_options) - 1, 1)) for i in range(len(N_options))]
     for N, color in zip(N_options, colors):
         quantizations_slice = quantizations._slice(N_train=args.num_samples_training, N=N)
         M_options_plot = [key[2] for key in quantizations_slice.keys()]
@@ -122,13 +123,13 @@ if __name__ == '__main__':
         save=True,
     )
 
-    M_options = [5, 20, 30, 40, 50, 75]
-    N_options = [1000, 10_000, 100_000]
+    M_options = [5, 30, 75]
+    N_options = [10_000]
 
     params = load_json("parameters")
     settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
 
-    # settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
+    settings = [('Uniform', 2, 0), ('Uniform', 2, 1), ('GaussianMixture', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
     for distribution, num_dims, setting in settings:
         args.distribution = distribution
         args.num_dims = num_dims

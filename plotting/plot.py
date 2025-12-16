@@ -7,7 +7,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
 from quantization import Quantization
-from sets import BoundedVoronoiPartition
+from sets import BoundedVoronoiPartition, HyperRectangle
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
 from experiments.datastructures import TimeLogger, DataDrivenRadii, Quantizations, FournierRadii, EmpiricalRadii
@@ -256,10 +256,30 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list, sa
     plt.show()
 
 
+def plot_support(
+    support: HyperRectangle,
+    ax: Optional[plt.Axes] = None
+):
+    if not support.lower.size(-1) == 2:
+        raise ValueError("Can only plot 2D quantizations.")
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        
+    lower = support.lower
+    upper = support.upper
+    width = upper[0] - lower[0]
+    height = upper[1] - lower[1]
+    rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
+    ax.add_patch(rect)
+    return ax
+    
+
 def plot_partition(
     partition: BoundedVoronoiPartition, 
     ax: Optional[plt.Axes] = None,
     title: str = '',
+    plot_locs: bool = True,
 ):
     if not partition.ndim == 2:
         raise ValueError("Can only plot 2D quantizations.")
@@ -267,27 +287,22 @@ def plot_partition(
     if ax is None:
         fig, ax = plt.subplots(figsize=(6, 6))
         
-    # Plot shell
-    lower = partition.support.lower
-    upper = partition.support.upper
-    width = upper[0] - lower[0]
-    height = upper[1] - lower[1]
-    rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
-    ax.add_patch(rect)
+    ax = plot_support(partition.support, ax=ax)
 
     # Plot Voronoi cells
     if len(partition) <= 110 and isinstance(partition, BoundedVoronoiPartition):
         ax = utils_plot.plot_clipped_voronoi_2d(
             centers=partition.region_locs,
             max_diameters=partition.region_l2_radii * 2,
-            ax=ax
+            ax=ax,
+            face_alpha=0.15
         )
 
-    # Plot locs
-    ax.scatter(*partition.locs.t(), s=5, color="red", label=r"$\{c_i\}_{i=1}^M$")
+    if plot_locs:
+        ax.scatter(*partition.locs.t(), s=5, color="black", label=r"$\{c_i\}_{i=1}^M$")
 
     # ax.legend()
-    # ax.set_aspect('equal', adjustable='box')
+    ax.set_aspect('equal', adjustable='box')
     ax.set_title(title)
     return ax
 
@@ -305,7 +320,7 @@ def plot_quantization(
     ax.scatter([], [], s=5, color="deepskyblue", label=r'$\mathcal{D}_N$') # For legend
     ax = plot_partition(partition=quantization, ax=ax, title=title)
     # ax.legend()
-    # ax.set_aspect('equal', adjustable='box')
+    ax.set_aspect('equal', adjustable='box')
     ax.set_title(title)
     return ax
 

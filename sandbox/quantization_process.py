@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     fig1, ax1 = plt.subplots(figsize=(5, 5))
     ax1.scatter(*samples_partition.t(), s=0.05, alpha=0.8, color="mediumseagreen")
-    ax1.scatter(*quantization.locs.t(), s=5, color="red", label=r"$\{c_i\}_{i=1}^M$")
+    ax1.scatter(*quantization.locs.t(), s=5, color="black", label=r"$\{c_i\}_{i=1}^M$")
     ax1 = plot.plot_support(quantization.support, ax=ax1)
     save(ax1, "1", args.save)    
 

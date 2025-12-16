@@ -89,6 +89,7 @@ def get_dict_of_partitions(
         for (N, M) in missing_combinations:
             requested_partitions.append((N, M), missing_partitions.at((N, M)))
     else:
+        requested_partitions.attach_samples(stored_partitions.samples)
         print(f"Warning: {len(missing_combinations)} requested partitions are missing and will not be generated.")
 
     # Add all other available combinations if requested

@@ -5,6 +5,8 @@ import numpy as np
 
 import cvxpy as cp
 from scipy.optimize import linprog
+import gurobipy as gp
+from gurobipy import GRB
 
 
 def o_maximization(
@@ -40,72 +42,90 @@ def ot_lp_solver(
     cost: torch.Tensor,
     w: torch.Tensor,
     empirical_distribution: torch.Tensor,
-    method: str = "highs",
-    tol: float = 1e-8
+    tol: float = 1e-8,
+    verbose: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor, Optional[Tuple[torch.Tensor, torch.Tensor]]]:
+
+    device = cost.device
+    dtype = cost.dtype
     n = cost.shape[0]
 
-    # Move to CPU/NumPy for the solver
-    C_np = cost.detach().cpu().double().numpy()
-    p_np = w.detach().cpu().double().numpy()
-    q_np = empirical_distribution.detach().cpu().double().numpy()
+    C = cost.detach().cpu().double().numpy()
+    p = w.detach().cpu().double().numpy()
+    q = empirical_distribution.detach().cpu().double().numpy()
 
-    # normalize
-    p_np /= p_np.sum()
-    q_np /= q_np.sum()
+    # Normalize
+    p = p / p.sum()
+    q = q / q.sum()
 
-    # Decision variable is vec(T) of length n*n in row-major order
-    c = C_np.reshape(-1)
+    model = gp.Model("optimal_transport")
+    model.Params.OutputFlag = 1 if verbose else 0
+    model.Params.FeasibilityTol = tol
+    model.Params.OptimalityTol = tol
 
-    # Equality constraints: A_eq x = b_eq
-    # Row sums: for each i, sum_j T[i,j] = p[i]
-    A_eq_rows = []
-    b_eq = []
+    # Decision variables: T[i,j] >= 0
+    T = model.addVars(
+        n, n,
+        lb=0.0,
+        vtype=GRB.CONTINUOUS,
+        name="T"
+    )
 
-    # Row constraints
+    # Objective
+    model.setObjective(
+        gp.quicksum(C[i, j] * T[i, j] for i in range(n) for j in range(n)),
+        GRB.MINIMIZE
+    )
+
+    # Row constraints: sum_j T[i,j] = p[i]
+    row_constrs = []
     for i in range(n):
-        row = np.zeros(n*n, dtype=float)
-        row[i*n:(i+1)*n] = 1.0
-        A_eq_rows.append(row)
-        b_eq.append(p_np[i])
+        c = model.addConstr(
+            gp.quicksum(T[i, j] for j in range(n)) == p[i],
+            name=f"row_{i}"
+        )
+        row_constrs.append(c)
 
-    # Column constraints
+    # Column constraints: sum_i T[i,j] = q[j]
+    col_constrs = []
     for j in range(n):
-        col = np.zeros(n*n, dtype=float)
-        col[j::n] = 1.0
-        A_eq_rows.append(col)
-        b_eq.append(q_np[j])
+        c = model.addConstr(
+            gp.quicksum(T[i, j] for i in range(n)) == q[j],
+            name=f"col_{j}"
+        )
+        col_constrs.append(c)
 
-    A_eq = np.stack(A_eq_rows, axis=0)
-    b_eq = np.array(b_eq, dtype=float)
+    # Solve
+    model.optimize()
 
-    # Bounds: T[i,j] >= 0 (no upper bound)
-    bounds = [(-tol, None)] * (n*n)
+    if model.Status != GRB.OPTIMAL:
+        raise RuntimeError(f"Gurobi failed with status {model.Status}")
 
-    # Solve LP
-    res = linprog(c, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method=method)
+    T_np = np.zeros((n, n), dtype=np.float64)
+    for i in range(n):
+        for j in range(n):
+            T_np[i, j] = T[i, j].X
 
-    if not res.success:
-        raise RuntimeError(f"LP failed: {res.message}")
+    T_torch = torch.tensor(T_np, device=device, dtype=dtype)
+    obj = (cost * T_torch).sum()
 
-    x = res.x  # optimal vec(T)
-    T_np = x.reshape(n, n)
-
-    # Convert back to torch on original device/dtype
-    T = torch.tensor(T_np)
-    obj = (cost * T).sum()
-
-    # Try to return dual potentials (u for rows, v for cols) if provided
-    u = v = None
+    # Extract dual variables
     try:
-        # SciPy (HiGHS) exposes equality marginals; the first n are row constraints, next n columns
-        eq_duals = res.eqlin.marginals  # length 2n
-        u = torch.tensor(eq_duals[:n])
-        v = torch.tensor(eq_duals[n:])
+        u = torch.tensor(
+            np.array([c.Pi for c in row_constrs]),
+            device=device,
+            dtype=dtype
+        )
+        v = torch.tensor(
+            np.array([c.Pi for c in col_constrs]),
+            device=device,
+            dtype=dtype
+        )
+        duals = (u, v)
     except Exception:
-        pass
+        duals = None
 
-    return T, obj, (u, v) if (u is not None and v is not None) else None
+    return T_torch, obj, duals
 
 
 def lp_maximization( # TODO depreciate

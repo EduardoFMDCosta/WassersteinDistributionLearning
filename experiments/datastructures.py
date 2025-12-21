@@ -83,6 +83,13 @@ class ListOfDataDrivenRadii:
     def _slice(self: "ListOfDataDrivenRadii", N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> "ListOfDataDrivenRadii":
         new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
         return self.__class__(new_data)
+
+    @property
+    def radius_stack(self) -> torch.Tensor:
+        return torch.stack([
+            torch.stack([elem.radius_at(key) for elem in self.data])
+            for key in self.keys()
+        ])
     
     @property
     def mean_radius(self) -> torch.Tensor:

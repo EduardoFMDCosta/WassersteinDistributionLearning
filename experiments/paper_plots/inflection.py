@@ -41,6 +41,8 @@ if __name__ == '__main__':
         M_options_plot = torch.as_tensor([key[2] for key in data_slice.keys()])
         idx = M_options_plot.argsort()
 
+        available_data = data_slice.radius_stack[idx]
+
         ax.plot(M_options_plot[idx], data_slice.mean_radius[idx], label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
         ax.fill_between(
             M_options_plot[idx],

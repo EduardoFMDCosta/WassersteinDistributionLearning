@@ -23,9 +23,6 @@ for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
 echo "-- GaussianMixture --"
-    echo "dim = 2, setting = 0"
-    python -m experiments.generate_results --distribution GaussianMixture --num_dims 2 --setting 0 --wasserstein_order "$rho" --method "$method"  --num_samples_training "$num_samples_training" --random_seed "$seed"
-
     echo "dim = 3, setting = 0"
     python -m experiments.generate_results --distribution GaussianMixture --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method"  --num_samples_training "$num_samples_training" --random_seed "$seed"
 

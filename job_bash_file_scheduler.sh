@@ -1,7 +1,6 @@
 #!/bin/sh
 
-DATASET_NAME=$1
-TASK_NAME=$2
+FILE_NAME=$1
 
 #chmod -R +x /home/sjladams/projects/concentration_inequalities
 
@@ -11,11 +10,11 @@ cat > temp_job_script.sh <<EOF
 #PBS -l nodes=1
 #
 # name job:
-#PBS -N ${DATASET_NAME}_${TASK_NAME}
+#PBS -N ${FILE_NAME}
 #
 # names output and error files:
-#PBS -o logging/${DATASET_NAME}_${TASK_NAME}_out
-#PBS -e logging/${DATASET_NAME}_${TASK_NAME}_err
+#PBS -o logging/${FILE_NAME}_out
+#PBS -e logging/${FILE_NAME}_err
 
 # Ensure the output and error directories exist
 # mkdir -p ${PBS_O_HOME}/projects/ConcentrationInequalities/logging
@@ -27,7 +26,7 @@ conda activate concentration_inequalities
 
 # execute scheduler file:
 cd projects/ConcentrationInequalities
-bash schedulers/${DATASET_NAME}/${TASK_NAME}.sh
+bash schedulers/${FILE_NAME}.sh
 
 EOF
 

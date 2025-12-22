@@ -13,8 +13,8 @@ cat > temp_job_script.sh <<EOF
 #PBS -N ${FILE_NAME}
 #
 # names output and error files:
-#PBS -o logging/${FILE_NAME}_out
-#PBS -e logging/${FILE_NAME}_err
+#PBS -j oe
+#PBS -o logging/${FILE_NAME}.txt
 
 # Ensure the output and error directories exist
 # mkdir -p ${PBS_O_HOME}/projects/ConcentrationInequalities/logging

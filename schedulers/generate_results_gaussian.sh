@@ -24,35 +24,23 @@ for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
 echo "-- Gaussian --"
-    echo "dim = 2, setting = -1"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting -1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    echo "dim = 10, setting = 1"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
-    #echo "dim = 2, setting = 0"
-    #python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    echo "dim = 10, setting = 2"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 2 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
-    echo "dim = 2, setting = 1"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    echo "dim = 10, setting = 3"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 3 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
-    echo "dim = 2, setting = 2"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 2 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    echo "dim = 10, setting = 4"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 4 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
-    echo "dim = 2, setting = 3"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 3 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    echo "dim = 10, setting = 5"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 5 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
-    echo "dim = 2, setting = 4"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 4 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
-
-    #echo "dim = 2, setting = 5"
-    #python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 5 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
-
-    #echo "dim = 3, setting = 0"
-    #python -m experiments.generate_results --distribution Gaussian --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
-
-    #echo "dim = 10, setting = 0"
-    #python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
-
-    #echo "dim = 100, setting = 0"
-    #python -m experiments.generate_results --distribution Gaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    echo "dim = 10, setting = 6"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 6 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
 done        
 done

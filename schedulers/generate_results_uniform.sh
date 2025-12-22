@@ -36,10 +36,7 @@ echo "-- Uniform --"
     python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 3 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 2, setting = 4"
-    python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 4 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
-
-    echo "dim = 3, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results --distribution Uniform --num_dims 2 --setting 4 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
 
     echo "dim = 10, setting = 0"
     python -m experiments.generate_results --distribution Uniform --num_dims 10 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"

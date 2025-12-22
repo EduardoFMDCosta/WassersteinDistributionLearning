@@ -85,6 +85,7 @@ def process_args(args):
     args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
     args.figures_dir = os.path.join(base_dir, "figures", args.distribution.lower(), f"dims_{args.num_dims}_setting_{args.setting}")
     args.tables_dir = os.path.join(base_dir, "tables")
+    args.timing_dir = os.path.join(base_dir, "timing", args.distribution.lower(), f"dims_{args.num_dims}_setting_{args.setting}")
 
     args.data_driven_radii_file = os.path.join(args.results_dir, args.method, f"data_driven_radii{random_seed_tag}.pickle")
     args.fournier_radii_file = os.path.join(args.results_dir, f"fournier_radii{random_seed_tag}.pickle")
@@ -96,6 +97,7 @@ def process_args(args):
     ensure_dir(args.results_dir)
     ensure_dir(args.figures_dir)
     ensure_dir(args.tables_dir)
+    ensure_dir(args.timing_dir)
     ensure_dir(os.path.dirname(args.data_driven_radii_file))
     ensure_dir(os.path.dirname(args.partitions_file))
     ensure_dir(os.path.dirname(args.quantization_samples_file))

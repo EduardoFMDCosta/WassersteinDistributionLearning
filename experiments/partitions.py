@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from typing import Optional, List, Tuple
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
@@ -35,6 +36,19 @@ class BoundedVoronoiPartitionDict: # key = (N_train, M)
     @property
     def samples(self):
         return self._samples
+    
+@dataclass
+class TimeLoggerPartition: # key = (N_train, M)
+    data: Dict[Tuple[int, int], torch.Tensor] = field(default_factory=dict)
+    
+    def append(self, key: Tuple[int, int], rec: torch.Tensor) -> None:
+        self.data[key] = rec
+
+    def at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key]
+    
+    def keys(self, N_train: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int]]:
+        return [key for key in self.data.keys() if (N_train is None or key[0] == N_train) and (M is None or key[1] == M)]
 
 setattr(sys.modules.get('__main__'), 'BoundedVoronoiPartitionDict', BoundedVoronoiPartitionDict)
 
@@ -106,6 +120,8 @@ def generate_partitions(
     args,
     samples: Optional[torch.Tensor] = None
 ):
+    time_logger = TimeLoggerPartition()
+
     support_assumption = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
 
@@ -119,14 +135,20 @@ def generate_partitions(
     partitions = BoundedVoronoiPartitionDict()
     for (N, M) in combinations:
         print(f"Generating partition for N={N}, M={M}")
+        start = time.time()
         assert N <= samples.size(0), "Not enough samples provided to generate partition."
         partitions.append((N, M), BoundedVoronoiPartition.from_samples(
             support=support_assumption,
             samples=samples[:N],
             M=M,
         ))
+        time_logger.append((N, M), torch.tensor(time.time() - start))
 
     partitions.attach_samples(samples)
+
+    # SAVE timer
+    if args.save:
+        pickle_dump(time_logger, os.path.join(args.timing_dir, "partitions_timing.pickle"))
 
     return partitions
 
@@ -135,8 +157,8 @@ if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Gaussian",
-        num_dims=3,
-        setting=0,
+        num_dims=10,
+        setting=1,
         save=True,
         plot=False, 
     )    

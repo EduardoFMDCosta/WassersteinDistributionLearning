@@ -26,7 +26,7 @@ conda activate concentration_inequalities
 
 # execute scheduler file:
 cd projects/ConcentrationInequalities
-python -u ${FILE_NAME}.py
+python -m ${FILE_NAME}
 
 EOF
 

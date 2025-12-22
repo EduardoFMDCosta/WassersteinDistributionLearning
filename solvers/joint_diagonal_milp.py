@@ -62,6 +62,12 @@ def solve_milp_gurobi(
     # w sums to 1
     model.addConstr(gp.quicksum(w[i] for i in range(n)) == 1)
 
+    # Set optimization params
+    if n >= 500:
+        model.setParam("FeasibilityTol", 1e-7)
+        model.setParam("IntFeasTol", 1e-7)
+        model.setParam("Presolve", 1)
+
     # Optimize
     model.setParam("OutputFlag", kwargs.get("verbose", False))
     model.setParam("TimeLimit", time_limit if time_limit is not None else GRB.INFINITY)

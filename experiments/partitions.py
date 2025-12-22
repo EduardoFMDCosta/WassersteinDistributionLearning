@@ -148,7 +148,7 @@ def generate_partitions(
 
     # SAVE timer
     if args.save:
-        pickle_dump(time_logger, os.path.join(args.timing_dir, "partitions_timing.pickle"))
+        pickle_dump(time_logger, os.path.join(args.timing_dir, f"partitions_{args.partitions_file}"))
 
     return partitions
 

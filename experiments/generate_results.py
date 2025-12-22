@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     combinations = [(N, M) for N in N_options for M in M_options]
 
-    data_driven_radii, _ = data_driven_radii_for_combinations(
+    data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 
         combinations=combinations, 
         time_limit=60*10,
@@ -43,3 +43,5 @@ if __name__ == '__main__':
     if args.save:
         pickle_dump(data_driven_radii, args.data_driven_radii_file)
         pickle_dump(fournier_radii, args.fournier_radii_file)
+
+        pickle_dump(time_logger, args.data_driven_radii_file.replace(".pickle", "_timing.pickle"))

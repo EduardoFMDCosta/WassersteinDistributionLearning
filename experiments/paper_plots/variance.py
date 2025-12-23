@@ -67,7 +67,7 @@ if __name__ == '__main__':
         M_options_plot, ratios = torch.as_tensor(M_options_plot), torch.as_tensor(ratios)
         ratios_minus, ratios_plus = torch.as_tensor(ratios_minus), torch.as_tensor(ratios_plus)
         idx = M_options_plot.argsort()
-        ax.plot(M_options_plot[idx], ratios[idx], label=rf"${convert_to_sci_notation(setting_variance_dict[setting])}$", color=color, marker="o")
+        ax.plot(M_options_plot[idx], ratios[idx], label=rf"${convert_to_sci_notation(setting_variance_dict[setting]**0.5)}$", color=color, marker="o")
 
         ax.fill_between(
             M_options_plot[idx],
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     ax.set_xlabel(r"Support size $M$")
     ax.set_ylabel("Ours / Fournier (2023)")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"Variance", loc="best")
+    ax.legend(title=r"Std", loc="best")
     plt.tight_layout()
 
     if args.save:

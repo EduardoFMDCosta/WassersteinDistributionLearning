@@ -8,25 +8,21 @@ if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Gaussian",
-        num_dims=2,
-        setting=0,
+        num_dims=10,
+        setting=1,
         beta=1e-6,
-        method='joint_optimization_milp', 
+        method='joint_diagonal_milp', 
         num_samples_training=5000,
         wasserstein_order=2,
         save=True,
     )
 
     # We assume num_samples_training = num_samples
-    # N_options = [1000]
-    # M_options = [5, 20]
+    N_options = [1000]
+    M_options = [5, 20]
 
-    N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
-    # M_options = [5, 20, 30, 40, 50]
-    # M_options = [75, 100, 150, 200, 300]
-
-    # N_options = [1000, 2500, 5000, 7500, 10000, 25000, 50000, 100000, 500000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    # N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
+    # M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
 
     combinations = [(N, M) for N in N_options for M in M_options]
 

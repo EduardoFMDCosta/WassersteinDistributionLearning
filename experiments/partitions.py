@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from sets import BoundedVoronoiPartition
 
 from plotting.plot import plot_partition
-from configs.handlers import parse_arguments, pickle_dump, pickle_load
+from configs.handlers import parse_arguments, pickle_dump, pickle_load, process_args
 from configs.construct import get_support_assumption, get_distribution
 
 
@@ -51,6 +51,21 @@ class TimeLoggerPartition: # key = (N_train, M)
     
     def keys(self, N_train: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int]]:
         return [key for key in self.data.keys() if (N_train is None or key[0] == N_train) and (M is None or key[1] == M)]
+    
+    def _slice(self, N_train: Optional[Union[int, List[int]]] = None, M: Optional[Union[int, List[int]]] = None) -> "TimeLoggerPartition":
+        N_train = [N_train] if not isinstance(N_train, list) else N_train
+        M = [M] if not isinstance(M, list) else M
+    
+        new_data = {
+            key: self.data[key]
+            for i in N_train
+            for j in M
+            for key in self.keys(N_train=i, M=j)
+        }
+        return self.__class__(new_data)
+
+    def time_at(self, key: Tuple[int, int]) -> torch.Tensor:
+        return self.data[key]
 
 setattr(sys.modules.get('__main__'), 'TimeLoggerPartition', TimeLoggerPartition)
 
@@ -65,14 +80,64 @@ def get_partition(
     )
     return partitions.at((num_samples, num_clusters))
 
-def get_time_logger_partition(
+def load_time_logger_partition(
     args
-):
+) -> TimeLoggerPartition:
     if os.path.exists(args.partitions_timing_file):
         return pickle_load(args.partitions_timing_file)
     else:
         return TimeLoggerPartition()
 
+@dataclass
+class ListOfTimeLoggerPartition:
+    data: List[TimeLoggerPartition] = field(default_factory=list)
+    
+    def append(self, rec: TimeLoggerPartition) -> None:
+        self.data.append(rec)
+    
+    def keys(self, N_train: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int]]:
+        sets = [set(elem.keys(N_train=N_train, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
+
+    def _slice(self: "ListOfTimeLoggerPartition", N_train: Optional[Union[int, List[int]]] = None, M: Optional[Union[int, List[int]]] = None) -> "ListOfTimeLoggerPartition":
+        new_data = [elem._slice(N_train=N_train, M=M) for elem in self.data]
+        return self.__class__(new_data)
+
+    @property
+    def time_stack(self) -> torch.Tensor:
+        return torch.stack([
+            torch.stack([elem.time_at(key) for elem in self.data])
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_time(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.time_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_time(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.time_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+
+def load_list_of_time_logger_partition(
+    args, 
+    random_seed_options,
+) -> ListOfTimeLoggerPartition:
+    original_random_seed = args.random_seed
+    data = ListOfTimeLoggerPartition()
+    for seed in random_seed_options:
+        args.random_seed = seed
+        args = process_args(args)
+
+        data.append(load_time_logger_partition(args))
+
+    args.random_seed = original_random_seed
+    return data
 
 def get_dict_of_partitions(
     args,
@@ -132,7 +197,7 @@ def generate_partitions(
 ):
     support_assumption = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
-    time_logger = get_time_logger_partition(args)
+    time_logger = load_time_logger_partition(args)
 
     max_num_samples = max([N for N, M in combinations])
 

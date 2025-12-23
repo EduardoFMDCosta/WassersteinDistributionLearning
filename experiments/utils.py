@@ -58,7 +58,7 @@ def data_driven_radii_for_combinations(
     )
 
     stored_data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
-    time_logger = load_data(args.data_driven_radii_file.replace(".pickle", "_timing.pickle"), TimeLogger)
+    time_logger = load_data(args.data_driven_radii_timing_file, TimeLogger)
 
     data_driven_radii = DataDrivenRadii()
 

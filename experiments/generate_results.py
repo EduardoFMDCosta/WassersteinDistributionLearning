@@ -43,5 +43,4 @@ if __name__ == '__main__':
     if args.save:
         pickle_dump(data_driven_radii, args.data_driven_radii_file)
         pickle_dump(fournier_radii, args.fournier_radii_file)
-
-        pickle_dump(time_logger, args.data_driven_radii_file.replace(".pickle", "_timing.pickle"))
+        pickle_dump(time_logger, args.data_driven_radii_timing_file)

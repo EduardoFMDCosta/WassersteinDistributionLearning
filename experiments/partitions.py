@@ -37,6 +37,8 @@ class BoundedVoronoiPartitionDict: # key = (N_train, M)
     def samples(self):
         return self._samples
     
+setattr(sys.modules.get('__main__'), 'BoundedVoronoiPartitionDict', BoundedVoronoiPartitionDict)
+    
 @dataclass
 class TimeLoggerPartition: # key = (N_train, M)
     data: Dict[Tuple[int, int], torch.Tensor] = field(default_factory=dict)
@@ -50,7 +52,7 @@ class TimeLoggerPartition: # key = (N_train, M)
     def keys(self, N_train: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int]]:
         return [key for key in self.data.keys() if (N_train is None or key[0] == N_train) and (M is None or key[1] == M)]
 
-setattr(sys.modules.get('__main__'), 'BoundedVoronoiPartitionDict', BoundedVoronoiPartitionDict)
+setattr(sys.modules.get('__main__'), 'TimeLoggerPartition', TimeLoggerPartition)
 
 def get_partition(
     args, 
@@ -62,6 +64,14 @@ def get_partition(
         combinations=[(num_samples, num_clusters)]
     )
     return partitions.at((num_samples, num_clusters))
+
+def get_time_logger_partition(
+    args
+):
+    if os.path.exists(args.partitions_timing_file):
+        return pickle_load(args.partitions_timing_file)
+    else:
+        return TimeLoggerPartition()
 
 
 def get_dict_of_partitions(
@@ -120,10 +130,9 @@ def generate_partitions(
     args,
     samples: Optional[torch.Tensor] = None
 ):
-    time_logger = TimeLoggerPartition()
-
     support_assumption = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
+    time_logger = get_time_logger_partition(args)
 
     max_num_samples = max([N for N, M in combinations])
 
@@ -146,9 +155,8 @@ def generate_partitions(
 
     partitions.attach_samples(samples)
 
-    # SAVE timer
     if args.save:
-        pickle_dump(time_logger, args.partitions_file.replace(".pickle", "_timing.pickle"))
+        pickle_dump(time_logger, args.partitions_timing_file)
 
     return partitions
 

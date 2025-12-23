@@ -1,76 +1,75 @@
 import os
-import itertools
-import matplotlib.pyplot as plt
 import torch
+import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments, load_json, process_args
-from experiments.utils import load_list_of_data_driven_radii
+from configs.handlers import parse_arguments
+from experiments.utils import load_list_of_time_loggers
+from experiments.partitions import load_list_of_time_logger_partition
 
+from plotting.utils_plot import set_style, convert_to_sci_notation
 
-def main(args, M_options, N_options, random_seed_options = [0]):
-    combinations = [(N, M) for N in N_options for M in M_options]
-
-    data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-    
-    fig, ax = plt.subplots(figsize=(6, 5), constrained_layout=True)
-
-    cmap = plt.cm.coolwarm
-    colors = [cmap(i / (len(N_options) - 1)) for i in range(len(N_options))]
-    for N, color in zip(N_options, colors):
-        data_slice = data._slice(N_train=args.num_samples_training, N=N)
-        M_options_plot = torch.as_tensor([key[2] for key in data_slice.keys()])
-        idx = M_options_plot.argsort()
-
-        ax.plot(M_options_plot[idx], data_slice.mean_radius[idx], label=str(N), color=color, marker="o")
-        ax.fill_between(
-            M_options_plot[idx],
-            data_slice.mean_radius[idx] - data_slice.std_radius[idx],
-            data_slice.mean_radius[idx] + data_slice.std_radius[idx],
-            color=color,
-            alpha=0.2,
-        )
-
-    ax.set_title(f"{args.num_dims}D {args.distribution} (setting={args.setting}) - {args.method}")
-    ax.set_xlabel(f"Number of clusters (M)")
-    ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=f"N", loc="upper right")
-
-    if args.save:
-        file_name = f"W{args.wasserstein_order}_N_train={args.num_samples_training}_method={args.method}"
-        plt.savefig(os.path.join(args.figures_dir, f"{file_name}.png"))
-        plt.close("all")
-
+set_style()
 
 if __name__ == '__main__':
-    args = parse_arguments( # Only parse arguments once, updated afterwards
-        distribution="Gaussian", # PLACEHOLDER
-        num_dims=2, # PLACEHOLDER
-        setting=0,  # PLACEHOLDER
-        num_samples_training=5_000,
+    args = parse_arguments(
+        distribution="Gaussian",
+        num_dims=10,
+        setting=1,
+        wasserstein_order=2,
+        num_samples_training=5000,
+        beta=1e-6,
         method='joint_diagonal_milp',
-        save=True,
+        save=False,
     )
+
+    N_options = [1000]
+    M_options = [5, 20]
+    random_seed_options = [0, 1]
+
+    combinations = [(N, M) for N in N_options for M in M_options]
+
+    radii_times = load_list_of_time_loggers(args, random_seed_options)
+    partition_times = load_list_of_time_logger_partition(args, random_seed_options)._slice(N_train=args.num_samples_training)
+
+    fig_radii, ax_radii = plt.subplots(figsize=(6, 4))
+    fig_partition, ax_partition = plt.subplots(figsize=(6, 4))
+
+    cmap = plt.cm.coolwarm
+    colors = [cmap(i / max(len(N_options) - 1, 1)) for i in range(len(N_options))]
+    for N, color in zip(N_options, colors):
+        radii_times_slice = radii_times._slice(N_train=args.num_samples_training, N=N)
+        M_options_plot = torch.as_tensor([key[2] for key in radii_times_slice.keys()])
+        idx = M_options_plot.argsort()
+
+        partition_times_slice = partition_times._slice(M=M_options_plot.tolist())
+        if not len(partition_times_slice.keys()) == len(M_options_plot):
+            M_missing = set(M_options_plot.tolist()) - set([key[1] for key in partition_times_slice.keys()])
+            raise ValueError(f"Partition times missing for M={M_missing}.")
     
-    M_options = [5, 20, 30, 40, 50, 75]
-    N_options = [1000, 2500, 5000, 7500, 10000, 25000, 50000, 100000, 500000, 1000000]
-    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # [0, 1, 2, 3]
+        mean_radii,  std_radii = radii_times_slice.mean_time[idx], radii_times_slice.std_time[idx]
+        mean_partition,  std_partition = partition_times_slice.mean_time[idx], partition_times_slice.std_time[idx]
 
-    params = load_json("parameters")
-    settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
-    settings = [elem for elem in settings if elem[0] == 'Gaussian']
+        ax_radii.plot(M_options_plot[idx], mean_radii, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
+        ax_radii.fill_between(M_options_plot[idx], mean_radii - std_radii, mean_radii + std_radii, color=color, alpha=0.2)
 
-    # settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
-    for (distribution, num_dims, setting), wasserstein_order in itertools.product(settings, [1,2]):
-        args.distribution = distribution
-        args.num_dims = num_dims
-        args.setting = setting
-        args.wasserstein_order = wasserstein_order
-        args = process_args(args)
+        ax_partition.plot(M_options_plot[idx], mean_partition, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
+        ax_partition.fill_between(M_options_plot[idx], mean_partition - std_partition, mean_partition + std_partition, color=color, alpha=0.2)
 
-        try:
-            main(args, M_options=M_options, N_options=N_options, random_seed_options=random_seed_options)
-        except Exception as e:
-            print(f"Failed for distribution={distribution}, num_dims={num_dims}, setting={setting} with error: {e}")
+    ax_radii.set_xlabel(r"Support size $M$")
+    ax_radii.set_ylabel("Time [s]")
+    ax_radii.grid(True, linestyle="--", alpha=0.4)
+    ax_radii.legend(title=r"$N$", loc="best")
+    fig_radii.tight_layout()
 
-    if not args.save:
-        plt.show()
+    ax_partition.set_xlabel(r"Support size $M$")
+    ax_partition.set_ylabel("Time [s]")
+    ax_partition.grid(True, linestyle="--", alpha=0.4)
+    ax_partition.legend(title=r"$N$", loc="best")
+    fig_partition.tight_layout()
+
+    if args.save:
+        file_name = f"time_W{args.wasserstein_order}_N_train={args.num_samples_training}_{args.method}"
+        fig_radii.savefig(os.path.join(args.figures_dir, f"{file_name}_radii.pdf"))
+        fig_partition.savefig(os.path.join(args.figures_dir, f"{file_name}_partition.pdf"))
+        
+    plt.show()

@@ -16,7 +16,7 @@ if __name__ == '__main__':
     empirical = []
 
     # Parameters
-    beta = 1e-4
+    beta = 1e-6
     nums_samples = [10, 50, 100, 1000, 5000, 10000]
 
     # Replicate experiment from Figure 5 in Badings et al., 2025 (https://dl.acm.org/doi/pdf/10.1613/jair.1.14253)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     # Parameters
     num_samples = 10000
-    beta = 1e-8
+    beta = 1e-6
     nums_clusters = list(range(3, num_samples + 1))
 
     for num_clusters in nums_clusters:

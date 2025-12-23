@@ -58,9 +58,9 @@ def data_driven_radii_for_combinations(
     )
 
     stored_data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
+    time_logger = load_data(args.data_driven_radii_file.replace(".pickle", "_timing.pickle"), TimeLogger)
 
     data_driven_radii = DataDrivenRadii()
-    time_logger = TimeLogger()
 
     N_train = args.num_samples_training
     for (N, M) in combinations:

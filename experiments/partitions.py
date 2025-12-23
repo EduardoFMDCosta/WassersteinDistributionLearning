@@ -232,12 +232,11 @@ if __name__ == '__main__':
         distribution="Gaussian",
         num_dims=10,
         setting=1,
-        num_samples_training=5000,
         save=True,
         plot=False, 
     )    
 
-    num_samples_options = [args.num_samples_training]
+    num_samples_options = [1000, 5000]
     num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
 
 

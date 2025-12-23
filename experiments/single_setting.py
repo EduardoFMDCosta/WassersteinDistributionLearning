@@ -20,7 +20,7 @@ if __name__ == '__main__':
         num_samples_training=1000,
         num_clusters=20,
         wasserstein_order=1,
-        beta=1e-4,
+        beta=1e-6,
         method='full_search',
         plot=False,
         save=False,

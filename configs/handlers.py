@@ -40,7 +40,7 @@ def parse_arguments(
     num_samples_training: int = 1000,
     num_samples: int = 1000,
     wasserstein_order: int = 2,
-    beta: float = 1e-4,
+    beta: float = 1e-6,
     plot: bool = False,
     save: bool = False,
     compute_moment_bound: bool = True, 

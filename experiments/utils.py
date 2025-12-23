@@ -12,7 +12,7 @@ from sets import BoundedVoronoiPartition
 from configs.handlers import pickle_load, pickle_dump, process_args
 from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_dict_of_partitions
-from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii
+from experiments.datastructures import ListOfTimeLogger, TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii
 
 
 def quantizations_for_combinations(
@@ -201,5 +201,20 @@ def load_list_of_data_driven_radii(
             return_all_available_combinations=False,
             generate_data_driven_radii_if_not_stored=False
         )[0])
+    args.random_seed = original_random_seed
+    return data
+
+def load_list_of_time_loggers(
+    args, 
+    random_seed_options,
+) -> ListOfTimeLogger:
+    original_random_seed = args.random_seed
+    data = ListOfTimeLogger()
+    for seed in random_seed_options:
+        args.random_seed = seed
+        args = process_args(args)
+
+        data.append(load_data(args.data_driven_radii_timing_file, TimeLogger))
+
     args.random_seed = original_random_seed
     return data

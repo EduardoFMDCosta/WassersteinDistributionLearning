@@ -35,17 +35,13 @@ cd projects/ConcentrationInequalities
 LOG="logging/${FILE_NAME}.txt"
 mkdir -p logging
 
-# --- vmstat logging (robust, no fancy expansions) ---
-JOBID="\${PBS_JOBID:-}"
-if [ -z "\$JOBID" ]; then
-  JOBID="${FILE_NAME}.\$\$"
-fi
+# --- vmstat logging ---
+JOBID="${PBS_JOBID:-${FILE_NAME}.$$}"
+TMPDIR="/var/tmp/$JOBID"
+mkdir -p "$TMPDIR"
 
-TMPDIR="/var/tmp/\$JOBID"
-mkdir -p "\$TMPDIR" || { echo "Could not create TMPDIR=\$TMPDIR" >> "$LOG"; exit 1; }
-
-vmstat 1 > "\$TMPDIR/vmstat.log" &
-VMSTAT_PID=\$!
+vmstat 1 > "$TMPDIR/vmstat.log" &
+VMSTAT_PID=$!
 # --- end vmstat logging ---
 
 stdbuf -oL -eL bash schedulers/${FILE_NAME}.sh >> "$LOG" 2>&1

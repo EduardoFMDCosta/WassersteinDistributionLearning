@@ -36,17 +36,17 @@ LOG="logging/${FILE_NAME}.txt"
 mkdir -p logging
 
 # Time file-transfer time
-TMPDIR="\${TMPDIR:-/tmp/\${PBS_JOBID:-${FILE_NAME}.\$\$}}"
+TMPDIR="/var/tmp/\${PBS_JOBID:-${FILE_NAME}.\$\$}"
 mkdir -p "\$TMPDIR"
 
 vmstat 1 > "\$TMPDIR/vmstat.log" &
 VMSTAT_PID=\$!
 
-# execute scheduler file:
 stdbuf -oL -eL bash schedulers/${FILE_NAME}.sh >> "$LOG" 2>&1
 
 kill "\$VMSTAT_PID" || true
 cp "\$TMPDIR/vmstat.log" "logging/${FILE_NAME}.vmstat.txt" || true
+
 
 EOF
 

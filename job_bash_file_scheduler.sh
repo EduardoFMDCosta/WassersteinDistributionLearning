@@ -14,7 +14,7 @@ cat > temp_job_script.sh <<EOF
 #
 # names output and error files:
 #PBS -j oe
-#PBS -o logging/${FILE_NAME}.txt
+#PBS -o logging/${FILE_NAME}.pbs.txt
 
 # Ensure the output and error directories exist
 # mkdir -p ${PBS_O_HOME}/projects/ConcentrationInequalities/logging
@@ -31,9 +31,22 @@ cd $PBS_O_HOME
 source miniconda3/bin/activate
 conda activate concentration_inequalities
 
-# execute scheduler file:
 cd projects/ConcentrationInequalities
-bash schedulers/${FILE_NAME}.sh
+LOG="logging/${FILE_NAME}.txt"
+mkdir -p logging
+
+# Time file-transfer time
+mkdir -p "${TMPDIR:-/tmp/$PBS_JOBID}"
+TMPDIR="${TMPDIR:-/tmp/$PBS_JOBID}"
+mkdir -p "$TMPDIR"
+vmstat 1 > "$TMPDIR/vmstat.log" &
+VMSTAT_PID=$!
+
+# execute scheduler file:
+stdbuf -oL -eL bash schedulers/${FILE_NAME}.sh >> "$LOG" 2>&1
+
+kill $VMSTAT_PID
+cp "$TMPDIR/vmstat.log" logging/${FILE_NAME}.vmstat.txt
 
 EOF
 

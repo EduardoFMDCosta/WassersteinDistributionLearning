@@ -27,6 +27,9 @@ export OMP_PROC_BIND=true
 export OMP_PLACES=cores
 
 # setup python environment
+echo "TMPDIR='$TMPDIR' PBS_JOBID='${PBS_JOBID:-}'"
+
+
 cd $PBS_O_HOME
 source miniconda3/bin/activate
 conda activate concentration_inequalities

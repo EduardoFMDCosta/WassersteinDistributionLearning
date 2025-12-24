@@ -89,6 +89,7 @@ def data_driven_radii_for_combinations(
                     time_limit=time_limit
                 ))
                 time_logger.append((N_train, N, M), torch.as_tensor(time.time() - start))
+                print(f"Finished processing N_train={N_train}, N={N}, M={M} in {time.time() - start:.2f} seconds.")
             except Exception as e:
                 print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
         else:

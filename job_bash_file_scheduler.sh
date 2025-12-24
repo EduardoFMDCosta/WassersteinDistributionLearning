@@ -27,9 +27,6 @@ export OMP_PROC_BIND=true
 export OMP_PLACES=cores
 
 # setup python environment
-echo "TMPDIR='$TMPDIR' PBS_JOBID='${PBS_JOBID:-}'"
-
-
 cd $PBS_O_HOME
 source miniconda3/bin/activate
 conda activate concentration_inequalities
@@ -39,17 +36,17 @@ LOG="logging/${FILE_NAME}.txt"
 mkdir -p logging
 
 # Time file-transfer time
-mkdir -p "${TMPDIR:-/tmp/$PBS_JOBID}"
-TMPDIR="${TMPDIR:-/tmp/$PBS_JOBID}"
-mkdir -p "$TMPDIR"
-vmstat 1 > "$TMPDIR/vmstat.log" &
-VMSTAT_PID=$!
+TMPDIR="\${TMPDIR:-/tmp/\${PBS_JOBID:-${FILE_NAME}.\$\$}}"
+mkdir -p "\$TMPDIR"
+
+vmstat 1 > "\$TMPDIR/vmstat.log" &
+VMSTAT_PID=\$!
 
 # execute scheduler file:
 stdbuf -oL -eL bash schedulers/${FILE_NAME}.sh >> "$LOG" 2>&1
 
-kill $VMSTAT_PID
-cp "$TMPDIR/vmstat.log" logging/${FILE_NAME}.vmstat.txt
+kill "\$VMSTAT_PID" || true
+cp "\$TMPDIR/vmstat.log" "logging/${FILE_NAME}.vmstat.txt" || true
 
 EOF
 

@@ -35,7 +35,7 @@ if __name__ == '__main__':
     data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 
         combinations=combinations, 
-        time_limit=60*1,
+        time_limit=60*10,
         generate_partition_if_missing=False,
         return_all_available_combinations=True
     )

@@ -24,7 +24,7 @@ echo "---------------- W${rho} -------------------"
 
 echo "-- GaussianMixture --"
     echo "dim = 3, setting = 0"
-    python -m experiments.generate_results --distribution GaussianMixture --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method"  --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_high_M --distribution GaussianMixture --num_dims 3 --setting 0 --wasserstein_order "$rho" --method "$method"  --num_samples_training "$num_samples_training" --random_seed "$seed"
 
 done        
 done

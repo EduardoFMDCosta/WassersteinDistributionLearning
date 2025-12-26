@@ -10,7 +10,7 @@ from plotting.utils_plot import set_style, convert_to_sci_notation
 set_style()
 
 if __name__ == '__main__':
-    dimensions = [2, 3, 10, 25, 50, 75, 100]
+    dimensions = [2, 10, 25, 50, 75, 100]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 

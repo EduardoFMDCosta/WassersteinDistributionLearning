@@ -27,15 +27,15 @@ if __name__ == '__main__':
         compute_discrete_bound=True,
     )
 
-    setting_variance_dict = {-1: 0.1,
-                             0: 0.03,
-                             1: 0.01,
-                             2: 0.001,
-                             3: 0.0001,
-                             4: 0.00001,
-                             5: 0.000001}
+    setting_variance_dict = {-1: 0.1 ** 0.5,
+                             0: 0.03 ** 0.5,
+                             1: 0.01 ** 0.5,
+                             2: 0.001 ** 0.5,
+                             3: 0.0001 ** 0.5,
+                             4: 0.00001 ** 0.5,
+                             5: 0.000001 ** 0.5}
 
-    settings = [-1, 0, 1, 2, 3, 4, 5]
+    settings = [-1, 1, 2, 3, 4]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     ax.set_xlabel(r"Support size $M$")
     ax.set_ylabel("Ours / Fournier (2023)")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"Variance", loc="best")
+    ax.legend(title=r"Std deviation", loc="best")
     plt.tight_layout()
 
     if args.save:

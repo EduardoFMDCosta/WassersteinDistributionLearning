@@ -133,7 +133,7 @@ def set_style():
         "font.size": 16,
         "axes.labelsize": 16,
         "axes.titlesize": 16,
-        "legend.fontsize": 12,
+        "legend.fontsize": 16,
         "xtick.labelsize": 16,
         "ytick.labelsize": 16,
         "figure.dpi": 200,

@@ -4,7 +4,7 @@ import pickle
 from typing import Tuple
 
 
-def update_radius_in_data(
+def _update_radius_in_data(
         filename: str,
         key: Tuple[int, int, int],
         new_radius: torch.Tensor,
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         file_name = f"data_driven_radii_seed={seed}.pickle"
     file_path = os.path.join(file_path, file_name)
 
-    update_radius_in_data(
+    _update_radius_in_data(
         filename=file_path,
         key=(5000, 1000, 1000),
         new_radius=torch.tensor(float('nan'))

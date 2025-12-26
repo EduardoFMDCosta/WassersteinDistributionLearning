@@ -48,6 +48,10 @@ def update_radius_in_data(
 
 if __name__ == '__main__':
 
+    # Warning: this method allows us to reset a particular radius directly on the pickle file.
+    # The motivation behind it is to set a particular value to NaN so we can signal to the server the need to be recomputed
+    # (without recomputing all other values).
+
     file_path = r"C:\Git\ConcentrationInequalities\results\W2\gaussianmixture\dims_3\setting_0\joint_diagonal_milp"
     seed = 9
     if seed == 0:
@@ -59,5 +63,5 @@ if __name__ == '__main__':
     update_radius_in_data(
         filename=file_path,
         key=(5000, 1000, 1000),
-        new_radius=torch.tensor(0.52)
+        new_radius=torch.tensor(float('nan'))
     )

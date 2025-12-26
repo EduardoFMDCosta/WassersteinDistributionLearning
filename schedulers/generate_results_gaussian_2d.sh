@@ -25,19 +25,19 @@ echo "---------------- W${rho} -------------------"
 
 echo "-- Gaussian --"
     echo "dim = 1, setting = -1"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting -1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results_high_M --distribution Gaussian --num_dims 2 --setting -1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 1"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results_high_M --distribution Gaussian --num_dims 2 --setting 1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 2"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 2 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results_high_M --distribution Gaussian --num_dims 2 --setting 2 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 3"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 3 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results_high_M --distribution Gaussian --num_dims 2 --setting 3 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 4"
-    python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting 4 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results_high_M --distribution Gaussian --num_dims 2 --setting 4 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
 done        
 done

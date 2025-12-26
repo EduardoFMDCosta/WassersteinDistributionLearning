@@ -24,19 +24,19 @@ echo "---------------- W${rho} -------------------"
 
 echo "-- Uniform --"
     echo "dim = 10, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 10 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_high_M --distribution Uniform --num_dims 10 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
 
     echo "dim = 25, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 25 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_high_M --distribution Uniform --num_dims 25 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
 
     echo "dim = 50, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 50 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_high_M --distribution Uniform --num_dims 50 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
 
     echo "dim = 75, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 75 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_high_M --distribution Uniform --num_dims 75 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
 
     echo "dim = 100, setting = 0"
-    python -m experiments.generate_results --distribution Uniform --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_high_M --distribution Uniform --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"
 
 
 done        

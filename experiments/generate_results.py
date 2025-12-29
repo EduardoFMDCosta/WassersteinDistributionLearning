@@ -27,17 +27,18 @@ if __name__ == '__main__':
     N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150]
 
-    combinations = [(N, M) for N in N_options for M in M_options]
-
     data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 
-        combinations=combinations, 
+        combinations=[(args.num_samples_training, N, M) for N in N_options for M in M_options], 
         time_limit=60*1,
         generate_partition_if_missing=False,
         return_all_available_combinations=True
     )
 
-    fournier_radii = fournier_radii_for_combinations(args, combinations)
+    fournier_radii = fournier_radii_for_combinations(
+        args, 
+        combinations=[(N, M) for N in N_options for M in M_options]
+    )
 
     if args.save:
         pickle_dump(data_driven_radii, args.data_driven_radii_file)

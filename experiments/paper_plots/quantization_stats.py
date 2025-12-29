@@ -4,19 +4,23 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-from configs.handlers import parse_arguments, load_json, process_args
+from configs.handlers import parse_arguments, load_json, process_args, num_samples_training_from_num_samples
 from experiments.utils import quantizations_for_combinations, load_quantization_samples
 
 from plotting.utils_plot import set_style, convert_to_sci_notation
 import plotting.plot as plot
 
 
-def main(args, M_options, N_options, plot_samples = True):
-    combinations = [(N, M) for N in N_options for M in M_options]
+def main(args, M_options, N_options):
+    combinations = [(args.num_samples_training, N, M) for N in N_options for M in M_options]
 
-    quantizations = quantizations_for_combinations(args, combinations=combinations, generate_partition_if_missing=False)
+    quantizations = quantizations_for_combinations(
+        args, 
+        combinations=combinations, 
+        generate_partition_if_missing=False
+    )
 
-    tag = f"N_train={args.num_samples_training}_seed={args.random_seed}"
+    tag = f"seed={args.random_seed}"
 
     fig0, ax0 = plt.subplots(1, 1, figsize=(6, 4), constrained_layout=True)
     fig1, ax1 = plt.subplots(1, 1, figsize=(6, 4), constrained_layout=True)
@@ -27,7 +31,10 @@ def main(args, M_options, N_options, plot_samples = True):
     colors = [cmap(i / max(len(N_options) - 1, 1)) for i in range(len(N_options))]
 
     for N, color in zip(N_options, colors):
-        quantizations_slice = quantizations._slice(N_train=args.num_samples_training, N=N)
+        quantizations_slice = quantizations._slice(N=N)
+        if quantizations_slice.keys() == []:
+            continue
+    
         M_options_plot = [key[2] for key in quantizations_slice.keys()]
 
         # Probs
@@ -127,7 +134,6 @@ if __name__ == '__main__':
         num_dims=2, # PLACEHOLDER
         setting=0, # PLACEHOLDER
         num_samples=10_000,
-        num_samples_training=5_000,
         num_clusters=10,
         save=False,
     )

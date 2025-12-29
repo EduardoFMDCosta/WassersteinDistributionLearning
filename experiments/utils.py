@@ -17,19 +17,19 @@ from experiments.datastructures import ListOfTimeLogger, TimeLogger, DataDrivenR
 
 def quantizations_for_combinations(
     args: Namespace, 
-    combinations: List[Tuple[int, int]],  # List of (N, M) pairs
+    combinations: List[Tuple[int, int, int]],  # List of (N_train, N, M) tuples
     generate_partition_if_missing: bool = False,
 ) -> Quantizations:
+    assert all(len(combo) == 3 for combo in combinations), "Each combination must be a tuple of (N_train, N, M)."
+
     partitions = get_dict_of_partitions(
         args, 
-        num_samples_options=[args.num_samples_training], 
-        num_clusters_options=[M for N, M in combinations], 
+        combinations=[(N_train, M) for N_train, N, M in combinations],
         generate_partition_if_missing=generate_partition_if_missing
     )
 
     quantizations = Quantizations()
-    N_train = args.num_samples_training
-    for (N, M) in combinations:
+    for (N_train, N, M) in combinations:
         if (N_train, M) not in partitions.keys():
             print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
             continue
@@ -42,18 +42,19 @@ def quantizations_for_combinations(
 
 def data_driven_radii_for_combinations(
     args: Namespace, 
-    combinations: List[Tuple[int, int]],  # List of (N, M) pairs
+    combinations: List[Tuple[int, int, int]],  # List of (N_train,N, M) pairs
     time_limit: Optional[float] = None,
     generate_partition_if_missing: bool = False,
     return_all_available_combinations: bool = False,
     generate_data_driven_radii_if_not_stored: bool = True,
 ) -> Tuple[DataDrivenRadii, TimeLogger]:
+    assert all(len(combo) == 3 for combo in combinations), "Each combination must be a tuple of (N_train, N, M)."
+
     solver = get_solver(method=args.method)
 
     partitions = get_dict_of_partitions(
         args, 
-        num_samples_options=[args.num_samples_training], 
-        num_clusters_options=[M for N, M in combinations], 
+        combinations=[(N_train, M) for N_train, N, M in combinations],
         generate_partition_if_missing=generate_partition_if_missing
     )
 
@@ -62,8 +63,7 @@ def data_driven_radii_for_combinations(
 
     data_driven_radii = DataDrivenRadii()
 
-    N_train = args.num_samples_training
-    for (N, M) in combinations:
+    for (N_train, N, M) in combinations:
         if (N_train, N, M) in stored_data_driven_radii.keys():
             print(f"Data-driven radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
             data_driven_radii.append((N_train, N, M), stored_data_driven_radii.at((N_train, N, M)))
@@ -187,9 +187,11 @@ def load_quantization(args, partition: BoundedVoronoiPartition, N: int) -> Uncer
 
 def load_list_of_data_driven_radii(
     args, 
-    combinations, 
+    combinations,   # List of (N_train,N, M) pairs
     random_seed_options
 ) -> ListOfDataDrivenRadii:
+    assert all(len(combo) == 3 for combo in combinations), "Each combination must be a tuple of (N_train, N, M)."
+
     original_random_seed = args.random_seed
     data = ListOfDataDrivenRadii()
     for seed in random_seed_options:

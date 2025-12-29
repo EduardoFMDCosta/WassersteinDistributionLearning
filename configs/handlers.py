@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 import json
 import argparse
 import os
@@ -37,7 +37,7 @@ def parse_arguments(
     random_seed: int = 0,
     num_clusters: int = 10,
     method: str = 'stochastic_vertice_ascent',
-    num_samples_training: int = 1000,
+    num_samples_training: Optional[int] = None,
     num_samples: int = 1000,
     wasserstein_order: int = 2,
     beta: float = 1e-6,
@@ -65,9 +65,18 @@ def parse_arguments(
 
     return process_args(args)
 
+def num_samples_training_from_num_samples(N: int) -> int:
+    if N < 5000:
+        return 1000
+    else:
+        return 5000
+    
 def process_args(args):
     if not args.method in get_solver.supported_methods + get_discrete_solver.supported_methods:
         raise ValueError(f"Method {args.method} not supported. Supported methods: {get_solver.supported_methods}")
+
+    if args.num_samples_training is None:
+        args.num_samples_training = num_samples_training_from_num_samples(args.num_samples)
 
     dynamics_params = param_handler(
         param_name="parameters",

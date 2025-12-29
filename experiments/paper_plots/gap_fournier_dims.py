@@ -2,7 +2,7 @@ import os
 import torch
 import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments, process_args
+from configs.handlers import parse_arguments, process_args, num_samples_training_from_num_samples
 from experiments.utils import load_list_of_data_driven_radii, fournier_radii_for_combinations
 
 from plotting.utils_plot import set_style, convert_to_sci_notation
@@ -11,7 +11,7 @@ set_style()
 
 if __name__ == '__main__':
     dimensions = [2, 10, 25, 50, 75, 100]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    M_options = [5, 20, 30, 40, 50, 75]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     args = parse_arguments(
@@ -19,14 +19,11 @@ if __name__ == '__main__':
         num_dims=2,
         setting=0,
         wasserstein_order=1,
-        num_samples_training=5000,
         num_samples=10000,
         beta=1e-6,
         method='joint_diagonal_milp',
         plot=True,
         save=True,
-        compute_moment_bound=True,
-        compute_discrete_bound=True,
     )
 
     N_options = [1000, 5000, 10000, 100000, 1000000]
@@ -38,39 +35,49 @@ if __name__ == '__main__':
 
     for N, color in zip(N_options, colors):
         args.num_samples = N
-        ratios, ratios_minus, ratios_plus = list(), list(), list()
+        N_train = num_samples_training_from_num_samples(N)
+
+        combinations = [(N_train, N, M) for M in M_options]
+
+        ratios, ratios_minus, ratios_plus, dimensions_plot = list(), list(), list(), list()
         for d in dimensions:
             args.num_dims = d
             process_args(args)
 
-            combinations = [(args.num_samples, M) for M in M_options]
-
             data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-            fournier_radii = fournier_radii_for_combinations(args, combinations)
+            fournier_radii = fournier_radii_for_combinations(args, [(combi[1], combi[2]) for combi in combinations])
 
             # Get our best bound
-            min_bound = 1e8
+            i = 0
             for M in M_options:
-                if (args.num_samples_training, args.num_samples, M) in data.keys():
-                    radius = data.mean_radius_at((args.num_samples_training, args.num_samples, M))
-                    std = data.std_radius_at((args.num_samples_training, args.num_samples, M))
-                    if radius < min_bound:
+                if (N_train, N, M) in data.keys():
+                    radius = data.mean_radius_at((N_train, N, M))
+                    std = data.std_radius_at((N_train, N, M))
+
+                    if i == 0:
+                        min_bound = radius
+                        min_std = std
+                    elif radius < min_bound:
                         min_bound = radius
                         min_std = std
 
-            fournier_bound = fournier_radii.radius_at((args.num_samples_training, args.num_samples, M_options[0]))
+                    i += 1
 
-            ratio = min_bound / fournier_bound
-            ratio_minus = (min_bound - min_std) / fournier_bound
-            ratio_plus = (min_bound + min_std) / fournier_bound
+            if i > 1 and ((N_train, N, M_options[0]) in fournier_radii.keys()):
+                fournier_bound = fournier_radii.radius_at((N_train, N, M_options[0]))
 
-            ratios.append(ratio)
-            ratios_minus.append(ratio_minus)
-            ratios_plus.append(ratio_plus)
+                ratio = min_bound / fournier_bound
+                ratio_minus = (min_bound - min_std) / fournier_bound
+                ratio_plus = (min_bound + min_std) / fournier_bound
 
-        ax.plot(dimensions, ratios, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
+                ratios.append(ratio)
+                ratios_minus.append(ratio_minus)
+                ratios_plus.append(ratio_plus)
+                dimensions_plot.append(d)
+
+        ax.plot(dimensions_plot, ratios, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
         ax.fill_between(
-            dimensions,
+            dimensions_plot,
             ratios_minus,
             ratios_plus,
             color=color,
@@ -84,7 +91,7 @@ if __name__ == '__main__':
     plt.tight_layout()
 
     if args.save:
-        file_name = f"gap_dims_W{args.wasserstein_order}_N_train={args.num_samples_training}_{args.method}"
+        file_name = f"gap_dims_W{args.wasserstein_order}_{args.method}"
         plt.savefig(os.path.join(args.figures_dir, f"{file_name}.pdf"))
 
     plt.show()

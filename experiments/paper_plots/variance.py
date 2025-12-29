@@ -17,14 +17,11 @@ if __name__ == '__main__':
         num_dims=2,
         setting=0,
         wasserstein_order=2,
-        num_samples_training=5000,
         num_samples=1000000,
         beta=1e-6,
         method='joint_diagonal_milp',
         plot=True,
         save=True,
-        compute_moment_bound=True,
-        compute_discrete_bound=True,
     )
 
     settings = [-1, 1, 2, 3, 4]
@@ -39,10 +36,10 @@ if __name__ == '__main__':
         args.setting = setting
         args = process_args(args)
 
-        combinations = [(args.num_samples, M) for M in M_options]
+        combinations = [(args.num_samples_training, args.num_samples, M) for M in M_options]
 
         data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-        fournier_radii = fournier_radii_for_combinations(args, combinations)
+        fournier_radii = fournier_radii_for_combinations(args, [(combi[1], combi[2]) for combi in combinations])
 
         M_options_plot = [key[2] for key in data.keys(N=args.num_samples, N_train=args.num_samples_training)]
         ratios, ratios_minus, ratios_plus = list(), list(), list()

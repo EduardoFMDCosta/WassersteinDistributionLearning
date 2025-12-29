@@ -14,7 +14,7 @@ if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Gaussian",
-        num_dims=2,
+        num_dims=10,
         setting=0,
         wasserstein_order=2,
         num_samples_training=5000,

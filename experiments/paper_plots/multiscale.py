@@ -14,7 +14,7 @@ if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Gaussian",
-        num_dims=2,
+        num_dims=10,
         setting=0,
         wasserstein_order=2,
         num_samples_training=5000,
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(8, 4))
     cmap = plt.cm.coolwarm
     colors = [cmap(i / (len(settings) - 1)) for i in range(len(settings))]
 
@@ -53,39 +53,39 @@ if __name__ == '__main__':
         fournier_radii = fournier_radii_for_combinations(args, combinations)
 
         M_options_plot = [key[2] for key in data.keys(N=args.num_samples, N_train=args.num_samples_training)]
-        ratios, ratios_minus, ratios_plus = list(), list(), list()
+        radii, radii_minus, radii_plus = list(), list(), list()
         for M in M_options_plot:
             key = (args.num_samples_training, args.num_samples, M)
 
             if key in fournier_radii.keys():
-                ratios.append(data.mean_radius_at(key) / fournier_radii.radius_at(key))
-                ratios_minus.append((data.mean_radius_at(key) - data.std_radius_at(key)) / fournier_radii.radius_at(key))
-                ratios_plus.append((data.mean_radius_at(key) + data.std_radius_at(key)) / fournier_radii.radius_at(key))
+                radii.append(data.mean_radius_at(key))
+                radii_minus.append((data.mean_radius_at(key) - data.std_radius_at(key)))
+                radii_plus.append((data.mean_radius_at(key) + data.std_radius_at(key)))
             else:
                 continue
 
-        M_options_plot, ratios = torch.as_tensor(M_options_plot), torch.as_tensor(ratios)
-        ratios_minus, ratios_plus = torch.as_tensor(ratios_minus), torch.as_tensor(ratios_plus)
+        M_options_plot, radii = torch.as_tensor(M_options_plot), torch.as_tensor(radii)
+        radii_minus, radii_plus = torch.as_tensor(radii_minus), torch.as_tensor(radii_plus)
         idx = M_options_plot.argsort()
-        ax.plot(M_options_plot[idx], ratios[idx], label=rf"${convert_to_sci_notation(setting_variance_dict[setting]**0.5)}$", color=color, marker="o")
+        ax.plot(M_options_plot[idx], radii[idx], label=rf"${convert_to_sci_notation(setting_variance_dict[setting])}$", color=color, marker="o")
 
         ax.fill_between(
             M_options_plot[idx],
-            ratios_minus[idx],
-            ratios_plus[idx],
+            radii_minus[idx],
+            radii_plus[idx],
             alpha=0.2,
             color=color
         )
 
 
-    ax.set_xlabel(r"Support size $M$")
-    ax.set_ylabel("Ours / Fournier (2023)")
+    ax.set_xlabel(r"Support size of $\widehat{\mathbb{P}}$")
+    ax.set_ylabel("Our bound")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"Std deviation", loc="best")
+    ax.legend(title=r"Std deviation", loc="center left", bbox_to_anchor=(1, 0.5))
     plt.tight_layout()
 
     if args.save:
-        file_name = f"variance_W{args.wasserstein_order}_N_train={args.num_samples_training}_{args.method}"
+        file_name = f"introduction"
         plt.savefig(os.path.join(args.figures_dir, f"{file_name}.pdf"))
 
     plt.show()

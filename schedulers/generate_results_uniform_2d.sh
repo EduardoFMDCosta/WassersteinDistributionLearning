@@ -13,7 +13,7 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 for seed in 0 1 2 3 4 5 6 7 8 9; do
 echo "-------------------------------------------- Random seed = ${seed} -----------------------------------------------"
 
-for method in triangle_inequality_vertex; do
+for method in joint_diagonal_milp; do
 echo "------------------------------------------------- method = ${method} -----------------------------------------------------"
 
 for num_samples_training in 5000; do

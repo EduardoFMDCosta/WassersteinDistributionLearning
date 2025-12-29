@@ -12,7 +12,7 @@ from sets import BoundedVoronoiPartition
 from configs.handlers import pickle_load, pickle_dump, process_args
 from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_dict_of_partitions
-from experiments.datastructures import TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii
+from experiments.datastructures import ListOfTimeLogger, TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii
 
 
 def quantizations_for_combinations(
@@ -58,9 +58,9 @@ def data_driven_radii_for_combinations(
     )
 
     stored_data_driven_radii = load_data(args.data_driven_radii_file, DataDrivenRadii)
+    time_logger = load_data(args.data_driven_radii_timing_file, TimeLogger)
 
     data_driven_radii = DataDrivenRadii()
-    time_logger = TimeLogger()
 
     N_train = args.num_samples_training
     for (N, M) in combinations:
@@ -89,6 +89,7 @@ def data_driven_radii_for_combinations(
                     time_limit=time_limit
                 ))
                 time_logger.append((N_train, N, M), torch.as_tensor(time.time() - start))
+                print(f"Finished processing N_train={N_train}, N={N}, M={M} in {time.time() - start:.2f} seconds.")
             except Exception as e:
                 print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
         else:
@@ -201,5 +202,20 @@ def load_list_of_data_driven_radii(
             return_all_available_combinations=False,
             generate_data_driven_radii_if_not_stored=False
         )[0])
+    args.random_seed = original_random_seed
+    return data
+
+def load_list_of_time_loggers(
+    args, 
+    random_seed_options,
+) -> ListOfTimeLogger:
+    original_random_seed = args.random_seed
+    data = ListOfTimeLogger()
+    for seed in random_seed_options:
+        args.random_seed = seed
+        args = process_args(args)
+
+        data.append(load_data(args.data_driven_radii_timing_file, TimeLogger))
+
     args.random_seed = original_random_seed
     return data

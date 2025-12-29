@@ -24,15 +24,18 @@ if __name__ == '__main__':
     # N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
     # M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
 
+    # N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
+    # M_options = [5, 20, 30, 40, 50, 75, 100, 150]
+
     N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150]
+    M_options = [200, 500, 1000]
 
     combinations = [(N, M) for N in N_options for M in M_options]
 
     data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 
         combinations=combinations, 
-        time_limit=60*1,
+        time_limit=60*10,
         generate_partition_if_missing=False,
         return_all_available_combinations=True
     )

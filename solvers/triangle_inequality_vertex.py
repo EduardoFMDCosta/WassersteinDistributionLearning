@@ -63,7 +63,7 @@ def lifted_lp_from_vertex_gurobi(
     model.optimize()
 
     result = {
-        "objective": float(model.objVal) if model.status == GRB.OPTIMAL else None,
+        "objective": float(model.objVal) if model.status == GRB.OPTIMAL else -float('inf'),
         "status": model.Status
     }
     return result

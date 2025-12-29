@@ -38,6 +38,9 @@ class TimeLogger(_GridDict[torch.Tensor]):
     @property
     def time(self):
         return self._stack('data')
+    
+    def time_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return self.data[key]
 
 
 class DataDrivenRadii(_GridDict[DataDrivenRadius]): 
@@ -68,6 +71,48 @@ class DataDrivenRadii(_GridDict[DataDrivenRadius]):
     
     def radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return self.data[key].radius
+
+@dataclass
+class ListOfTimeLogger:
+    data: List[TimeLogger] = field(default_factory=list)
+
+    def append(self, rec: TimeLogger) -> None:
+        self.data.append(rec)
+    
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
+
+    def _slice(self: "ListOfTimeLogger", N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> "ListOfTimeLogger":
+        new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
+        return self.__class__(new_data)
+
+    @property
+    def time_stack(self) -> torch.Tensor:
+        return torch.stack([
+            torch.stack([elem.time_at(key) for elem in self.data])
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_time(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.time_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_time(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.time_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+    
+    def mean_time_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.time_at(key) for elem in self.data]).mean()
+    
+    def std_time_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.time_at(key) for elem in self.data]).std()
 
 @dataclass
 class ListOfDataDrivenRadii:

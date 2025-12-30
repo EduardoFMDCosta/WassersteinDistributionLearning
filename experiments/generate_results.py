@@ -24,8 +24,8 @@ if __name__ == '__main__':
     # N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
     # M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
 
-    N_options = [1000, 2500, 5000, 7500, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150]
+    N_options = [1000, 2500]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
 
     data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 

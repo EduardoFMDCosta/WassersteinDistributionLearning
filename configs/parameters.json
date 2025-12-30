@@ -188,6 +188,33 @@
                   }
               }
           },
+          "25": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance":  0.01923503540456295
+                  }
+              }
+          },
+          "50": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.017483416944742203
+                  }
+              }
+          },
+          "75": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.016596339643001556
+                  }
+              }
+          },
           "100": {
               "settings": {
                   "0": {

@@ -23,7 +23,7 @@ echo "---------------- num training samples: ${num_samples_training} -----------
 for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
-echo "-- Gaussian --"`
+echo "-- Gaussian --"
     echo "dim = 1, setting = -1"
     python -m experiments.generate_results --distribution Gaussian --num_dims 2 --setting -1 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 

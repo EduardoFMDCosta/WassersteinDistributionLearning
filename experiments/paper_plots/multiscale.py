@@ -74,7 +74,7 @@ if __name__ == '__main__':
     plt.tight_layout()
 
     if args.save:
-        file_name = f"introduction"
+        file_name = f"introduction_W{args.wasserstein_order}_{args.method}"
         plt.savefig(os.path.join(args.figures_dir, f"{file_name}.pdf"))
 
     plt.show()

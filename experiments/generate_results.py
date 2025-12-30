@@ -33,7 +33,7 @@ if __name__ == '__main__':
     data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 
         combinations=[(args.num_samples_training, N, M) for N in N_options for M in M_options], 
-        time_limit=60*1,
+        time_limit=60*10,
         generate_partition_if_missing=False,
         return_all_available_combinations=True
     )

@@ -26,7 +26,6 @@ if __name__ == '__main__':
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     cmap = plt.cm.coolwarm
-    file_name = f"time_W{args.wasserstein_order}_{args.method}"
 
     radii_times = load_list_of_time_loggers(args, random_seed_options)
 
@@ -75,7 +74,7 @@ if __name__ == '__main__':
 
 
     if args.save:
-        fig_partition.savefig(os.path.join(args.figures_dir, f"{file_name}_partition.pdf"))
-        fig_radii.savefig(os.path.join(args.figures_dir, f"{file_name}_radii.pdf"))
+        fig_partition.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_partition.pdf"))
+        fig_radii.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_{args.method}_radii.pdf"))
     else:
         plt.show()

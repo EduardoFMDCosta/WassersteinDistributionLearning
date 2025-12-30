@@ -1,17 +1,27 @@
 import os
-import itertools
-import torch
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-from configs.handlers import parse_arguments, load_json, process_args, num_samples_training_from_num_samples
-from experiments.utils import quantizations_for_combinations, load_quantization_samples
+from configs.handlers import parse_arguments
+from experiments.utils import quantizations_for_combinations
 
-from plotting.utils_plot import set_style, convert_to_sci_notation
-import plotting.plot as plot
+from plotting.utils_plot import convert_to_sci_notation
 
+      
+if __name__ == '__main__':
+    args = parse_arguments(
+        random_seed=0,
+        distribution='GaussianMixture',
+        num_dims=2,
+        setting=0,
+        num_samples=10_000,
+        num_clusters=10,
+        save=False,
+    )
 
-def main(args, M_options, N_options):
+    M_options = [5, 30, 75]
+    N_options = [10_000, 100_000]
+
     combinations = [(args.num_samples_training, N, M) for N in N_options for M in M_options]
 
     quantizations = quantizations_for_combinations(
@@ -126,32 +136,3 @@ def main(args, M_options, N_options):
         plt.close('all')
     else:
         plt.show()
-            
-if __name__ == '__main__':
-    args = parse_arguments( # Only parse arguments once, updated afterwards
-        random_seed=0,
-        distribution='Gaussian', # PLACEHOLDER
-        num_dims=2, # PLACEHOLDER
-        setting=0, # PLACEHOLDER
-        num_samples=10_000,
-        num_clusters=10,
-        save=False,
-    )
-
-    M_options = [5, 30, 75]
-    N_options = [10_000, 100_000]
-
-    settings = [('GaussianMixture', 2, 0)]
-    for distribution, num_dims, setting in settings:
-        args.distribution = distribution
-        args.num_dims = num_dims
-        args.setting = setting
-        args = process_args(args)
-
-        try:
-            main(args, M_options=M_options, N_options=N_options)
-        except Exception as e:
-            print(f"Failed for distribution={distribution}, num_dims={num_dims}, setting={setting} with error: {e}")
-
-    # if not args.save:
-    #     plt.show()

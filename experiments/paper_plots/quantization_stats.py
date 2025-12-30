@@ -89,7 +89,7 @@ if __name__ == '__main__':
                 alpha=0.2,
             )
 
-    ax0.set_ylabel(r"Mean mass $\frac{1}{2}(p^l_i + p^u_i)$ over $i=1,\ldots, M-1$")
+    ax0.set_ylabel(r"Mean prob. mass $\frac{1}{2}(p^l_i + p^u_i)$")
     ax0.set_xlabel(r"Support size $M$")
     ax0.legend(
         handles=[ 
@@ -120,10 +120,10 @@ if __name__ == '__main__':
         bbox_to_anchor=(1.0, 0.85)
     )
 
-    ax2.set_ylabel(r"Mean radius $r_i$ ($i=1,...M-1$)")
+    ax2.set_ylabel(r"Mean radius $r_i$")
     ax2.set_xlabel(r"Support size $M$")
 
-    ax3.set_ylabel(r"Mean $\|c_i-c_j\|$ ($i,j=1,...M$, $i\neq j$)")
+    ax3.set_ylabel(r"Mean $\|c_i-c_j\|$ ($i\neq j$)")
     ax3.set_xlabel(r"Support size $M$")
     ax3.set_ylim(0., 0.4)
 

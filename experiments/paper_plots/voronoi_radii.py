@@ -10,6 +10,10 @@ from scipy.spatial import Voronoi
 from configs.handlers import parse_arguments
 from experiments.utils import quantizations_for_combinations
 
+from plotting.utils_plot import set_style
+
+set_style()
+
 
 @dataclass(frozen=True)
 class VoronoiMaxRadius:
@@ -69,10 +73,10 @@ if __name__ == '__main__':
         setting=0,
         num_samples=10_000,
         num_clusters=10,
-        save=False,
+        save=True,
     )
 
-    M_options = [5, 30, 75]
+    M_options = [5, 20, 30, 40, 50, 75, 100]
 
     combinations = [(args.num_samples_training, args.num_samples, M) for M in M_options]
 
@@ -126,7 +130,7 @@ if __name__ == '__main__':
     ax.set_xlabel(r"Support size $M$")
 
     if args.save:
-        fig.savefig(os.path.join(args.figures_dir, f"radii_heuristic_{tag}.png"))
+        fig.savefig(os.path.join(args.figures_dir, f"radii_heuristic_{tag}.pdf"))
         plt.close('all')
     else:
         plt.show()

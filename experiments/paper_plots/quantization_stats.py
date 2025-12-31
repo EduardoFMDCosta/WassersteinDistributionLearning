@@ -5,7 +5,9 @@ from matplotlib.lines import Line2D
 from configs.handlers import parse_arguments
 from experiments.utils import quantizations_for_combinations
 
-from plotting.utils_plot import convert_to_sci_notation
+from plotting.utils_plot import convert_to_sci_notation, set_style
+
+set_style()
 
       
 if __name__ == '__main__':
@@ -16,11 +18,11 @@ if __name__ == '__main__':
         setting=0,
         num_samples=10_000,
         num_clusters=10,
-        save=False,
+        save=True,
     )
 
-    M_options = [5, 30, 75]
-    N_options = [10_000, 100_000]
+    N_options = [1000, 5000, 10000, 100000, 1000000]
+    M_options = [5, 20, 30, 40, 50, 75, 100]
 
     combinations = [(args.num_samples_training, N, M) for N in N_options for M in M_options]
 
@@ -89,50 +91,50 @@ if __name__ == '__main__':
                 alpha=0.2,
             )
 
-    ax0.set_ylabel(r"prob. mass $\frac{1}{2}(p^l_i + p^u_i)$")
+    # ax0.set_ylabel(r"prob. mass $\frac{1}{2}(p^l_i + p^u_i)$")
     ax0.set_xlabel(r"Support size $M$")
     ax0.legend(
         handles=[ 
             Line2D([0], [0], color=color, lw=2, label=rf"${convert_to_sci_notation(N)}$")
             for N, color in zip(N_options, colors)
         ],
-        loc="upper right"
+        loc="upper right", title=r"$N$"
     )
 
-    ax1.set_ylabel(r"Fraction of samples in $\mathcal{R}_i$")
+    # ax1.set_ylabel(r"Fraction of samples in $\mathcal{R}_i$")
     ax1.set_xlabel(r"Support size $M$")
     legend_colors = ax1.legend(
         handles=[ 
             Line2D([0], [0], color=color, lw=2, label=rf"${convert_to_sci_notation(N)}$")
             for N, color in zip(N_options, colors)
         ],
-        loc="upper right"
+        loc="upper right", title=r"$N$"
     )
     ax1.add_artist(legend_colors)
     ax1.legend(
         handles=[
             Line2D([0], [0], marker='*', color='none', markerfacecolor='black', markersize=10, 
-                    label=r"Region $i=M$"),
+                    label=r"Region $\mathcal{X}\setminus\mathcal{X}_{approx}$"),
             Line2D([0], [0], marker='o', color='none', markerfacecolor='black', markersize=8, 
-                    label=r"Mean over regions $i=1,\ldots,M-1$")
+                    label=r"Mean regions $i=1,\ldots,M-1$")
         ],
-        loc="upper right",
-        bbox_to_anchor=(1.0, 0.85)
+        loc="upper left",
+        # bbox_to_anchor=(1.0, 0.65)
     )
 
-    ax2.set_ylabel(r"Radius $r_i$")
+    # ax2.set_ylabel(r"Radius $r_i$")
     ax2.set_xlabel(r"Support size $M$")
 
-    ax3.set_ylabel(r"Pairwise distance $\|c_i-c_j\|$ ($i\neq j$)")
+    # ax3.set_ylabel(r"Pairwise distance $\|c_i-c_j\|$ ($i\neq j$)")
     ax3.set_xlabel(r"Support size $M$")
     ax3.set_ylim(0., 0.4)
 
 
     if args.save:
-        fig0.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_probs.png"))
-        fig1.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_counts.png"))
-        fig2.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_l2_radii.png"))
-        fig3.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_l2_distance_locs.png"))
+        fig0.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_probs.pdf"))
+        fig1.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_counts.pdf"))
+        fig2.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_l2_radii.pdf"))
+        fig3.savefig(os.path.join(args.figures_dir, f"quantizations_statistics_{tag}_l2_distance_locs.pdf"))
         plt.close('all')
     else:
         plt.show()

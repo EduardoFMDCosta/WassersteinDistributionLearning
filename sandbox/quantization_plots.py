@@ -1,13 +1,12 @@
 import os
-import itertools
-import torch
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 
-from configs.handlers import parse_arguments, load_json, process_args
+from configs.handlers import parse_arguments
 from experiments.utils import quantizations_for_combinations, load_quantization_samples
 import plotting.plot as plot
+from plotting.utils_plot import set_style
 
+set_style()
 
 if __name__ == '__main__':
     args = parse_arguments( # Only parse arguments once, updated afterwards
@@ -16,14 +15,13 @@ if __name__ == '__main__':
         num_dims=2,
         setting=0,
         num_samples=10_000,
-        num_samples_training=5_000,
-        num_clusters=5,
+        num_clusters=75,
         save=True,
     )
 
     quantization = quantizations_for_combinations(
         args, 
-        combinations=[(args.num_samples, args.num_clusters)], 
+        combinations=[(args.num_samples_training, args.num_samples, args.num_clusters)], 
         generate_partition_if_missing=False
     ).at((args.num_samples_training, args.num_samples, args.num_clusters))
 
@@ -36,8 +34,8 @@ if __name__ == '__main__':
 
     if args.save:
         fig.tight_layout()
-        tag = f"{args.distribution.lower()}_dims={args.num_dims}_setting={args.setting}_N_train={args.num_samples_training}_N={args.num_samples}_M={args.num_clusters}"
-        plt.savefig(os.path.join(args.figures_dir, f"quantization_{tag}.png"))
+        tag = f"{args.distribution.lower()}_dims={args.num_dims}_setting={args.setting}_N={args.num_samples}_M={args.num_clusters}"
+        plt.savefig(os.path.join(args.figures_dir, f"quantization_{tag}.pdf"))
         plt.close('all')
     else:
         plt.show()

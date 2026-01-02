@@ -17,8 +17,8 @@ if __name__ == '__main__':
         setting=1,
         wasserstein_order=2,
         beta=1e-6,
-        method='triangle_inequality_vertex',
-        save=False,
+        method='joint_diagonal_milp', # 'joint_diagonal_milp'  'triangle_inequality_vertex'
+        save=True,
     )
 
     N_options = [1000, 5000, 10000, 100000, 1000000]
@@ -42,6 +42,7 @@ if __name__ == '__main__':
         ax_radii.plot(M_options_radii[idx_radii], mean_radii, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
         ax_radii.fill_between(M_options_radii[idx_radii], mean_radii - std_radii, mean_radii + std_radii, color=color, alpha=0.2)
 
+    ax_radii.set_ylim(bottom=0)
     ax_radii.set_xlabel(r"Support size $M$")
     ax_radii.set_ylabel("Time [s]")
     ax_radii.grid(True, linestyle="--", alpha=0.4)
@@ -49,32 +50,30 @@ if __name__ == '__main__':
     fig_radii.tight_layout()
 
 
-    N_train_options = [5000]
-
-    partition_times = load_list_of_time_logger_partition(args, random_seed_options)
+    # partition_times = load_list_of_time_logger_partition(args, random_seed_options)
     
-    fig_partition, ax_partition = plt.subplots(figsize=(6, 4))
+    # fig_partition, ax_partition = plt.subplots(figsize=(6, 4))
 
-    colors = [cmap(i / max(len(N_train_options) - 1, 1)) for i in range(len(N_train_options))]
-    for N_train, color in zip(N_train_options, colors):        
-        partition_times_slice = partition_times._slice(N_train=N_train)
-        M_options_partition = torch.as_tensor([key[1] for key in partition_times_slice.keys()])
-        idx_partition = M_options_partition.argsort()
+    # N_train = 5000
+    # partition_times_slice = partition_times._slice(N_train=N_train)
+    # M_options_partition = torch.as_tensor([key[1] for key in partition_times_slice.keys()])
+    # idx_partition = M_options_partition.argsort()
 
-        mean_partition,  std_partition = partition_times_slice.mean_time[idx_partition], partition_times_slice.std_time[idx_partition]
+    # mean_partition,  std_partition = partition_times_slice.mean_time[idx_partition], partition_times_slice.std_time[idx_partition]
 
-        ax_partition.plot(M_options_partition[idx_partition], mean_partition, label=rf"${convert_to_sci_notation(N_train)}$", color=color, marker="o")
-        ax_partition.fill_between(M_options_partition[idx_partition], mean_partition - std_partition, mean_partition + std_partition, color=color, alpha=0.2)
+    # ax_partition.plot(M_options_partition[idx_partition], mean_partition, label=rf"${convert_to_sci_notation(N_train)}$", color='black', marker="o")
+    # ax_partition.fill_between(M_options_partition[idx_partition], mean_partition - std_partition, mean_partition + std_partition, color='black', alpha=0.2)
 
-    ax_partition.set_xlabel(r"Support size $M$")
-    ax_partition.set_ylabel("Time [s]")
-    ax_partition.grid(True, linestyle="--", alpha=0.4)
-    # ax_partition.legend(title=r"$N_{train}$", loc="best")
-    fig_partition.tight_layout()
+    # ax_partition.set_ylim(bottom=0)
+    # ax_partition.set_xlabel(r"Support size $M$")
+    # ax_partition.set_ylabel("Time [s]")
+    # ax_partition.grid(True, linestyle="--", alpha=0.4)
+    # # ax_partition.legend(title=r"$N_{train}$", loc="best")
+    # fig_partition.tight_layout()
 
 
     if args.save:
-        fig_partition.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_partition.pdf"))
+        # fig_partition.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_partition.pdf"))
         fig_radii.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_{args.method}_radii.pdf"))
     else:
         plt.show()

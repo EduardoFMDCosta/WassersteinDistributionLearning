@@ -12,17 +12,17 @@ set_style()
 
 if __name__ == '__main__':
     args = parse_arguments(
-        distribution="Gaussian",
-        num_dims=10,
-        setting=1,
+        distribution="GaussianMixture",
+        num_dims=3,
+        setting=0,
         wasserstein_order=2,
         beta=1e-6,
-        method='joint_diagonal_milp', # 'joint_diagonal_milp'  'triangle_inequality_vertex'
+        method='triangle_inequality_vertex', # 'joint_diagonal_milp'  'triangle_inequality_vertex'
         save=True,
     )
 
     N_options = [1000, 5000, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     cmap = plt.cm.coolwarm

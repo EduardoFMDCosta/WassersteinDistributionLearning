@@ -14,19 +14,24 @@ if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
         distribution="Gaussian",
-        num_dims=2,
+        num_dims=10,
         setting=0,
         wasserstein_order=2,
         num_samples=1000000,
         beta=1e-6,
-        method='joint_diagonal_milp',
+        method='triangle_inequality_vertex' ,  # 'triangle_inequality_vertex'  'joint_diagonal_milp'
         plot=True,
         save=True,
     )
+    if args.num_dims == 2:
+        settings = [-1, 1, 2, 3, 4]
+    elif args.num_dims == 10:
+        settings = [2, 3, 4, 5]
+    else:
+        raise ValueError
 
-    settings = [-1, 1, 2, 3, 4]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
-    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    random_seed_options = [0, 1, 2, 3, 4]
 
     fig, ax = plt.subplots(figsize=(6, 4))
     cmap = plt.cm.coolwarm
@@ -74,8 +79,8 @@ if __name__ == '__main__':
     plt.tight_layout()
 
     if args.save:
-        file_name = f"variance_W{args.wasserstein_order}_N_train={args.num_samples_training}_{args.method}"
-        plt.savefig(os.path.join(args.figures_dir, f"{file_name}.pdf"))
+        file_name = f"variance_W{args.wasserstein_order}_{args.method}_dims{args.num_dims}"
+        plt.savefig(os.path.join(os.path.dirname(args.figures_dir), f"{file_name}.pdf"))
 
     plt.show()
 

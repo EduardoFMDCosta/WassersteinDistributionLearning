@@ -11,12 +11,12 @@ set_style()
 
 if __name__ == '__main__':
     args = parse_arguments(
-        distribution="GaussianMixture",
+        distribution="GaussianMixture", # "Gaussian"  "GaussianMixture"
         num_dims=3,
         setting=0,
         wasserstein_order=2,
         beta=1e-6,
-        method='triangle_inequality_vertex',
+        method='joint_diagonal_milp', # 'triangle_inequality_vertex'  'joint_diagonal_milp'
         plot=True,
         save=True
     )

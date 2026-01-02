@@ -27,7 +27,7 @@ echo "---------------- Random seed = ${seed} -------------------"
 
 # python -m experiments.partitions --distribution Gaussian --num_dims 10 --setting 5 --random_seed "$seed"
 
-python -m experiments.partitions --distribution Gaussian --num_dims 10 --setting 5 --random_seed "$seed"
+python -m experiments.partitions --distribution Gaussian --num_dims 10 --setting 6 --random_seed "$seed"
 
 done
 

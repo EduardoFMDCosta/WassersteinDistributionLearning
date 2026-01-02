@@ -7,6 +7,9 @@ from configs.handlers import parse_arguments, load_json, process_args
 from experiments.utils import quantizations_for_combinations, load_quantization_samples
 from experiments.partitions import get_dict_of_partitions
 import plotting.plot as plot
+from plotting.utils_plot import set_style
+
+set_style()
 
 
 def plot_prob(
@@ -49,7 +52,7 @@ def save(ax, tag: str, save: bool):
     ax.set_aspect('equal', adjustable='box')
     if save:
         plt.tight_layout()
-        plt.savefig(os.path.join(os.getcwd(), f"quantization_process_step{tag}.png"))
+        plt.savefig(os.path.join(os.getcwd(), f"quantization_process_step{tag}.pdf"))
         plt.close('all')
     else:
         plt.show()
@@ -61,14 +64,13 @@ if __name__ == '__main__':
         num_dims=2,
         setting=1,
         num_samples=10_000,
-        num_samples_training=5_000,
         num_clusters=30,
         save=True,
     )
 
     quantization = quantizations_for_combinations(
         args, 
-        combinations=[(args.num_samples, args.num_clusters)], 
+        combinations=[(args.num_samples_training, args.num_samples, args.num_clusters)], 
         generate_partition_if_missing=False
     ).at((args.num_samples_training, args.num_samples, args.num_clusters))
 

@@ -1,8 +1,9 @@
 import os
 import torch
+import itertools
 import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments, process_args, num_samples_training_from_num_samples
+from configs.handlers import parse_arguments, process_args
 from experiments.utils import load_list_of_data_driven_radii, fournier_radii_for_combinations
 
 from plotting.utils_plot import set_style, convert_to_sci_notation
@@ -10,33 +11,23 @@ from plotting.utils_plot import set_style, convert_to_sci_notation
 set_style()
 
 
-if __name__ == '__main__':
-    args = parse_arguments(
-        random_seed=0,
-        distribution="Gaussian",
-        num_dims=2,
-        setting=0,
-        wasserstein_order=2,
-        num_samples=1000000,
-        beta=1e-6,
-        method='joint_diagonal_milp',
-        plot=True,
-        save=True,
-    )
-
+def main(args):
     if args.num_dims == 2:
         settings = [-1, 1, 2, 3, 4]
-        random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7]
     elif args.num_dims == 10:
         settings = [2, 3, 4, 5]
-        random_seed_options = [0, 1, 2, 3, 4]
     else:
         raise ValueError
+    
+    if args.num_dims == 10 and args.method == 'joint_diagonal_milp':
+        random_seed_options = [0, 1, 2, 3, 4, 5] # TODO extend to 9 if available
+    else:
+        random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     
 
-    fig, ax = plt.subplots(figsize=(6, 4)) # (8,4) if legend outside
+    fig, ax = plt.subplots(figsize=(6, 4))
     cmap = plt.cm.coolwarm
     colors = [cmap(i / (len(settings) - 1)) for i in range(len(settings))]
 
@@ -78,15 +69,33 @@ if __name__ == '__main__':
     ax.set_xlabel(r"Support size of $\widehat{\mathbb{P}}$")
     ax.set_ylabel("Our bound")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"Std deviation", 
-            #   loc="center left", bbox_to_anchor=(1, 0.5),
-              loc="upper right",
-              )
+    ax.legend(title=r"Std deviation", loc="upper right")
     plt.tight_layout()
 
     if args.save:
-        file_name = f"introduction_W{args.wasserstein_order}_{args.method}"
-        plt.savefig(os.path.join(os.path.dirname(args.figures_dir), f"{file_name}.pdf"))  # USE figures_dir! results_dir is solely for data
+        file_name = f"multiscale_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_{args.method}"
+        folder = os.path.dirname(os.path.dirname(args.figures_dir)) # USE figures_dir! results_dir is solely for data
+        plt.savefig(os.path.join(folder, f"{file_name}.pdf"))  
+    else:
+        plt.show()
 
-    plt.show()
 
+if __name__ == '__main__':
+    args = parse_arguments(
+        random_seed=0,
+        distribution="Gaussian",
+        num_dims=2, # PLACEHOLDER
+        setting=0,
+        wasserstein_order=2,
+        num_samples=1000000,
+        beta=1e-6,
+        method='triangle_inequality_vertex',
+        plot=True,
+        save=True,
+    )
+
+    for num_dims, method in itertools.product([2, 10], ['triangle_inequality_vertex', 'joint_diagonal_milp']):
+        args.num_dims = num_dims
+        args.method = method
+        args = process_args(args)
+        main(args)

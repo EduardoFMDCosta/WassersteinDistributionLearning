@@ -1,4 +1,5 @@
 import os
+import itertools
 import torch
 import matplotlib.pyplot as plt
 
@@ -10,19 +11,7 @@ from plotting.utils_plot import set_style, convert_to_sci_notation
 set_style()
 
 
-if __name__ == '__main__':
-    args = parse_arguments(
-        random_seed=0,
-        distribution="Gaussian",
-        num_dims=10,
-        setting=0,
-        wasserstein_order=2,
-        num_samples=1000000,
-        beta=1e-6,
-        method='triangle_inequality_vertex' ,  # 'triangle_inequality_vertex'  'joint_diagonal_milp'
-        plot=True,
-        save=True,
-    )
+def main(args):
     if args.num_dims == 2:
         settings = [-1, 1, 2, 3, 4]
     elif args.num_dims == 10:
@@ -31,7 +20,10 @@ if __name__ == '__main__':
         raise ValueError
 
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
-    random_seed_options = [0, 1, 2, 3, 4]
+    if args.num_dims == 10 and args.method == 'joint_diagonal_milp':
+        random_seed_options = [0, 1, 2, 3, 4]
+    else:
+        random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     fig, ax = plt.subplots(figsize=(6, 4))
     cmap = plt.cm.coolwarm
@@ -79,8 +71,30 @@ if __name__ == '__main__':
     plt.tight_layout()
 
     if args.save:
-        file_name = f"variance_W{args.wasserstein_order}_{args.method}_dims{args.num_dims}"
-        plt.savefig(os.path.join(os.path.dirname(args.figures_dir), f"{file_name}.pdf"))
+        file_name = f"variance_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_{args.method}"
+        folder = os.path.dirname(os.path.dirname(args.figures_dir)) # USE figures_dir! results_dir is solely for data
+        plt.savefig(os.path.join(folder, f"{file_name}.pdf"))  
+    else:
+        plt.show()
 
-    plt.show()
+
+if __name__ == '__main__':
+    args = parse_arguments(
+        random_seed=0,
+        distribution="Gaussian",
+        num_dims=10,
+        setting=0,
+        wasserstein_order=2,
+        num_samples=1000000,
+        beta=1e-6,
+        method='triangle_inequality_vertex',
+        plot=True,
+        save=True,
+    )
+
+    for num_dims, method in itertools.product([2, 10], ['triangle_inequality_vertex', 'joint_diagonal_milp']):
+        args.num_dims = num_dims
+        args.method = method
+        args = process_args(args)
+        main(args)
 

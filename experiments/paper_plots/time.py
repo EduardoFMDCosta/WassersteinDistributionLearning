@@ -2,7 +2,7 @@ import os
 import torch
 import matplotlib.pyplot as plt
 
-from configs.handlers import parse_arguments, num_samples_training_from_num_samples
+from configs.handlers import parse_arguments, num_samples_training_from_num_samples, process_args
 from experiments.utils import load_list_of_time_loggers
 from experiments.partitions import load_list_of_time_logger_partition
 
@@ -10,17 +10,7 @@ from plotting.utils_plot import set_style, convert_to_sci_notation
 
 set_style()
 
-if __name__ == '__main__':
-    args = parse_arguments(
-        distribution="GaussianMixture",
-        num_dims=3,
-        setting=0,
-        wasserstein_order=2,
-        beta=1e-6,
-        method='triangle_inequality_vertex', # 'joint_diagonal_milp'  'triangle_inequality_vertex'
-        save=True,
-    )
-
+def main(args):
     N_options = [1000, 5000, 10000, 100000, 1000000]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -73,7 +63,25 @@ if __name__ == '__main__':
 
 
     if args.save:
-        # fig_partition.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_partition.pdf"))
-        fig_radii.savefig(os.path.join(args.figures_dir, f"time_W{args.wasserstein_order}_{args.method}_radii.pdf"))
+        file_name = f"time_radii_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_setting_{args.setting}_{args.method}"
+        folder = os.path.dirname(os.path.dirname(args.figures_dir)) # USE figures_dir! results_dir is solely for data
+        plt.savefig(os.path.join(folder, f"{file_name}.pdf"))  
     else:
         plt.show()
+
+
+if __name__ == '__main__':
+    args = parse_arguments(
+        distribution="GaussianMixture",
+        num_dims=3,
+        setting=0,
+        wasserstein_order=2,
+        beta=1e-6,
+        method='triangle_inequality_vertex', 
+        save=True,
+    )
+
+    for method in ['joint_diagonal_milp', 'triangle_inequality_vertex']:
+        args.method = method
+        args = process_args(args)
+        main(args)

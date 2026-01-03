@@ -39,8 +39,8 @@ echo "-- Gaussian --"
     # echo "dim = 10, setting = 5"
     # python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 5 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
-    # echo "dim = 10, setting = 6"
-    # python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 6 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    echo "dim = 10, setting = 6"
+    python -m experiments.generate_results --distribution Gaussian --num_dims 10 --setting 6 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
 done        
 done

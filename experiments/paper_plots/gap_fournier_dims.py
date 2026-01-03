@@ -15,7 +15,7 @@ def main(args):
     dimensions = [2, 10, 25, 50, 75, 100]
     M_options = [5, 20, 30, 40, 50, 75]
 
-    random_seed_options = [0, 1, 2, 3, 4, 5] # TODO extend to 9 if available
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # TODO extend to 9 if available
 
     # Plot gap to Fournier
     fig, ax = plt.subplots(figsize=(6, 4))

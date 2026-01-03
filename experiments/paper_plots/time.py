@@ -81,7 +81,16 @@ if __name__ == '__main__':
         save=True,
     )
 
-    for method in ['joint_diagonal_milp', 'triangle_inequality_vertex']:
+    settings = [
+        ("GaussianMixture", 3, 'triangle_inequality_vertex'),
+        ("GaussianMixture", 3, 'joint_diagonal_milp'),
+        ("Gaussian", 100, 'triangle_inequality_vertex'),
+        ("Gaussian", 100, 'joint_diagonal_milp'),
+    ]
+
+    for distribution, num_dims, method in settings:
         args.method = method
+        args.distribution = distribution
+        args.num_dims = num_dims
         args = process_args(args)
         main(args)

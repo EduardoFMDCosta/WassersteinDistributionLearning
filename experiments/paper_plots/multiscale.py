@@ -15,14 +15,11 @@ def main(args):
     if args.num_dims == 2:
         settings = [-1, 1, 2, 3, 4]
     elif args.num_dims == 10:
-        settings = [2, 3, 4, 5]
+        settings = [2, 3, 4, 5] # TODO add setting 6
     else:
         raise ValueError
     
-    if args.num_dims == 10 and args.method == 'joint_diagonal_milp':
-        random_seed_options = [0, 1, 2, 3, 4, 5] # TODO extend to 9 if available
-    else:
-        random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     

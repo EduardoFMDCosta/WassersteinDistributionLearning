@@ -5,182 +5,200 @@ from configs.handlers import parse_arguments, process_args, num_samples_training
 from experiments.utils import load_list_of_data_driven_radii, fournier_radii_for_combinations
 
 
-def format_val(x):
-    """Format floats as $x.xxx$ or '--'."""
-    if x is None:
-        return "--"
-    return f"${x:.3f}$"
-
-
-def compute_radius(args, N, M, d, random_seed_options):
-    """Compute mean radius for the current args.method."""
-    N_train = num_samples_training_from_num_samples(N)
-    combinations = [(N_train, N, M)]
-
-    data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-    key = (N_train, N, M)
-
-    if key not in data.keys():
-        return None
-    return float(data.mean_radius_at(key))
-
-
-def main_table():
-    N_options = [1000, 5000]
-    dimensions = [2, 10, 25]
-    M_options = [5, 20, 30]
-    random_seed_options = list(range(10))
-
-    settings = [
-        ('Uniform', 1),
-        ('Gaussian', 2)
-    ]
-
-    out = {}  # distribution -> rows
-
-    for distribution, wasserstein_order in settings:
-        table_rows = []
-
-        for d in dimensions:
-            for N in N_options:
-                N_train = num_samples_training_from_num_samples(N)
-
-                # Compute Fournier radii
-                dummy_args = parse_arguments(
-                    distribution=distribution,
-                    wasserstein_order=wasserstein_order,
-                    num_dims=d,
-                    num_samples_training=N_train,
-                    num_samples=N,
-                    method="triangle_inequality_vertex",
-                    beta=1e-6,
-                    plot=False,
-                    save=False,
-                    setting=0
-                )
-                dummy_args = process_args(dummy_args)
-
-                fournier_radii = fournier_radii_for_combinations(
-                    dummy_args,
-                    [(N, M) for M in M_options]
-                )
-
-                for M in M_options:
-
-                    # Theorem 4.1
-                    args_jd = parse_arguments(
-                        distribution=distribution,
-                        wasserstein_order=wasserstein_order,
-                        num_dims=d,
-                        num_samples_training=N_train,
-                        num_samples=N,
-                        method="joint_diagonal_milp",
-                        beta=1e-6,
-                        plot=False,
-                        save=False,
-                        setting=0
-                    )
-                    args_jd = process_args(args_jd)
-                    radius_jd = compute_radius(args_jd, N, M, d, random_seed_options)
-
-                    # Proposition 5.2
-                    args_ti = parse_arguments(
-                        distribution=distribution,
-                        wasserstein_order=wasserstein_order,
-                        num_dims=d,
-                        num_samples_training=N_train,
-                        num_samples=N,
-                        method="triangle_inequality_vertex",
-                        beta=1e-6,
-                        plot=False,
-                        save=False,
-                        setting=0
-                    )
-                    args_ti = process_args(args_ti)
-                    radius_ti = compute_radius(args_ti, N, M, d, random_seed_options)
-
-                    # Fournier
-                    key_fournier = (N, M)
-                    if key_fournier in fournier_radii.keys():
-                        fournier_val = float(fournier_radii.radius_at((N_train, N, M_options[0])))
-                    else:
-                        fournier_val = None
-
-                    table_rows.append(dict(
-                        d=d,
-                        N=N,
-                        M=M,
-                        theorem_41=radius_jd,
-                        proposition_52=radius_ti,
-                        fournier=fournier_val
-                    ))
-
-        # sorting: by d, then N, then M
-        table_rows.sort(key=lambda r: (r['d'], r['N'], r['M']))
-
-        out[distribution] = table_rows
-
-    return out
-
-
-def make_latex_table_per_distribution(distribution, rows):
+# ----------------------------------------------------------
+# Write LaTeX table into ../tables/
+# ----------------------------------------------------------
+def write_table_tex(distribution, results):
     """
-    Create one LaTeX table with multirow grouping for each distribution.
+    results is a list of rows:
+    {
+        "d": int,
+        "N": int,
+        "M_opt": int,
+        "theorem": float,
+        "proposition": float,
+        "fournier": float
+    }
     """
 
-    header = (
-        "\\begin{table}[h]\n"
-        "\\centering\n"
-        "\\begin{tabular}{r r r r r r}\n"
-        "\\hline\n"
-        "$d$ & $N$ & $M$ & Theorem 4.1 & Proposition 5.2 & Fournier \\\\\n"
-        "\\hline\n"
+    # Prepare output directory
+    tables_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "tables")
+    )
+    os.makedirs(tables_dir, exist_ok=True)
+
+    filename = os.path.join(
+        tables_dir, f"table_{distribution}_comparison_fournier.tex"
     )
 
-    body = ""
+    # Sort rows by dimension then N
+    results = sorted(results, key=lambda r: (r["d"], r["N"]))
 
-    # group rows by (d, N)
-    from itertools import groupby
+    # Formatter
+    def fmt(x, is_N=False):
+        """Format floats, ints, and scientific notation for N."""
+        if is_N:
+            s = f"{x:.0e}"  # e.g. "1e+06"
+            coeff, exp = s.split("e")
+            coeff = int(coeff)
+            exp = int(exp)
 
-    # group by d
-    for d_val, d_group in groupby(rows, key=lambda r: r["d"]):
-        d_group = list(d_group)
+            if coeff == 1:
+                return f"$10^{{{exp}}}$"
+            else:
+                return f"${coeff} \\times 10^{{{exp}}}$"
 
-        # inside each d, group by N
-        for N_val, dn_group in groupby(d_group, key=lambda r: r["N"]):
-            dn_group = list(dn_group)
+        if isinstance(x, float):
+            return f"${x:.3f}$"
 
-            num_rows = len(dn_group)
-            first = True
+        return f"${x}$"
 
-            for row in dn_group:
-                M = row["M"]
-                t41 = format_val(row["theorem_41"])
-                p52 = format_val(row["proposition_52"])
-                fval = format_val(row["fournier"])
+    # LaTeX lines
+    lines = []
+    lines.append("\\begin{table}[h!]")
+    lines.append("\\centering")
+    lines.append(f"\\caption{{Summary of results for {distribution}}}")
+    lines.append(f"\\label{{table:comparison-fournier-{distribution.lower()}}}")
+    lines.append("\\vspace{0.3cm}")
+    lines.append("\\begin{tabular}{c c c c c c}")
+    lines.append("\\hline")
 
-                if first:
-                    body += (
-                        f"\\multirow{{{num_rows}}}{{*}}{{$ {d_val} $}} & "
-                        f"\\multirow{{{num_rows}}}{{*}}{{$ {N_val} $}} & "
-                        f"${M}$ & {t41} & {p52} & {fval} \\\\\n"
-                    )
-                    first = False
-                else:
-                    body += f" & & ${M}$ & {t41} & {p52} & {fval} \\\\\n"
+    # -------- Bold header row --------
+    header = (
+        "\\textbf{$d$} & "
+        "\\textbf{$N$} & "
+        "\\textbf{$M_{\\text{opt}}$} & "
+        "\\textbf{Theorem $4.1$} & "
+        "\\textbf{Proposition $4.2$} & "
+        "\\textbf{Fournier} \\\\"
+    )
+    lines.append(header)
+    lines.append("\\hline")
 
-    footer = "\\hline\n\\end{tabular}\n"
-    footer += f"\\caption{{Bounds comparison table for {distribution}.}}\n"
-    footer += "\\end{table}\n"
+    # -------- Table contents with grouping by d --------
+    previous_d = None
+    for r in results:
 
-    return header + body + footer
+        # Insert a thin line when d changes (but not before the first block)
+        if previous_d is not None and r["d"] != previous_d:
+            lines.append("\\hline")
+
+        # Show dimension only when it changes
+        d_str = fmt(r["d"]) if r["d"] != previous_d else ""
+
+        line = (
+            f"{d_str} & "
+            f"{fmt(r['N'], is_N=True)} & "
+            f"{fmt(r['M_opt'])} & "
+            f"{fmt(r['theorem'])} & "
+            f"{fmt(r['proposition'])} & "
+            f"{fmt(r['fournier'])} \\\\"
+        )
+        lines.append(line)
+
+        previous_d = r["d"]
+
+    lines.append("\\hline")
+    lines.append("\\end{tabular}")
+    lines.append("\\end{table}")
+
+    # Save file
+    with open(filename, "w") as f:
+        f.write("\n".join(lines))
+
+    print(f"[Saved] {filename}")
 
 
+# ----------------------------------------------------------
+# CORE COMPUTATION
+# ----------------------------------------------------------
+def run_single_setting(args):
+
+    N_options = [1000, 10000, 100000, 1000000]
+    dimensions = [2, 10, 50, 100]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    random_seed_options = [0]  # TODO extend to 9 if needed
+
+    table_results = []
+
+    for N in N_options:
+        args.num_samples = N
+        N_train = num_samples_training_from_num_samples(N)
+        combinations = [(N_train, N, M) for M in M_options]
+
+        for d in dimensions:
+            args.num_dims = d
+            args.num_samples_training = N_train
+            process_args(args)
+
+            # Load data-driven radii
+            data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
+            fournier_radii = fournier_radii_for_combinations(
+                args, [(N, M) for M in M_options]
+            )
+
+            # Find best M minimizing the radius
+            best_val = float("inf")
+            best_M = None
+
+            for M in M_options:
+                key = (N_train, N, M)
+                if key in data.keys():
+                    r = data.mean_radius_at(key)
+                    if r < best_val:
+                        best_val = r
+                        best_M = M
+
+            # Fournier bound
+            fournier_key = (N, M_options[0])
+            if fournier_key in fournier_radii.keys():
+                fbound = float(fournier_radii.radius_at(fournier_key))
+            else:
+                fbound = float("inf")
+
+            # Construct table row
+            entry = {
+                "d": d,
+                "N": N,
+                "M_opt": best_M,
+                "fournier": fbound,
+                "theorem": float(best_val) if args.method == "joint_diagonal_milp" else float("nan"),
+                "proposition": float(best_val) if args.method == "triangle_inequality_vertex" else float("nan"),
+            }
+
+            table_results.append(entry)
+
+    # Save final table
+    write_table_tex(args.distribution.lower(), table_results)
+
+
+# ----------------------------------------------------------
+# RUN ALL SETTINGS
+# ----------------------------------------------------------
 if __name__ == "__main__":
-    all_tables = main_table()
+    args = parse_arguments(
+        distribution="Uniform",
+        num_dims=2,
+        setting=0,
+        wasserstein_order=1,
+        num_samples=10000,
+        beta=1e-6,
+        method="joint_diagonal_milp",
+        plot=False,
+        save=False,
+    )
 
-    for distribution, rows in all_tables.items():
-        latex_code = make_latex_table_per_distribution(distribution, rows)
-        print(f"% ---------- TABLE FOR {distribution} ----------")
-        print(latex_code)
-        print("\n\n")
+    settings = [
+        ("Uniform", 1, "triangle_inequality_vertex"),
+        ("Uniform", 1, "joint_diagonal_milp"),
+        ("Gaussian", 2, "triangle_inequality_vertex"),
+        ("Gaussian", 2, "joint_diagonal_milp"),
+    ]
+
+    for distribution, wasserstein_order, method in settings:
+        args.distribution = distribution
+        args.wasserstein_order = wasserstein_order
+        args.method = method
+        args = process_args(args)
+
+        run_single_setting(args)

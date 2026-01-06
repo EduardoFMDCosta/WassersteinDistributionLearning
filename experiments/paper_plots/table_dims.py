@@ -55,10 +55,7 @@ def write_table_tex(distribution, results):
 
     # LaTeX lines
     lines = []
-    lines.append("\\begin{table}[h!]")
     lines.append("\\centering")
-    lines.append(f"\\caption{{Summary of results for {distribution}}}")
-    lines.append(f"\\label{{table:comparison-fournier-{distribution.lower()}}}")
     lines.append("\\vspace{0.3cm}")
     lines.append("\\begin{tabular}{c c c c c c}")
     lines.append("\\hline")
@@ -68,8 +65,8 @@ def write_table_tex(distribution, results):
         "\\textbf{$d$} & "
         "\\textbf{$N$} & "
         "\\textbf{$M_{\\text{opt}}$} & "
-        "\\textbf{Theorem $4.1$} & "
-        "\\textbf{Proposition $4.2$} & "
+        "\\textbf{Thm. $4.1$} & "
+        "\\textbf{Prop. $4.2$} & "
         "\\textbf{Fournier} \\\\"
     )
     lines.append(header)
@@ -100,7 +97,7 @@ def write_table_tex(distribution, results):
 
     lines.append("\\hline")
     lines.append("\\end{tabular}")
-    lines.append("\\end{table}")
+    lines.append(f"\\label{{table:comparison-fournier-{distribution.lower()}}}")
 
     # Save file
     with open(filename, "w") as f:
@@ -117,53 +114,62 @@ def run_single_setting(args):
     N_options = [1000, 10000, 100000, 1000000]
     dimensions = [2, 10, 50, 100]
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
-    random_seed_options = [0]  # TODO extend to 9 if needed
+    random_seed_options = [0]
 
     table_results = []
 
     for N in N_options:
         args.num_samples = N
-        N_train = num_samples_training_from_num_samples(N)
-        combinations = [(N_train, N, M) for M in M_options]
+        args.num_samples_training = num_samples_training_from_num_samples(N)
+        combinations = [(args.num_samples_training, N, M) for M in M_options]
 
         for d in dimensions:
             args.num_dims = d
-            args.num_samples_training = N_train
-            process_args(args)
 
-            # Load data-driven radii
+            # Theorem data
+            args.method = "joint_diagonal_milp"
+            process_args(args)
             data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-            fournier_radii = fournier_radii_for_combinations(
-                args, [(N, M) for M in M_options]
-            )
 
             # Find best M minimizing the radius
-            best_val = float("inf")
+            best_val_thm = float("inf")
             best_M = None
 
             for M in M_options:
-                key = (N_train, N, M)
+                key = (args.num_samples_training, N, M)
                 if key in data.keys():
                     r = data.mean_radius_at(key)
-                    if r < best_val:
-                        best_val = r
+                    if r < best_val_thm:
+                        best_val_thm = r
                         best_M = M
 
+            # Proposition data
+            args.method = "triangle_inequality_vertex"
+            process_args(args)
+            data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
+
+            # Find best M minimizing the radius
+            best_val_prop = float("inf")
+
+            for M in M_options:
+                key = (args.num_samples_training, N, M)
+                if key in data.keys():
+                    r = data.mean_radius_at(key)
+                    if r < best_val_prop:
+                        best_val_prop = r
+
             # Fournier bound
-            fournier_key = (N, M_options[0])
-            if fournier_key in fournier_radii.keys():
-                fbound = float(fournier_radii.radius_at(fournier_key))
-            else:
-                fbound = float("inf")
+            fournier_radii = fournier_radii_for_combinations(args, [(combi[1], combi[2]) for combi in combinations])
+            fournier_bound = fournier_radii.radius_at((args.num_samples_training, N, M_options[0]))
 
             # Construct table row
             entry = {
                 "d": d,
                 "N": N,
-                "M_opt": best_M,
-                "fournier": fbound,
-                "theorem": float(best_val) if args.method == "joint_diagonal_milp" else float("nan"),
-                "proposition": float(best_val) if args.method == "triangle_inequality_vertex" else float("nan"),
+                "M_opt": best_M, # Using Thm as reference
+                "fournier": float(fournier_bound),
+                "theorem": float(best_val_thm),
+                "proposition": float(best_val_prop),
             }
 
             table_results.append(entry)
@@ -189,16 +195,13 @@ if __name__ == "__main__":
     )
 
     settings = [
-        ("Uniform", 1, "triangle_inequality_vertex"),
-        ("Uniform", 1, "joint_diagonal_milp"),
-        ("Gaussian", 2, "triangle_inequality_vertex"),
-        ("Gaussian", 2, "joint_diagonal_milp"),
+        ("Uniform", 1),
+        ("Gaussian", 2),
     ]
 
-    for distribution, wasserstein_order, method in settings:
+    for distribution, wasserstein_order in settings:
         args.distribution = distribution
         args.wasserstein_order = wasserstein_order
-        args.method = method
         args = process_args(args)
 
         run_single_setting(args)

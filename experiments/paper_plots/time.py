@@ -10,9 +10,14 @@ from plotting.utils_plot import set_style, convert_to_sci_notation
 
 set_style()
 
-def main(args):
+def main(args, M_setting: str):
     N_options = [1000, 5000, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    if M_setting == 'small':
+        M_options = [5, 20, 30, 40, 50, 75, 100, 150]
+    elif M_setting == 'large':
+        M_options = [200, 500, 1000]
+    else:
+        raise ValueError(f"Unknown M_setting: {M_setting}")
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     cmap = plt.cm.coolwarm
@@ -22,17 +27,34 @@ def main(args):
     fig_radii, ax_radii = plt.subplots(figsize=(6, 4))
 
     colors = [cmap(i / max(len(N_options) - 1, 1)) for i in range(len(N_options))]
+    M_options_radii = torch.as_tensor(M_options)
+
     for N, color in zip(N_options, colors):
-        radii_times_slice = radii_times._slice(N_train=num_samples_training_from_num_samples(N), N=N)
-        M_options_radii = torch.as_tensor([key[2] for key in radii_times_slice.keys()])
-        idx_radii = M_options_radii.argsort()
+        N_train = num_samples_training_from_num_samples(N)
 
-        mean_radii,  std_radii = radii_times_slice.mean_time[idx_radii], radii_times_slice.std_time[idx_radii]
+        mean_radii, std_radii = list(), list()
+        for M in M_options:
+            if (N_train, N, M) in radii_times.keys():
+                mean_radii.append(radii_times.mean_time_at((N_train, N, M)))
+                std_radii.append(radii_times.std_time_at((N_train, N, M)))
+            else:
+                mean_radii.append(0.0) # TODO: Discuss how to represent here, although we should have access to all keys
+                std_radii.append(0.0)
 
-        ax_radii.plot(M_options_radii[idx_radii], mean_radii, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
-        ax_radii.fill_between(M_options_radii[idx_radii], mean_radii - std_radii, mean_radii + std_radii, color=color, alpha=0.2)
+        mean_radii, std_radii = torch.as_tensor(mean_radii), torch.as_tensor(std_radii)
+
+        ax_radii.plot(M_options_radii, mean_radii, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
+        ax_radii.fill_between(M_options_radii, mean_radii - std_radii, mean_radii + std_radii, color=color, alpha=0.2)
 
     ax_radii.set_ylim(bottom=0)
+
+    if M_setting == 'small':
+        ax_radii.set_ylim(top=8)
+    elif M_setting == 'large':
+        ax_radii.set_ylim(top=200)
+    else:
+        raise ValueError(f"Unknown M_setting: {M_setting}")
+
     ax_radii.set_xlabel(r"Support size $M$")
     ax_radii.set_ylabel("Time [s]")
     ax_radii.grid(True, linestyle="--", alpha=0.4)
@@ -41,7 +63,7 @@ def main(args):
 
 
     # partition_times = load_list_of_time_logger_partition(args, random_seed_options)
-    
+
     # fig_partition, ax_partition = plt.subplots(figsize=(6, 4))
 
     # N_train = 5000
@@ -63,7 +85,7 @@ def main(args):
 
 
     if args.save:
-        file_name = f"time_radii_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_setting_{args.setting}_{args.method}"
+        file_name = f"time_radii_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_setting_{args.setting}_{args.method}_{M_setting}"
         folder = os.path.dirname(os.path.dirname(args.figures_dir)) # USE figures_dir! results_dir is solely for data
         plt.savefig(os.path.join(folder, f"{file_name}.pdf"))  
     else:
@@ -82,15 +104,15 @@ if __name__ == '__main__':
     )
 
     settings = [
-        ("GaussianMixture", 3, 'triangle_inequality_vertex'),
-        ("GaussianMixture", 3, 'joint_diagonal_milp'),
-        ("Gaussian", 100, 'triangle_inequality_vertex'),
-        ("Gaussian", 100, 'joint_diagonal_milp'),
+        ("Gaussian", 100, 'joint_diagonal_milp', 'small'),
+        ("Gaussian", 100, 'joint_diagonal_milp', 'large'),
+        ("Gaussian", 100, 'triangle_inequality_vertex', 'small'),
+        ("Gaussian", 100, 'triangle_inequality_vertex', 'large'),
     ]
 
-    for distribution, num_dims, method in settings:
+    for distribution, num_dims, method, M_setting in settings:
         args.method = method
         args.distribution = distribution
         args.num_dims = num_dims
         args = process_args(args)
-        main(args)
+        main(args, M_setting)

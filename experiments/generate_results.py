@@ -28,7 +28,9 @@ if __name__ == '__main__':
     else:
         raise ValueError("Unsupported num_samples_training")
     
-    M_options = [75, 100, 150, 200, 500, 1000]
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200]
+    if args.method == 'triangle_inequality_vertex':
+        M_options += [500, 1000]
     
 
     data_driven_radii, time_logger = data_driven_radii_for_combinations(

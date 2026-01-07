@@ -18,7 +18,7 @@ def main(args):
     if args.num_dims == 2:
         settings = [1, 3, 5]
     elif args.num_dims == 10:
-        settings = [2, 3, 4] # TODO add setting 6
+        settings = [2, 4, 6]
     else:
         raise ValueError
     
@@ -60,7 +60,7 @@ def main(args):
             partition = get_partition(args=args, num_samples=args.num_samples_training, num_clusters=M)
             quantization = load_quantization(args=args, partition=partition, N=args.num_samples)
 
-            emp_dist = distribution.sample((10000,))
+            emp_dist = distribution.sample((100000,))
 
             radius_quantization = ot.solve_sample(X_a=emp_dist, X_b=quantization.locs, b=quantization.probs,
                                                   metric=metric[args.wasserstein_order]).value.pow(1 / args.wasserstein_order).item()

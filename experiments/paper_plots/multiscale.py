@@ -89,7 +89,7 @@ if __name__ == '__main__':
         save=True,
     )
 
-    for num_dims, method in itertools.product([2], ['triangle_inequality_vertex']):
+    for num_dims, method in itertools.product([2, 10], ['triangle_inequality_vertex']):
         args.num_dims = num_dims
         args.method = method
         args = process_args(args)

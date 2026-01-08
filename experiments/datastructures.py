@@ -314,14 +314,14 @@ class ListOfEmpiricalRadii:
     @property
     def mean_radius(self) -> torch.Tensor:
         return torch.tensor([
-            torch.stack([elem.radius_at(key) for elem in self.data]).mean().item() 
+            torch.tensor([elem.radius_at(key) for elem in self.data]).mean().item() 
             for key in self.keys()
         ])
     
     @property
     def std_radius(self) -> torch.Tensor:
         return torch.tensor([
-            torch.stack([elem.radius_at(key) for elem in self.data]).std().item() 
+            torch.tensor([elem.radius_at(key) for elem in self.data]).std().item() 
             for key in self.keys()
         ])
 

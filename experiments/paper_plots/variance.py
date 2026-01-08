@@ -13,16 +13,15 @@ set_style()
 
 def main(args):
     if args.num_dims == 2:
-        settings = [-1, 1, 2, 3, 4]
+        settings = [-1, 1, 2, 3]
     elif args.num_dims == 10:
-        settings = [2, 3, 4, 5] # TODO add setting 6
+        settings = [2, 3, 4, 5]
     else:
         raise ValueError
 
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
-    # if args.num_dims == 10 and args.method == 'joint_diagonal_milp':
-    #     random_seed_options = [0, 1, 2, 3, 4]
-    # else:
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, ]
+    if args.method == 'triangle_inequality_vertex':
+        M_options += [500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -36,38 +35,33 @@ def main(args):
         combinations = [(args.num_samples_training, args.num_samples, M) for M in M_options]
 
         data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-        fournier_radii = fournier_radii_for_combinations(args, [(combi[1], combi[2]) for combi in combinations])
-
-        M_options_plot = [key[2] for key in data.keys(N=args.num_samples, N_train=args.num_samples_training)]
-        ratios, ratios_minus, ratios_plus = list(), list(), list()
-        for M in M_options_plot:
-            key = (args.num_samples_training, args.num_samples, M)
-
-            if key in fournier_radii.keys():
-                ratios.append(data.mean_radius_at(key) / fournier_radii.radius_at(key))
-                ratios_minus.append((data.mean_radius_at(key) - data.std_radius_at(key)) / fournier_radii.radius_at(key))
-                ratios_plus.append((data.mean_radius_at(key) + data.std_radius_at(key)) / fournier_radii.radius_at(key))
-            else:
-                continue
-
-        M_options_plot, ratios = torch.as_tensor(M_options_plot), torch.as_tensor(ratios)
-        ratios_minus, ratios_plus = torch.as_tensor(ratios_minus), torch.as_tensor(ratios_plus)
+        M_options_plot = torch.as_tensor([key[2] for key in data.keys(N=args.num_samples, N_train=args.num_samples_training)])
         idx = M_options_plot.argsort()
-        ax.plot(M_options_plot[idx], ratios[idx], label=rf"${convert_to_sci_notation(args.variance**0.5)}$", color=color, marker="o")
 
+        ax.plot(M_options_plot[idx], data.mean_radius[idx], label=rf"${convert_to_sci_notation(args.variance**0.5)}$", color=color, marker="o")
         ax.fill_between(
             M_options_plot[idx],
-            ratios_minus[idx],
-            ratios_plus[idx],
+            data.mean_radius[idx] - data.std_radius[idx],
+            data.mean_radius[idx] + data.std_radius[idx],
             alpha=0.2,
             color=color
         )
 
+        fournier_data = fournier_radii_for_combinations(
+            args, 
+            combinations=[(args.num_samples, int(M)) for M in M_options_plot]
+        )
+        M_options_fornier_plots = torch.as_tensor([key[2] for key in fournier_data.keys(N=args.num_samples, N_train=args.num_samples_training)])
+        idx_fournier = M_options_fornier_plots.argsort()
+
+        ax.plot(M_options_fornier_plots[idx_fournier], fournier_data.radius[idx_fournier], color='grey', linestyle="--")
+
 
     ax.set_xlabel(r"Support size $M$")
-    ax.set_ylabel("Ours / Fournier (2023)")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"Std deviation", loc="best")
+    if args.method == 'joint_diagonal_milp':
+        ax.set_ylabel(r"$\mathbb{W}_2$")
+        ax.legend(title=r"Std deviation", loc="upper right")
     plt.tight_layout()
 
     if args.save:
@@ -85,7 +79,7 @@ if __name__ == '__main__':
         num_dims=10,
         setting=0,
         wasserstein_order=2,
-        num_samples=1000000,
+        num_samples=10_000,
         beta=1e-6,
         method='triangle_inequality_vertex',
         plot=True,

@@ -8,7 +8,7 @@ from experiments.utils import load_list_of_data_driven_radii, fournier_radii_for
 # ----------------------------------------------------------
 # Write LaTeX table into ../tables/
 # ----------------------------------------------------------
-def write_table_tex(distribution, results):
+def write_table_tex(distribution, wasserstein_order, results):
     """
     results is a list of rows:
     {
@@ -28,7 +28,7 @@ def write_table_tex(distribution, results):
     os.makedirs(tables_dir, exist_ok=True)
 
     filename = os.path.join(
-        tables_dir, f"table_{distribution}_comparison_fournier.tex"
+        tables_dir, f"table__W{wasserstein_order}_{distribution}_comparison_fournier.tex"
     )
 
     # Sort rows by dimension then N
@@ -175,7 +175,7 @@ def run_single_setting(args):
             table_results.append(entry)
 
     # Save final table
-    write_table_tex(args.distribution.lower(), table_results)
+    write_table_tex(args.distribution.lower(), args.wasserstein_order, table_results)
 
 
 # ----------------------------------------------------------
@@ -196,6 +196,7 @@ if __name__ == "__main__":
 
     settings = [
         ("Uniform", 1),
+        ("Uniform", 2),
         ("Gaussian", 2),
     ]
 

@@ -12,19 +12,33 @@ set_style()
 
 def main(args, M_setting: str):
     N_options = [1000, 5000, 10000, 100000, 1000000]
-    if M_setting == 'small':
+    if M_setting == 'small' and method == 'joint_diagonal_milp':
         M_options = [5, 20, 30, 40, 50, 75, 100, 150]
-    elif M_setting == 'large':
+    elif M_setting == 'small' and method == 'triangle_inequality_vertex':
+        M_options = [5, 20, 30, 40, 50, 75, 100, 150]
+    elif M_setting == 'large' and method == 'joint_diagonal_milp':
+        M_options = []
+    elif M_setting == 'large' and method == 'triangle_inequality_vertex':
         M_options = [200, 500, 1000]
     else:
         raise ValueError(f"Unknown M_setting: {M_setting}")
+
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     cmap = plt.cm.coolwarm
 
     radii_times = load_list_of_time_loggers(args, random_seed_options)
 
-    fig_radii, ax_radii = plt.subplots(figsize=(6, 4))
+    if M_setting == 'small' and method == 'joint_diagonal_milp':
+        figsize = (4, 4)
+    elif M_setting == 'small' and method == 'triangle_inequality_vertex':
+        figsize = (4, 4)
+    elif M_setting == 'large' and method == 'joint_diagonal_milp':
+        figsize = (4, 4)
+    elif M_setting == 'large' and method == 'triangle_inequality_vertex':
+        figsize = (4, 4)
+
+    fig_radii, ax_radii = plt.subplots(figsize=figsize)
 
     colors = [cmap(i / max(len(N_options) - 1, 1)) for i in range(len(N_options))]
     for N, color in zip(N_options, colors):
@@ -39,17 +53,24 @@ def main(args, M_setting: str):
 
     ax_radii.set_ylim(bottom=0)
 
-    if M_setting == 'small':
+    if M_setting == 'small' and method == 'joint_diagonal_milp':
         ax_radii.set_ylim(top=8)
-    elif M_setting == 'large':
+    elif M_setting == 'small' and method == 'triangle_inequality_vertex':
+        ax_radii.set_ylim(top=8)
+    elif M_setting == 'large' and method == 'joint_diagonal_milp':
+        ax_radii.set_ylim(top=200)
+    elif M_setting == 'large' and method == 'triangle_inequality_vertex':
         ax_radii.set_ylim(top=200)
     else:
         raise ValueError(f"Unknown M_setting: {M_setting}")
 
     ax_radii.set_xlabel(r"Support size $M$")
-    ax_radii.set_ylabel("Time [s]")
+    if M_setting == 'small' and method == 'joint_diagonal_milp':
+        ax_radii.set_ylabel("Time [s]")
     ax_radii.grid(True, linestyle="--", alpha=0.4)
-    ax_radii.legend(title=r"$N$", loc="best")
+
+    if M_setting == 'small' and method == 'joint_diagonal_milp':
+        ax_radii.legend(title=r"$N$", loc="best")
     fig_radii.tight_layout()
 
 
@@ -96,7 +117,7 @@ if __name__ == '__main__':
 
     settings = [
         ("Gaussian", 100, 'joint_diagonal_milp', 'small'),
-        ("Gaussian", 100, 'joint_diagonal_milp', 'large'),
+        # ("Gaussian", 100, 'joint_diagonal_milp', 'large'),
         ("Gaussian", 100, 'triangle_inequality_vertex', 'small'),
         ("Gaussian", 100, 'triangle_inequality_vertex', 'large'),
     ]

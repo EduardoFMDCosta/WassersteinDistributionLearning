@@ -15,7 +15,7 @@ def main(args):
     dimensions = [2, 10, 25, 50, 75, 100]
     M_options = [5, 20, 30, 40, 50, 75]
 
-    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] # TODO extend to 9 if available
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     # Plot gap to Fournier
     fig, ax = plt.subplots(figsize=(6, 4))
@@ -74,9 +74,10 @@ def main(args):
         )
 
     ax.set_xlabel(r"Dimension $d$")
-    ax.set_ylabel("Ours / Fournier (2023)")
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"$N$")
+    if args.method == 'joint_diagonal_milp':
+        ax.legend(title=r"$N$")
+        ax.set_ylabel("Ours / Fournier")
     plt.tight_layout()
 
     if args.save:

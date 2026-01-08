@@ -12,7 +12,11 @@ set_style()
 
 def main(args):
     N_options = [1000, 5000, 10000, 100000, 1000000]
-    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500]
+    if args.method != 'joint_diagonal_milp':
+        M_options += [1000]
+    
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     combinations = [(num_samples_training_from_num_samples(N), N, M) for N in N_options for M in M_options]
@@ -31,8 +35,6 @@ def main(args):
         M_options_plot = torch.as_tensor([key[2] for key in data_slice.keys()])
         idx = M_options_plot.argsort()
 
-        available_data = data_slice.radius_stack[idx]
-
         ax.plot(M_options_plot[idx], data_slice.mean_radius[idx], label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
         ax.fill_between(
             M_options_plot[idx],
@@ -43,9 +45,11 @@ def main(args):
         )
 
     ax.set_xlabel(r"Support size $M$")
-    ax.set_ylabel("Ours")
+    if args.method == 'joint_diagonal_milp':
+        ax.set_ylabel(r"$\mathbb{W}_2$")
+        ax.legend(title=r"$N$", loc="upper right")
+
     ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title=r"$N$", loc="best")
     plt.tight_layout()
 
     if args.save:

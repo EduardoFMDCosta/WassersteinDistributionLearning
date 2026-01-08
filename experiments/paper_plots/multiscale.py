@@ -52,7 +52,7 @@ def main(args):
         M_emp_options_plot = torch.as_tensor([key[2] for key in data_emp.keys()])
         idx_emp = M_emp_options_plot.argsort()
 
-        ax.plot(M_emp_options_plot[idx_emp], data_emp.mean_radius[idx_emp], label=rf"${convert_to_sci_notation(args.variance**0.5)}$", color=color, marker="o", linestyle="--")
+        ax.plot(M_emp_options_plot[idx_emp], data_emp.mean_radius[idx_emp], color=color, marker="o", linestyle="--")
         ax.fill_between(
             M_emp_options_plot[idx_emp],
             data_emp.mean_radius[idx_emp] - data_emp.std_radius[idx_emp],

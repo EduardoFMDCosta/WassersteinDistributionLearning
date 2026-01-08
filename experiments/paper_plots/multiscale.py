@@ -37,18 +37,18 @@ def main(args):
 
         combinations = [(args.num_samples_training, args.num_samples, M) for M in M_options]
 
-        data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
-        M_options_plot = torch.as_tensor([key[2] for key in data.keys()])
-        idx = M_options_plot.argsort()
+        # data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
+        # M_options_plot = torch.as_tensor([key[2] for key in data.keys()])
+        # idx = M_options_plot.argsort()
 
-        ax.plot(M_options_plot[idx], data.mean_radius[idx], label=rf"${convert_to_sci_notation(args.variance**0.5)}$", color=color, marker="o")
-        ax.fill_between(
-            M_options_plot[idx],
-            data.mean_radius[idx] - data.std_radius[idx],
-            data.mean_radius[idx] + data.std_radius[idx],
-            alpha=0.2,
-            color=color
-        )
+        # ax.plot(M_options_plot[idx], data.mean_radius[idx], label=rf"${convert_to_sci_notation(args.variance**0.5)}$", color=color, marker="o")
+        # ax.fill_between(
+        #     M_options_plot[idx],
+        #     data.mean_radius[idx] - data.std_radius[idx],
+        #     data.mean_radius[idx] + data.std_radius[idx],
+        #     alpha=0.2,
+        #     color=color
+        # )
 
         data_emp = load_list_of_empirical_radii(args, combinations, random_seed_options, save=True)
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         save=True,
     )
 
-    for num_dims, method in itertools.product([2, 10], ['triangle_inequality_vertex']):
+    for num_dims, method in itertools.product([2], ['triangle_inequality_vertex']):
         args.num_dims = num_dims
         args.method = method
         args = process_args(args)

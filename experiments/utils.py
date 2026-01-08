@@ -233,8 +233,6 @@ def empirical_radii_for_combinations(
 ) -> EmpiricalRadii:
     assert all(len(combo) == 3 for combo in combinations), "Each combination must be a tuple of (N_train, N, M)."
 
-    solver = get_solver(method=args.method)
-
     partitions = get_dict_of_partitions(
         args, 
         combinations=[(N_train, M) for N_train, N, M in combinations],
@@ -298,7 +296,7 @@ def load_list_of_empirical_radii(
             args, 
             combinations=combinations, 
             generate_partition_if_missing=False, 
-            generate_empirical_radii_if_not_stored=False, 
+            generate_empirical_radii_if_not_stored=True, 
             save=save
         ))
     args.random_seed = original_random_seed

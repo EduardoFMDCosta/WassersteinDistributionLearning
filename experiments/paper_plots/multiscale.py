@@ -4,10 +4,8 @@ import torch
 import itertools
 import matplotlib.pyplot as plt
 
-from configs.construct import get_support_assumption, get_distribution
 from configs.handlers import parse_arguments, process_args
-from experiments.partitions import get_partition
-from experiments.utils import load_list_of_data_driven_radii, load_list_of_empirical_radii, load_quantization
+from experiments.utils import load_list_of_data_driven_radii, load_list_of_empirical_radii
 
 from plotting.utils_plot import set_style, convert_to_sci_notation
 

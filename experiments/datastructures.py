@@ -290,18 +290,40 @@ class Quantizations(_GridDict[UncertainQuantization]):
 
 class EmpiricalRadii(_GridDict[EmpiricalRadius]):
     @property
-    def radius_samples(self):
-        return self._stack('radius_samples')
+    def radius(self):
+        return self._stack('radius')
 
-    @property
-    def radius_quantization(self):
-        return self._stack('radius_quantization')
+    def radius_at(self, key: Tuple[int, int, int]) -> float:
+        return self.data[key].radius
+
+@dataclass
+class ListOfEmpiricalRadii:
+    data: List[EmpiricalRadii] = field(default_factory=list)
+
+    def append(self, rec: EmpiricalRadii) -> None:
+        self.data.append(rec)
     
-    def radius_samples_at(self, key: Tuple[int, int, int]) -> float:
-        return self.data[key].radius_samples
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
 
-    def radius_quantization_at(self, key: Tuple[int, int, int]) -> float:
-        return self.data[key].radius_quantization
+    def _slice(self: "ListOfEmpiricalRadii", N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[int, List]] = None) -> "ListOfEmpiricalRadii":
+        new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
+        return self.__class__(new_data)
+    
+    @property
+    def mean_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.radius_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.radius_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
 
 
 # to pickle load from other files..

@@ -1,6 +1,7 @@
 import os
 import torch
 import time
+from copy import copy
 from argparse import Namespace
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union, Type
 
@@ -12,7 +13,7 @@ from sets import BoundedVoronoiPartition
 from configs.handlers import pickle_load, pickle_dump, process_args
 from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_dict_of_partitions
-from experiments.datastructures import ListOfTimeLogger, TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii
+from experiments.datastructures import ListOfTimeLogger, TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii, ListOfEmpiricalRadii
 
 
 def quantizations_for_combinations(
@@ -219,5 +220,86 @@ def load_list_of_time_loggers(
 
         data.append(load_data(args.data_driven_radii_timing_file, TimeLogger))
 
+    args.random_seed = original_random_seed
+    return data
+
+
+def empirical_radii_for_combinations(
+    args: Namespace, 
+    combinations: List[Tuple[int, int, int]],  # List of (N_train,N, M) pairs
+    generate_partition_if_missing: bool = False,
+    generate_empirical_radii_if_not_stored: bool = True,
+    save: bool = False,
+) -> EmpiricalRadii:
+    assert all(len(combo) == 3 for combo in combinations), "Each combination must be a tuple of (N_train, N, M)."
+
+    solver = get_solver(method=args.method)
+
+    partitions = get_dict_of_partitions(
+        args, 
+        combinations=[(N_train, M) for N_train, N, M in combinations],
+        generate_partition_if_missing=generate_partition_if_missing
+    )
+
+    stored_empirical_radii = load_data(args.empirical_radii_file, EmpiricalRadii)
+
+    empirical_radii = EmpiricalRadii()
+
+    for (N_train, N, M) in combinations:
+        if (N_train, N, M) in stored_empirical_radii.keys():
+            print(f"Empirical radius for N_train={N_train}, N={N}, M={M} in stored data. Skipping computation.")
+            empirical_radii.append((N_train, N, M), stored_empirical_radii.at((N_train, N, M)))
+        elif generate_empirical_radii_if_not_stored:
+            if (N_train, M) not in partitions.keys():
+                print(f"Skipping N_train={N_train}, M={M} as partition is not available.")
+                continue
+            else:
+                partition = partitions.at((N_train, M))
+
+            print(f"Processing N_train={N_train}, N={N}, M={M}")
+
+            quantization = load_quantization(args, partition=partition, N=N)
+
+            try:
+                empirical_radii.append((N_train, N, M), EmpiricalRadius(
+                    quantization=quantization,
+                    dist=get_distribution(**vars(args)),
+                    wasserstein_order=args.wasserstein_order,
+                ))
+                print(f"Finished processing N_train={N_train}, N={N}, M={M}")
+            except Exception as e:
+                print(f"Unexpected error for N_train={N_train}, N={N}, M={M}: {e}. Skipping this configuration.")
+        else:
+            pass
+
+    if save:
+        new_empirical_radii = copy(empirical_radii)
+        for (N_train, N, M) in stored_empirical_radii.keys():
+            if (N_train, N, M) not in new_empirical_radii.keys():
+                new_empirical_radii.append((N_train, N, M), stored_empirical_radii.at((N_train, N, M)))
+        pickle_dump(new_empirical_radii, args.empirical_radii_file)
+
+    return empirical_radii
+
+def load_list_of_empirical_radii(
+    args, 
+    combinations,   # List of (N_train,N, M) pairs
+    random_seed_options, 
+    save: bool = False
+) -> ListOfEmpiricalRadii:
+    assert all(len(combo) == 3 for combo in combinations), "Each combination must be a tuple of (N_train, N, M)."
+
+    original_random_seed = args.random_seed
+    data = ListOfEmpiricalRadii()
+    for seed in random_seed_options:
+        args.random_seed = seed
+        args = process_args(args)
+        data.append(empirical_radii_for_combinations(
+            args, 
+            combinations=combinations, 
+            generate_partition_if_missing=False, 
+            generate_empirical_radii_if_not_stored=False, 
+            save=save
+        ))
     args.random_seed = original_random_seed
     return data

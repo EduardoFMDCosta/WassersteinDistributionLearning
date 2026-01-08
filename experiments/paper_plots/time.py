@@ -27,24 +27,15 @@ def main(args, M_setting: str):
     fig_radii, ax_radii = plt.subplots(figsize=(6, 4))
 
     colors = [cmap(i / max(len(N_options) - 1, 1)) for i in range(len(N_options))]
-    M_options_radii = torch.as_tensor(M_options)
-
     for N, color in zip(N_options, colors):
-        N_train = num_samples_training_from_num_samples(N)
+        radii_times_slice = radii_times._slice(N_train=num_samples_training_from_num_samples(N), N=N, M=M_options)
+        M_options_radii = torch.as_tensor([key[2] for key in radii_times_slice.keys()])
+        idx_radii = M_options_radii.argsort()
 
-        mean_radii, std_radii = list(), list()
-        for M in M_options:
-            if (N_train, N, M) in radii_times.keys():
-                mean_radii.append(radii_times.mean_time_at((N_train, N, M)))
-                std_radii.append(radii_times.std_time_at((N_train, N, M)))
-            else:
-                mean_radii.append(0.0) # TODO: Discuss how to represent here, although we should have access to all keys
-                std_radii.append(0.0)
+        mean_radii,  std_radii = radii_times_slice.mean_time[idx_radii], radii_times_slice.std_time[idx_radii]
 
-        mean_radii, std_radii = torch.as_tensor(mean_radii), torch.as_tensor(std_radii)
-
-        ax_radii.plot(M_options_radii, mean_radii, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
-        ax_radii.fill_between(M_options_radii, mean_radii - std_radii, mean_radii + std_radii, color=color, alpha=0.2)
+        ax_radii.plot(M_options_radii[idx_radii], mean_radii, label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
+        ax_radii.fill_between(M_options_radii[idx_radii], mean_radii - std_radii, mean_radii + std_radii, color=color, alpha=0.2)
 
     ax_radii.set_ylim(bottom=0)
 

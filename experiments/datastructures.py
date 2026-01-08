@@ -29,8 +29,17 @@ class _GridDict(Generic[T]): # key = (N_train, N, M)
     def _stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
         return torch.tensor([getattr(self.data[key], attribute) for key in self.keys(N_train=N_train, N=N, M=M)])
 
-    def _slice(self: S, N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> S:
-        new_data = {key: self.data[key] for key in self.keys(N_train=N_train, N=N, M=M)}
+    def _slice(self: S, N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[int, List]] = None) -> S:
+        N_train = [N_train] if not isinstance(N_train, list) else N_train
+        N = [N] if not isinstance(N, list) else N
+        M = [M] if not isinstance(M, list) else M
+
+        new_data = {
+            key: self.data[key] 
+            for i in N_train
+            for j in N
+            for k in M
+            for key in self.keys(N_train=i, N=j, M=k)}
         return self.__class__(new_data)
 
 
@@ -83,7 +92,7 @@ class ListOfTimeLogger:
         sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
         return list(set.intersection(*sets))
 
-    def _slice(self: "ListOfTimeLogger", N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> "ListOfTimeLogger":
+    def _slice(self: "ListOfTimeLogger", N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[int, List]] = None) -> "ListOfTimeLogger":
         new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
         return self.__class__(new_data)
 

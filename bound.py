@@ -138,7 +138,7 @@ class EmpiricalRadius:
         quantization: UncertainQuantization,
         dist: torch.distributions.Distribution,
         wasserstein_order: int,
-        num_samples: int = 100000,
+        num_samples: int = 1_000, # 100_000
     ):
         emp_dist = dist.sample((num_samples,))
 

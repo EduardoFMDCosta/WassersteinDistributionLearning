@@ -110,13 +110,13 @@ def fournier_radii_for_combinations(
 ) -> FournierRadii:
     support = get_support_assumption(**vars(args))
 
-    fournier_radii = load_data(args.fournier_radii_file, FournierRadii)
+    fournier_radii = FournierRadii()
 
     N_train = args.num_samples_training
     for N in list(set([N for N, M in combinations])):
         fournier_radius = compute_fournier_radius(
             support=support, 
-            nsamples=N + N_train, 
+            nsamples=N, 
             wasserstein_order=args.wasserstein_order,
             beta=args.beta,
         )

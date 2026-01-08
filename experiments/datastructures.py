@@ -202,7 +202,7 @@ class ListOfDataDrivenRadii:
 class FournierRadii(_GridDict[Union[torch.Tensor, float]]):
     @property
     def radius(self):
-        return self._stack('data')
+        return self._stack('real')
     
     def radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return torch.as_tensor(self.data[key])

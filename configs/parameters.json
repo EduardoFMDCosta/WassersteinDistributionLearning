@@ -1,4 +1,26 @@
 {
+  "UCI-MiniBooNE": {
+    "num_dims": {
+        "51": {
+            "settings": {
+                "0": {
+                    "support_linf_radius": 0.5
+                }
+            }
+        }
+    }
+  },
+  "UCI-Turbine": {
+    "num_dims": {
+        "11": {
+            "settings": {
+                "0": {
+                    "support_linf_radius": 0.5
+                }
+            }
+        }
+    }
+  },
   "Uniform": {
       "num_dims": {
           "2": {

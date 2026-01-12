@@ -225,14 +225,15 @@ def generate_partitions(
     samples: Optional[torch.Tensor] = None
 ):
     support_assumption = get_support_assumption(**vars(args))
-    distribution = get_distribution(**vars(args))
     time_logger = load_time_logger_partition(args)
 
     max_num_samples = max([N for N, M in combinations])
 
     if samples is None:
+        distribution = get_distribution(**vars(args))
         samples = distribution.sample((max_num_samples,))
     elif samples.size(0) < max_num_samples:
+        distribution = get_distribution(**vars(args))
         samples = torch.cat((samples, distribution.sample((max_num_samples - samples.size(0),), )), dim=0)
 
     partitions = BoundedVoronoiPartitionDict()

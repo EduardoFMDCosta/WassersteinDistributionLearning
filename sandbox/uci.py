@@ -17,7 +17,7 @@ from ucimlrepo import fetch_ucirepo
 MIN_ROWS = 35_000
 MIN_CONTINUOUS_FEATURES = 10
 
-ID_RANGE = range(1, 3)          # adjust upward if you want broader scan  # 2001
+ID_RANGE = range(1, 100)          # adjust upward if you want broader scan  # 2001
 SLEEP_SEC = 0.05                  # be polite, but keep it moving
 SAVE_CSV_PATH = "ucimlrepo_scan_results.csv"
 

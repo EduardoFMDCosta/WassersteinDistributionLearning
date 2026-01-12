@@ -2,6 +2,7 @@ import os
 import itertools
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from configs.handlers import parse_arguments, process_args
 from experiments.utils import load_list_of_data_driven_radii, fournier_radii_for_combinations
@@ -24,7 +25,7 @@ def main(args):
         M_options += [500, 1000]
     random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(5.4, 4))
     cmap = plt.cm.coolwarm
     colors = [cmap(i / (len(settings) - 1)) for i in range(len(settings))]
 
@@ -47,27 +48,41 @@ def main(args):
             color=color
         )
 
-        fournier_data = fournier_radii_for_combinations(
-            args, 
-            combinations=[(args.num_samples, int(M)) for M in M_options_plot]
-        )
-        M_options_fornier_plots = torch.as_tensor([key[2] for key in fournier_data.keys(N=args.num_samples, N_train=args.num_samples_training)])
-        idx_fournier = M_options_fornier_plots.argsort()
+    handles, _ = ax.get_legend_handles_labels()
 
-        ax.plot(M_options_fornier_plots[idx_fournier], fournier_data.radius[idx_fournier], color='grey', linestyle="--")
+    fournier_data = fournier_radii_for_combinations(
+        args, 
+        combinations=[(args.num_samples, int(M)) for M in M_options_plot]
+    )
+    M_options_fornier_plots = torch.as_tensor([key[2] for key in fournier_data.keys(N=args.num_samples, N_train=args.num_samples_training)])
+    idx_fournier = M_options_fornier_plots.argsort()
 
+    ax.plot(M_options_fornier_plots[idx_fournier], fournier_data.radius[idx_fournier], color='grey', linestyle="--")
 
     ax.set_xlabel(r"Support size $M$")
     ax.grid(True, linestyle="--", alpha=0.4)
     if args.method == 'joint_diagonal_milp':
         ax.set_ylabel(r"$\mathbb{W}_2$")
-        ax.legend(title=r"Std deviation", loc="upper right")
+
+
     plt.tight_layout()
+
+
+    fournier_legend = Line2D([], [], color="grey", linestyle="--", label=rf"[13] ($N=10^4$)")
+    divider = Line2D([], [], linestyle="none", label=r"$\rule{2cm}{0.4pt}$")
+    fig_leg = plt.figure(figsize=(2.8, 3.0))
+    fig_leg.legend(
+        handles=handles + [divider, fournier_legend],
+        title=r"Std deviation",
+        loc="center",
+        frameon=False,
+    )
 
     if args.save:
         file_name = f"variance_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_{args.method}"
         folder = os.path.dirname(os.path.dirname(args.figures_dir)) # USE figures_dir! results_dir is solely for data
-        plt.savefig(os.path.join(folder, f"{file_name}.pdf"))  
+        fig.savefig(os.path.join(folder, f"{file_name}.pdf"))  
+        fig_leg.savefig(os.path.join(folder, f"variance_legend.pdf"))
     else:
         plt.show()
 

@@ -1,8 +1,11 @@
 from typing import Optional, List, Optional, Union, Callable, Tuple
 import torch
+import os
 from distributions import MultivariateUniform, TruncatedMultivariateNormal, MixtureTruncatedMultivariateNormal, CategoricalFloat
 from sets import HyperRectangle
 from ucimlrepo import fetch_ucirepo
+
+import pandas as pd
 
 
 def get_support_assumption(
@@ -218,13 +221,15 @@ def construct_uci_turbine(**kwargs) -> EmpiricalDistribution:
     df.pop('year')
 
     features = torch.from_numpy(df.to_numpy()).float()
-
     transform = MinMaxNormalizer().fit(features)
     return EmpiricalDistribution(features, transform=transform)
 
-def construct_uci_miniboone(args) -> EmpiricalDistribution:
-    # data = fetch_ucirepo(id=199)
-    raise NotImplementedError
+def construct_uci_miniboone(base_dir: str, **kwargs) -> EmpiricalDistribution:
+    df = pd.read_csv(os.path.join(base_dir, "data", "MiniBooNE.csv"), header=None, delimiter=';')
+
+    features = torch.from_numpy(df.to_numpy()).float()
+    transform = MinMaxNormalizer().fit(features)
+    return EmpiricalDistribution(features, transform=transform)
 
 def get_distribution(distribution, **kwargs):
     if distribution == 'Uniform':
@@ -237,5 +242,7 @@ def get_distribution(distribution, **kwargs):
         return construct_random_categorical_float(**kwargs)
     elif distribution == "UCI-Turbine":
         return construct_uci_turbine(**kwargs)
+    elif distribution == "UCI-MiniBooNE":
+        return construct_uci_miniboone(**kwargs)
     else:
         raise ValueError('Unknown distribution.')

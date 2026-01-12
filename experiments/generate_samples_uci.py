@@ -3,15 +3,15 @@ from configs.construct import get_distribution
 
 SIZE = {
     "UCI-Turbine": 36_733,
-    "UCI-MiniBoone": 130_065,
+    "UCI-MiniBooNE": 130_064,
 }
 
 
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="UCI-Turbine",
-        num_dims=11,
+        distribution="UCI-MiniBooNE", # "UCI-MiniBooNE" or "UCI-Turbine"
+        num_dims=50,
         setting=0,
         num_samples=1000, # PLACEHOLDER
         num_samples_training=5000,

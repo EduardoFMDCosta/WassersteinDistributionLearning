@@ -69,11 +69,13 @@ def fournier_radius(
             8: 1.84,
             9: 1.82,
             10: 1.81,  # for 10 <= d <= 75, we divide 3rd line of Table 3 by sqrt(d)
+            11: 1.81,  # TODO TEMP FIX
             12: 1.82,
             15: 1.84,
             20: 1.87,
             25: 1.89,
             50: 1.95,
+            51: 1.95, # TODO TEMP FIX
             75: 1.96,
             100: 1.98,
             500: 2.00
@@ -100,11 +102,13 @@ def fournier_radius(
             8: 1.92,
             9: 1.87,
             10: 1.85, # for 10 <= d <= 75, we divide 3rd line of Table 4 by sqrt(d)
+            11: 1.85,  # TODO TEMP FIX
             12: 1.83,
             15: 1.84,
             20: 1.87,
             25: 1.89,
             50: 1.95,
+            51: 1.95, # TODO TEMP FIX
             75: 1.96,
             100: 1.98,
             500: 2.00

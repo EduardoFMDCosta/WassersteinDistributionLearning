@@ -16,6 +16,29 @@ from configs.construct import get_support_assumption, get_distribution
 
 S = TypeVar("S", bound="BoundedVoronoiPartitionDict")
 
+
+def load_samples(args, N: int, generate_samples_if_missing: bool = True, to_construct_quantization: bool = True) -> torch.Tensor:
+    file_name = args.quantization_samples_file if to_construct_quantization else args.partition_samples_file
+
+    if os.path.exists(file_name):
+        stored_samples = pickle_load(file_name)
+    elif generate_samples_if_missing:
+        stored_samples = torch.empty((0, args.num_dims))
+    else:
+        raise ValueError(f"Samples file not found at {file_name}.")
+
+    if stored_samples.shape[0] < N and not generate_samples_if_missing:
+        raise ValueError(f"Not enough samples stored ({stored_samples.shape[0]}) to load {N} samples.")
+    elif stored_samples.shape[0] < N:
+        print(f"Generating additional samples {N - stored_samples.shape[0]} to reach {N} samples.")
+        distribution = get_distribution(**vars(args))
+        samples = torch.cat((stored_samples, distribution.sample((N - stored_samples.shape[0],))))
+        pickle_dump(samples, file_name)
+    else:
+        samples = stored_samples[:N]
+    return samples
+
+
 @dataclass
 class BoundedVoronoiPartitionDict: # key = (N_train, M)
     _samples: Optional[torch.Tensor] = None
@@ -169,10 +192,16 @@ def get_dict_of_partitions(
             requested_partitions.append((N, M), stored_partitions.at((N, M)))
         else:
             missing_combinations.append((N, M))
+
+    # Load samples 
+    if 'UCI-' in args.distribution:
+        samples = load_samples(args, N=max([N for N, M in combinations]), generate_samples_if_missing=False, to_construct_quantization=False)
+    else:
+        samples = stored_partitions.samples
     
     # Generate missing combinations
     if generate_partition_if_missing and len(missing_combinations) > 0:
-        missing_partitions = generate_partitions(missing_combinations, args, samples=stored_partitions.samples)
+        missing_partitions = generate_partitions(missing_combinations, args, samples=samples)
         requested_partitions.attach_samples(missing_partitions.samples)
 
         for (N, M) in missing_combinations:

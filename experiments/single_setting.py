@@ -8,7 +8,7 @@ from solvers import get_solver
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from experiments.partitions import get_partition
-from experiments.utils import load_quantization, load_quantization_samples
+from experiments.utils import load_quantization, load_samples
 
 if __name__ == '__main__':
     args = parse_arguments(
@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     # Plot samples and clusterized distribution
     if args.plot:
-        samples_quantization = load_quantization_samples(args, N=args.num_samples)
+        samples_quantization = load_samples(args, N=args.num_samples)
         plot_quantization(
             quantization=quantization, 
             samples=samples_quantization,

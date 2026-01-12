@@ -155,6 +155,83 @@
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
                       "variance": 0.022145232185721397
+                  },
+                  "1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.5
+                  },
+                  "2": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.1
+                  },
+                  "3": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.01
+                  },
+                  "4": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.001
+                  },
+                  "5": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.0001
+                  },
+                  "6": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.00001
+                  },
+                  "01": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.008893891409476643
+                  }
+              }
+          },
+          "25": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance":  0.01923503540456295
+                  },
+                  "1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance":  0.00836563360855996
+                  }
+              }
+          },
+          "50": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.017483416944742203
+                  },
+                  "1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.008005393965832582
+                  }
+              }
+          },
+          "75": {
+              "settings": {
+                  "0": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.016596339643001556
+                  },
+                  "1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.007808511730165843
                   }
               }
           },
@@ -164,6 +241,11 @@
                       "support_linf_radius": 0.5,
                       "mean": 0.0,
                       "variance": 0.01601838879287243
+                  },
+                  "1": {
+                      "support_linf_radius": 0.5,
+                      "mean": 0.0,
+                      "variance": 0.007674518111037841
                   }
               }
           }

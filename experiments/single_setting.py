@@ -1,52 +1,49 @@
 import torch
 import matplotlib.pyplot as plt
 
-from sets import BoundedVoronoiPartition
 from quantization import UncertainQuantization
 from bound import DataDrivenRadius, fournier_radius
 from solvers import get_solver
 
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from configs.construct import get_support_assumption, get_distribution
 from experiments.partitions import get_partition
+from experiments.utils import load_quantization, load_quantization_samples
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
-        num_dims=100,
+        num_dims=2,
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=30,
+        num_clusters=20,
         wasserstein_order=1,
-        beta=1e-4,
+        beta=1e-6,
         method='full_search',
         plot=False,
         save=False,
         compute_discrete_bound=False, 
         compute_moment_bound=True
     )
-
+    
     solver = get_solver(method=args.method)
-
-    support_assumption = get_support_assumption(**vars(args))
-
-    # (Unknown) Generating probability
-    distribution = get_distribution(**vars(args))
 
     # Generate Partitioning
     partition = get_partition(args=args, num_samples=args.num_samples_training, num_clusters=args.num_clusters)
 
     # Generate Quantization
-    samples_quantization = distribution.sample((args.num_samples,))
-    quantization = UncertainQuantization(partition=partition, samples=samples_quantization, beta=args.beta)
+    quantization = load_quantization(args=args, partition=partition, N=args.num_samples)
 
     # Plot samples and clusterized distribution
     if args.plot:
-        plot_quantization(quantization=quantization, title=f"M={args.num_clusters}, N={args.num_samples}")
+        samples_quantization = load_quantization_samples(args, N=args.num_samples)
+        plot_quantization(
+            quantization=quantization, 
+            samples=samples_quantization,
+            title=f"M={args.num_clusters}, N={args.num_samples}"
+        )
         plt.show()
 
     # Compute bounds

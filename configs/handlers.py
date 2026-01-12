@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 import json
 import argparse
 import os
 from pathlib import Path
 import pickle
+import torch
 
 from solvers import get_solver, get_discrete_solver
 
@@ -33,18 +34,20 @@ def parse_arguments(
     distribution: str,
     num_dims: int,
     setting: int,
+    random_seed: int = 0,
     num_clusters: int = 10,
     method: str = 'stochastic_vertice_ascent',
-    num_samples_training: int = 1000,
+    num_samples_training: Optional[int] = None,
     num_samples: int = 1000,
     wasserstein_order: int = 2,
-    beta: float = 1e-4,
+    beta: float = 1e-6,
     plot: bool = False,
     save: bool = False,
     compute_moment_bound: bool = True, 
     compute_discrete_bound: bool = True
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
+    parser.add_argument('--random_seed', type=int, default=random_seed, help='Random seed for reproducibility.')
     parser.add_argument('--distribution', type=str, default=distribution, help='Distribution to generate samples.')
     parser.add_argument('--num_dims', type=int, default=num_dims, help='Dimension of the problem.')
     parser.add_argument('--setting', type=int, default=setting, help='Experiment setting.')
@@ -60,8 +63,20 @@ def parse_arguments(
     parser.add_argument('--compute_discrete_bound', type=bool, default=compute_discrete_bound, help='Compute discrete-term of data-driven radius.')
     args = parser.parse_args()
 
-    if not method in get_solver.supported_methods + get_discrete_solver.supported_methods:
-        raise ValueError(f"Method {method} not supported. Supported methods: {get_solver.supported_methods}")
+    return process_args(args)
+
+def num_samples_training_from_num_samples(N: int) -> int:
+    if N < 5000:
+        return 1000
+    else:
+        return 5000
+    
+def process_args(args):
+    if not args.method in get_solver.supported_methods + get_discrete_solver.supported_methods:
+        raise ValueError(f"Method {args.method} not supported. Supported methods: {get_solver.supported_methods}")
+
+    if args.num_samples_training is None:
+        args.num_samples_training = num_samples_training_from_num_samples(args.num_samples)
 
     dynamics_params = param_handler(
         param_name="parameters",
@@ -72,12 +87,30 @@ def parse_arguments(
 
     args.__dict__.update(vars(dynamics_params))
 
+    torch.manual_seed(args.random_seed)
+    random_seed_tag = '' if args.random_seed == 0 else f'_seed={args.random_seed}'
+
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    args.results_dir = os.path.join(base_dir, "results", args.distribution.lower())
-    args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}.pickle")
+    args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
+    args.figures_dir = os.path.join(base_dir, "figures", args.distribution.lower(), f"dims_{args.num_dims}_setting_{args.setting}")
+    args.tables_dir = os.path.join(base_dir, "tables")
+
+    args.data_driven_radii_file = os.path.join(args.results_dir, args.method, f"data_driven_radii{random_seed_tag}.pickle")
+    args.fournier_radii_file = os.path.join(args.results_dir, f"fournier_radii{random_seed_tag}.pickle")
+    args.empirical_radii_file = os.path.join(args.results_dir, f"empirical_radii{random_seed_tag}.pickle")
+
+    args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
+    args.quantization_samples_file = os.path.join(base_dir, "samples", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
+
+    args.partitions_timing_file = args.partitions_file.replace(".pickle", "_timing.pickle")
+    args.data_driven_radii_timing_file = args.data_driven_radii_file.replace(".pickle", "_timing.pickle")
 
     ensure_dir(args.results_dir)
+    ensure_dir(args.figures_dir)
+    ensure_dir(args.tables_dir)
+    ensure_dir(os.path.dirname(args.data_driven_radii_file))
     ensure_dir(os.path.dirname(args.partitions_file))
+    ensure_dir(os.path.dirname(args.quantization_samples_file))
 
     return args
 

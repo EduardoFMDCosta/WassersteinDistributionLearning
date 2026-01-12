@@ -1,3 +1,5 @@
+import os
+import sys
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional, Any, Generic, TypeVar, Union
 
@@ -12,23 +14,32 @@ T = TypeVar("T")
 S = TypeVar("S", bound="_GridDict")
 
 @dataclass
-class _GridDict(Generic[T]): # key = (N, M)
-    data: Dict[Tuple[int, int], T] = field(default_factory=dict)
+class _GridDict(Generic[T]): # key = (N_train, N, M)
+    data: Dict[Tuple[int, int, int], T] = field(default_factory=dict)
 
-    def append(self, key: Tuple[int, int], rec: T) -> None:
+    def append(self, key: Tuple[int, int, int], rec: T) -> None:
         self.data[key] = rec
 
-    def at(self, key: Tuple[int, int]) -> T:
+    def at(self, key: Tuple[int, int, int]) -> T:
         return self.data[key]
     
-    def keys(self, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int]]:
-        return [key for key in self.data.keys() if (N is None or key[0] == N) and (M is None or key[1] == M)]
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        return [key for key in self.data.keys() if (N_train is None or key[0] == N_train) and (N is None or key[1] == N) and (M is None or key[2] == M)]
 
-    def _stack(self, attribute: str, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
-        return torch.tensor([getattr(self.data[key], attribute) for key in self.keys(N=N, M=M)])
+    def _stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
+        return torch.tensor([getattr(self.data[key], attribute) for key in self.keys(N_train=N_train, N=N, M=M)])
 
-    def _slice(self: S, N: Optional[int] = None, M: Optional[int] = None) -> S:
-        new_data = {key: self.data[key] for key in self.keys(N=N, M=M)}
+    def _slice(self: S, N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[int, List]] = None) -> S:
+        N_train = [N_train] if not isinstance(N_train, list) else N_train
+        N = [N] if not isinstance(N, list) else N
+        M = [M] if not isinstance(M, list) else M
+
+        new_data = {
+            key: self.data[key] 
+            for i in N_train
+            for j in N
+            for k in M
+            for key in self.keys(N_train=i, N=j, M=k)}
         return self.__class__(new_data)
 
 
@@ -36,6 +47,9 @@ class TimeLogger(_GridDict[torch.Tensor]):
     @property
     def time(self):
         return self._stack('data')
+    
+    def time_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return self.data[key]
 
 
 class DataDrivenRadii(_GridDict[DataDrivenRadius]): 
@@ -55,40 +69,167 @@ class DataDrivenRadii(_GridDict[DataDrivenRadius]):
     def radius(self):
         return self._stack('radius')
     
-    def moment_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+    def moment_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return self.data[key].moment_bound
     
-    def discrete_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+    def discrete_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return self.data[key].discrete_bound
     
-    def lower_bound_at(self, key: Tuple[int, int]) -> torch.Tensor:
+    def lower_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return self.data[key].lower_bound
     
-    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+    def radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return self.data[key].radius
+
+@dataclass
+class ListOfTimeLogger:
+    data: List[TimeLogger] = field(default_factory=list)
+
+    def append(self, rec: TimeLogger) -> None:
+        self.data.append(rec)
+    
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
+
+    def _slice(self: "ListOfTimeLogger", N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[int, List]] = None) -> "ListOfTimeLogger":
+        new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
+        return self.__class__(new_data)
+
+    @property
+    def time_stack(self) -> torch.Tensor:
+        return torch.stack([
+            torch.stack([elem.time_at(key) for elem in self.data])
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_time(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.time_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_time(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.time_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+    
+    def mean_time_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.time_at(key) for elem in self.data]).mean()
+    
+    def std_time_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.time_at(key) for elem in self.data]).std()
+
+@dataclass
+class ListOfDataDrivenRadii:
+    data: List[DataDrivenRadii] = field(default_factory=list)
+
+    def append(self, rec: DataDrivenRadii) -> None:
+        self.data.append(rec)
+    
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
+
+    def _slice(self: "ListOfDataDrivenRadii", N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> "ListOfDataDrivenRadii":
+        new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
+        return self.__class__(new_data)
+
+    @property
+    def radius_stack(self) -> torch.Tensor:
+        return torch.stack([
+            torch.stack([elem.radius_at(key) for elem in self.data])
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.radius_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.radius_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_moment_bound(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.moment_bound_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_moment_bound(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.moment_bound_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def mean_discrete_bound(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.stack([elem.discrete_bound_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    def mean_radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.radius_at(key) for elem in self.data]).mean()
+    
+    def std_radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.radius_at(key) for elem in self.data]).std()
+    
+    def mean_moment_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.moment_bound_at(key) for elem in self.data]).mean()
+
+    def std_moment_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.moment_bound_at(key) for elem in self.data]).std()
+    
+    def mean_discrete_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.discrete_bound_at(key) for elem in self.data]).mean()
+    
+    def std_discrete_bound_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
+        return torch.stack([elem.discrete_bound_at(key) for elem in self.data]).std()
 
 
 class FournierRadii(_GridDict[Union[torch.Tensor, float]]):
     @property
     def radius(self):
-        return self._stack('data')
+        return self._stack('real')
     
-    def radius_at(self, key: Tuple[int, int]) -> torch.Tensor:
+    def radius_at(self, key: Tuple[int, int, int]) -> torch.Tensor:
         return torch.as_tensor(self.data[key])
 
 
 class Quantizations(_GridDict[UncertainQuantization]):
-    def _mean_stack(self, attribute: str, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
-        return torch.tensor([getattr(self.data[key], attribute).float().mean() for key in self.keys(N=N, M=M)])
+    _samples: Optional[torch.Tensor] = None
 
-    def _std_stack(self, attribute: str, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
-        return torch.tensor([getattr(self.data[key], attribute).float().std() for key in self.keys(N=N, M=M)])
+    @property
+    def samples(self) -> Optional[torch.Tensor]:
+        return self._samples
     
-    def _min_stack(self, attribute: str, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
-        return torch.tensor([getattr(self.data[key], attribute).float().min() for key in self.keys(N=N, M=M)])
+    @samples.setter
+    def samples(self, value: torch.Tensor) -> None:
+        self._samples = value
+        
+    def _mean_stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
+        return torch.tensor([getattr(self.data[key], attribute).float().mean() for key in self.keys(N_train=N_train, N=N, M=M)])
+
+    def _std_stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
+        return torch.tensor([getattr(self.data[key], attribute).float().std() for key in self.keys(N_train=N_train, N=N, M=M)])
     
-    def _max_stack(self, attribute: str, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
-        return torch.tensor([getattr(self.data[key], attribute).float().max() for key in self.keys(N=N, M=M)])
+    def _min_stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
+        return torch.tensor([getattr(self.data[key], attribute).float().min() for key in self.keys(N_train=N_train, N=N, M=M)])
+    
+    def _max_stack(self, attribute: str, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> torch.Tensor:
+        return torch.tensor([getattr(self.data[key], attribute).float().max() for key in self.keys(N_train=N_train, N=N, M=M)])
 
     @property
     def outer_counts(self):
@@ -149,15 +290,45 @@ class Quantizations(_GridDict[UncertainQuantization]):
 
 class EmpiricalRadii(_GridDict[EmpiricalRadius]):
     @property
-    def radius_samples(self):
-        return self._stack('radius_samples')
+    def radius(self):
+        return self._stack('radius')
 
-    @property
-    def radius_quantization(self):
-        return self._stack('radius_quantization')
+    def radius_at(self, key: Tuple[int, int, int]) -> float:
+        return self.data[key].radius
+
+@dataclass
+class ListOfEmpiricalRadii:
+    data: List[EmpiricalRadii] = field(default_factory=list)
+
+    def append(self, rec: EmpiricalRadii) -> None:
+        self.data.append(rec)
     
-    def radius_samples_at(self, key: Tuple[int, int]) -> float:
-        return self.data[key].radius_samples
+    def keys(self, N_train: Optional[int] = None, N: Optional[int] = None, M: Optional[int]= None) -> List[Tuple[int, int, int]]:
+        sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
+        return list(set.intersection(*sets))
 
-    def radius_quantization_at(self, key: Tuple[int, int]) -> float:
-        return self.data[key].radius_quantization
+    def _slice(self: "ListOfEmpiricalRadii", N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[int, List]] = None) -> "ListOfEmpiricalRadii":
+        new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
+        return self.__class__(new_data)
+    
+    @property
+    def mean_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.tensor([elem.radius_at(key) for elem in self.data]).mean().item() 
+            for key in self.keys()
+        ])
+    
+    @property
+    def std_radius(self) -> torch.Tensor:
+        return torch.tensor([
+            torch.tensor([elem.radius_at(key) for elem in self.data]).std().item() 
+            for key in self.keys()
+        ])
+
+
+# to pickle load from other files..
+setattr(sys.modules.get('__main__'), 'TimeLogger', TimeLogger)
+setattr(sys.modules.get('__main__'), 'DataDrivenRadii', DataDrivenRadii)
+setattr(sys.modules.get('__main__'), 'FournierRadii', FournierRadii)
+setattr(sys.modules.get('__main__'), 'Quantizations', Quantizations)
+setattr(sys.modules.get('__main__'), 'EmpiricalRadii', EmpiricalRadii)

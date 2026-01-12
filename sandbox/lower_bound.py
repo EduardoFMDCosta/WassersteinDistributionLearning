@@ -15,9 +15,8 @@ def num_vertices_omega_space_vertices(num_dims: int):
     return num_dims * (2 ** (num_dims - 1))
 
 if __name__ == '__main__':
-    torch.manual_seed(0)
-
     args = parse_arguments(
+        random_seed=0,
         distribution="Gaussian",
         num_dims=2,
         setting=0,

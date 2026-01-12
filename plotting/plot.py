@@ -1,5 +1,4 @@
 import os
-import csv
 from typing import Optional
 import torch
 import seaborn as sns
@@ -8,10 +7,11 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
 from quantization import Quantization
-from sets import BoundedVoronoiPartition
+from sets import BoundedVoronoiPartition, HyperRectangle
 from confidence import Confidence
 import plotting.utils_plot as utils_plot
 from experiments.datastructures import TimeLogger, DataDrivenRadii, Quantizations, FournierRadii, EmpiricalRadii
+from configs.handlers import ensure_dir
 
 colors = [
         "lightcoral",
@@ -56,6 +56,7 @@ def plot_time_logger(
 def plot_data_driven_radii_slice(
     ax, 
     data_driven_radii: DataDrivenRadii, 
+    num_samples_training: int,
     N: Optional[int] = None, 
     M: Optional[int] = None,
     cummulative: bool = False
@@ -63,9 +64,9 @@ def plot_data_driven_radii_slice(
     if (N is not None and M is not None) or (N is None and M is None):
         raise ValueError("Only N or M should be specified.")
 
-    data_sliced = data_driven_radii._slice(N=N, M=M)
-    idx = 1 if N is not None else 0
-    options = [key[idx] for key in data_driven_radii.keys()]
+    data_sliced = data_driven_radii._slice(N_train=num_samples_training, N=N, M=M)
+    idx = 2 if N is not None else 1
+    options = [key[idx] for key in data_sliced.keys()]
 
     if cummulative:
         ax.fill_between(options, 0, data_sliced.moment_bound, label='e1', alpha=0.4)
@@ -85,16 +86,18 @@ def plot_data_driven_radii_slice(
     return ax
 
 @torch.no_grad()
-def plot_data_driven_radii(
+def plot_data_driven_radii( # TODO depreciate
     ax, 
     data_driven_radii: DataDrivenRadii,
+    num_samples_training: int,
     field: str = 'radius',
     s: int = 200,
     title: Optional[str] = None,
     xlabel: Optional[str] = None, 
     ylabel: Optional[str] = None,
 ):
-    Ns, Ms = zip(*data_driven_radii.keys())
+    data_driven_radii = data_driven_radii._slice(N_train=num_samples_training)
+    _, Ns, Ms = zip(*data_driven_radii.keys())
     scatter = ax.scatter(Ns, Ms, c=getattr(data_driven_radii, field), s=s, cmap='coolwarm', alpha=1.0)
     ax.figure.colorbar(scatter, ax=ax)
     ax.set_xscale('log')
@@ -109,19 +112,20 @@ def plot_data_driven_radii(
     return ax
 
 @torch.no_grad()
-def plot_quantization_slice(
+def plot_quantization_slice( # TODO depreciate
     ax, 
     quantizations: Quantizations, 
     stat: str,
+    num_samples_training: int,
     N: Optional[int] = None, 
     M: Optional[int] = None
 ):
     if (N is not None and M is not None) or (N is None and M is None):
         raise ValueError("Only N or M should be specified.")
     
-    data_sliced = quantizations._slice(N=N, M=M)
-    idx = 1 if N is not None else 0
-    options = [key[idx] for key in quantizations.keys()]
+    data_sliced = quantizations._slice(N_train=num_samples_training, N=N, M=M)
+    idx = 2 if N is not None else 1
+    options = [key[idx] for key in data_sliced.keys()]
 
     if stat == 'probs':
         ax.plot(options, data_sliced.mean_range_probs, label='avg probs range', color='black')
@@ -144,7 +148,7 @@ def plot_quantization_slice(
             label='std dev'
         )
     elif stat == 'counts':    
-        ax.plot(options, data_sliced.outer_counts, label='outer counts', marker='o', color='red')
+        ax.plot(options, data_sliced.outer_counts + 1, label='outer counts + 1', marker='o', color='red')
         ax.plot(options, data_sliced.mean_cluster_counts, label='avg cluster counts', marker='o', color='blue')
         ax.fill_between(
             options,
@@ -154,7 +158,8 @@ def plot_quantization_slice(
             alpha=0.2,
             label='std dev'
         )
-        ax.set_ylim(0., ax.get_ylim()[1])
+        ax.set_ylim(1., ax.get_ylim()[1])
+        ax.set_yscale('log')
     elif stat == 'locs':
         ax.plot(options, data_sliced.mean_l2_distance_locs_to_locs, label='avg distances', color='black')
         ax.fill_between(
@@ -175,13 +180,15 @@ def plot_quantization_slice(
 
 
 @torch.no_grad()
-def plot_confidence(nums_samples:list,
-                    empirical: list,
-                    hoeff_list: list[Confidence],
-                    duchi_list: list[Confidence],
-                    pearson_list: list[Confidence],
-                    actual_prob: Optional[torch.Tensor] = None,
-                    save=False):
+def plot_confidence(
+    nums_samples:list,
+    empirical: list,
+    hoeff_list: list[Confidence],
+    duchi_list: list[Confidence],
+    pearson_list: list[Confidence],
+    actual_prob: Optional[torch.Tensor] = None,
+    save=False
+):
 
     sns.set_style("darkgrid")
 
@@ -215,8 +222,9 @@ def plot_confidence(nums_samples:list,
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
 
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
-        plt.savefig(os.path.join(results_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'confidence_bounds')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"confidence_bounds_comparison.pdf"), format='pdf')
 
     plt.show()
 
@@ -241,16 +249,37 @@ def plot_confidence_delta(beta: list, empirical_prob: list, upper_prob: list, sa
 
     plt.tight_layout()
     if save:
-        results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'results', 'confidence_bounds')
-        plt.savefig(os.path.join(results_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
+        figures_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'figures', 'confidence_bounds')
+        ensure_dir(figures_dir)
+        plt.savefig(os.path.join(figures_dir, f"confidence_bounds_sublinearity.pdf"), format='pdf')
 
     plt.show()
 
+
+def plot_support(
+    support: HyperRectangle,
+    ax: Optional[plt.Axes] = None
+):
+    if not support.lower.size(-1) == 2:
+        raise ValueError("Can only plot 2D quantizations.")
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        
+    lower = support.lower
+    upper = support.upper
+    width = upper[0] - lower[0]
+    height = upper[1] - lower[1]
+    rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
+    ax.add_patch(rect)
+    return ax
+    
 
 def plot_partition(
     partition: BoundedVoronoiPartition, 
     ax: Optional[plt.Axes] = None,
     title: str = '',
+    plot_locs: bool = True,
 ):
     if not partition.ndim == 2:
         raise ValueError("Can only plot 2D quantizations.")
@@ -258,40 +287,40 @@ def plot_partition(
     if ax is None:
         fig, ax = plt.subplots(figsize=(6, 6))
         
-    # Plot shell
-    lower = partition.support.lower
-    upper = partition.support.upper
-    width = upper[0] - lower[0]
-    height = upper[1] - lower[1]
-    rect = Rectangle(lower, width, height, linewidth=0.5, edgecolor="black", facecolor='none')
-    ax.add_patch(rect)
+    ax = plot_support(partition.support, ax=ax)
 
     # Plot Voronoi cells
     if len(partition) <= 110 and isinstance(partition, BoundedVoronoiPartition):
         ax = utils_plot.plot_clipped_voronoi_2d(
             centers=partition.region_locs,
             max_diameters=partition.region_l2_radii * 2,
-            ax=ax
+            ax=ax,
+            face_alpha=0.15
         )
 
-    # Plot locs
-    ax.scatter(*partition.locs.t(), s=5, color="red", label="Cluster locs")
+    if plot_locs:
+        ax.scatter(*partition.locs.t(), s=5, color="black", label=r"$\{c_i\}_{i=1}^M$")
 
-    ax.legend()
-    ax.axis('equal')
+    # ax.legend()
+    ax.set_aspect('equal', adjustable='box')
     ax.set_title(title)
     return ax
 
 
-def plot_quantization( # TODO extract plot partition
-    quantization: Quantization, 
+def plot_quantization(
+    quantization: BoundedVoronoiPartition, 
+    samples: Optional[torch.Tensor] = None,
     ax: Optional[plt.Axes] = None,
     title: str = ''
 ):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+    if samples is not None:
+        ax.scatter(*samples.t(), s=0.05, alpha=0.25, color="deepskyblue")
+    ax.scatter([], [], s=5, color="deepskyblue", label=r'$\mathcal{D}_N$') # For legend
     ax = plot_partition(partition=quantization, ax=ax, title=title)
-    ax.scatter(*quantization.samples.t(), s=0.05, alpha=1.0, color="deepskyblue", label="Data")
-    ax.legend()
-    ax.axis('equal')
+    # ax.legend()
+    ax.set_aspect('equal', adjustable='box')
     ax.set_title(title)
     return ax
 
@@ -346,50 +375,3 @@ def plot_optimization_curves(values, best_values, grad_norms, lr_sizes):
 
     plt.tight_layout()
     plt.show()
-
-def generate_table(
-    data_driven_radii: DataDrivenRadii,
-    fournier_radii: FournierRadii,
-    empirical_radii: EmpiricalRadii,
-    args
-): 
-    # Prepare CSV file name
-    csv_path = os.path.join(args.results_dir, f"ndims={args.num_dims}_set={args.setting}_radii.csv")
-
-    # Prepare rows
-    rows = []
-    for (N, M) in data_driven_radii.keys():
-        rows.append({
-            "Distribution": args.distribution,
-            "Dimension": args.num_dims,
-            "Support radius": args.support_linf_radius,
-            "N": N,
-            "M": M,
-            "Moment bound": f"{data_driven_radii.moment_bound_at((N, M))}",
-            "Discrete bound": f"{data_driven_radii.discrete_bound_at((N, M))}",
-            "Ours": f"{data_driven_radii.radius_at((N, M))}",
-            "Fournier": f"{fournier_radii.radius_at((N, M))}",
-            "Empirical (samples)": f"{empirical_radii.radius_samples_at((N, M))}",
-            "Empirical (locs)": f"{empirical_radii.radius_quantization_at((N, M))}",
-        })
-
-    # Write to CSV
-    with open(csv_path, mode="w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "Distribution",
-                "Dimension",
-                "Support radius",
-                "N",
-                "M",
-                "Moment bound",
-                "Discrete bound",
-                "Ours",
-                "Fournier",
-                "Empirical (samples)",
-                "Empirical (locs)",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(rows)

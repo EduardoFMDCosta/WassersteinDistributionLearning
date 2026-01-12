@@ -126,5 +126,23 @@ def plot_clipped_voronoi_2d(
         plt.tight_layout()
     return ax
 
+def set_style():
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.size": 16,
+        "axes.labelsize": 16,
+        "axes.titlesize": 16,
+        "legend.fontsize": 16,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "figure.dpi": 200,
+        "lines.linewidth": 2,
+        "lines.markersize": 6,
+    })
 
-
+def convert_to_sci_notation(N):
+    s = f"{N:.0e}"
+    base, exp = s.split("e")
+    exp = int(exp)
+    return fr"{base} \times 10^{{{exp}}}"

@@ -4,6 +4,7 @@ import os
 from distributions import MultivariateUniform, TruncatedMultivariateNormal, MixtureTruncatedMultivariateNormal, CategoricalFloat
 from sets import HyperRectangle
 from ucimlrepo import fetch_ucirepo
+import medmnist
 
 import pandas as pd
 
@@ -231,6 +232,12 @@ def construct_uci_miniboone(base_dir: str, **kwargs) -> EmpiricalDistribution:
     transform = MinMaxNormalizer().fit(features)
     return EmpiricalDistribution(features, transform=transform)
 
+def construct_octmnist(**kwargs) -> EmpiricalDistribution:
+    ds = medmnist.OCTMNIST(split='train', download=True)
+    features = torch.from_numpy(ds.imgs).float().flatten(start_dim=1)
+    transform = MinMaxNormalizer().fit(features)
+    return EmpiricalDistribution(features, transform=transform)
+
 def get_distribution(distribution, **kwargs):
     if distribution == 'Uniform':
         return construct_uniform(**kwargs)
@@ -244,5 +251,7 @@ def get_distribution(distribution, **kwargs):
         return construct_uci_turbine(**kwargs)
     elif distribution == "UCI-MiniBooNE":
         return construct_uci_miniboone(**kwargs)
+    elif distribution == "OCTMNIST":
+        return construct_octmnist(**kwargs)
     else:
         raise ValueError('Unknown distribution.')

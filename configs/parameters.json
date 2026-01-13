@@ -21,6 +21,17 @@
         }
     }
   },
+  "OCTMNIST": {
+    "num_dims": {
+        "784": {
+            "settings": {
+                "0": {
+                    "support_linf_radius": 0.5
+                }
+            }
+        }
+    }
+  },
   "Uniform": {
       "num_dims": {
           "2": {

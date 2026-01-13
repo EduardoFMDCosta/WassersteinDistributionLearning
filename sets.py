@@ -96,7 +96,8 @@ class BoundedVoronoiPartition:
 
         if nsamples > M:
             kmeans_torch = KMeans(n_clusters=M)
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = torch.device("cpu")
             if device.type == "cuda":
 
                 with torch.no_grad():

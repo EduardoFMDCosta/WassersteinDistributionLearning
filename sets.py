@@ -96,10 +96,25 @@ class BoundedVoronoiPartition:
 
         if nsamples > M:
             kmeans_torch = KMeans(n_clusters=M)
-            cluster_result = kmeans_torch(samples.unsqueeze(0)) # inputs should be at least of shape (BS, N, D)
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            if device.type == "cuda":
+                samples_gpu = samples.to(device=device, dtype=torch.float16, non_blocking=True).contiguous()
 
-            cluster_locs = cluster_result.centers.squeeze(0)
-            labels = cluster_result.labels.squeeze(0)
+                if hasattr(kmeans_torch, "to"):
+                    kmeans_torch = kmeans_torch.to(device)
+
+                with torch.no_grad():
+                    cluster_result = kmeans_torch(samples_gpu.unsqueeze(0))  # (1, N, D)
+
+                # bring results back to CPU for the rest of your pipeline
+                cluster_locs = cluster_result.centers.squeeze(0).to("cpu", dtype=torch.float32)
+                labels = cluster_result.labels.squeeze(0).to("cpu")  # keep as integer if possible
+            else: # CPU fallback
+                with torch.no_grad():
+                    cluster_result = kmeans_torch(samples.unsqueeze(0).float())   # (1, N, D)
+
+                cluster_locs = cluster_result.centers.squeeze(0).float()
+                labels = cluster_result.labels.squeeze(0)
 
             max_sample_distances = compute_inner_cluster_max_l2_radii(samples, cluster_locs, labels)    
         else:

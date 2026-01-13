@@ -21,7 +21,7 @@ if __name__ == '__main__':
     N_options = [SIZE[args.distribution] - args.num_samples_training]
     
     M_options = [5, 20, 30, 40, 50, 75, 100]
-    if 'MNIST' in args.distribution:
+    if not 'MNIST' in args.distribution:
         M_options += [150, 200]
 
         if args.method == 'triangle_inequality_vertex':

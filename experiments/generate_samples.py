@@ -4,14 +4,15 @@ from configs.construct import get_distribution
 SIZE = {
     "UCI-Turbine": 36_733,
     "UCI-MiniBooNE": 130_064,
+    "OCTMNIST": 97_477,
 }
 
 
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="UCI-MiniBooNE", # "UCI-MiniBooNE" or "UCI-Turbine"
-        num_dims=50,
+        distribution="OCTMNIST", # "UCI-MiniBooNE" or "UCI-Turbine" or "OCTMNIST"
+        num_dims=784,
         setting=0,
         num_samples=1000, # PLACEHOLDER
         num_samples_training=5000,
@@ -23,7 +24,7 @@ if __name__ == '__main__':
         plot=False,
     )
 
-    for seed in range(10):
+    for seed in range(1):
         args.random_seed = seed
         args = process_args(args)
         distribution = get_distribution(**vars(args))
@@ -31,7 +32,7 @@ if __name__ == '__main__':
         partition_samples = distribution.sample(args.num_samples_training)
         pickle_dump(partition_samples, args.partition_samples_file)
 
-        quantization_samples = distribution.sample(SIZE[args.distribution] - args.num_samples_training )
+        quantization_samples = distribution.sample(len(distribution) - args.num_samples_training )
         pickle_dump(quantization_samples, args.quantization_samples_file)
 
         pass

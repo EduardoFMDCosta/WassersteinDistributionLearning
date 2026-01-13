@@ -23,7 +23,7 @@ if __name__ == '__main__':
         save=True,
     )
 
-    N_options = SIZE[args.distribution] = args.num_samples_training
+    N_options = [SIZE[args.distribution]]
     
     M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200]
     if args.method == 'triangle_inequality_vertex':

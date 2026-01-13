@@ -159,7 +159,7 @@ def load_data(
 
 
 def load_quantization(args, partition: BoundedVoronoiPartition, N: int) -> UncertainQuantization:
-    if 'UCI-Tubine' in args.distribution:
+    if 'UCI-' in args.distribution or 'MNIST' in args.distribution:
         generate_samples_if_missing = False
     else:
         generate_samples_if_missing = True

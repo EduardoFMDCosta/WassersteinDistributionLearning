@@ -194,7 +194,7 @@ def get_dict_of_partitions(
             missing_combinations.append((N, M))
 
     # Load samples 
-    if 'UCI-' in args.distribution:
+    if 'UCI-' in args.distribution or 'MNIST' in args.distribution:
         samples = load_samples(args, N=max([N for N, M in combinations]), generate_samples_if_missing=False, to_construct_quantization=False)
     else:
         samples = stored_partitions.samples
@@ -268,7 +268,6 @@ if __name__ == '__main__':
 
     num_samples_options = [1000, 5000]
     num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
-
 
     partitions = get_dict_of_partitions(
         args=args,

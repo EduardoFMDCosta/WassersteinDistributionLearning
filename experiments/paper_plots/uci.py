@@ -106,6 +106,8 @@ if __name__ == '__main__':
         row = inflection_analysis(args)
         row["distribution"] = distribution
         row["num_dims"] = num_dims
+        row["N"] = args.num_samples
+        row["Ntrain"] = args.num_samples_training
         rows.append(row)
 
     df = pd.DataFrame(rows)

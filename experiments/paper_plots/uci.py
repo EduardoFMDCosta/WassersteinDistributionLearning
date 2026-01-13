@@ -1,110 +1,111 @@
+import os
 import torch
-from ucimlrepo import fetch_ucirepo
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-from quantization import UncertainQuantization
-from bound import DataDrivenRadius, fournier_radius
-from solvers import get_solver
-from sets import BoundedVoronoiPartition
+from configs.handlers import parse_arguments, num_samples_training_from_num_samples, process_args
+from experiments.utils import load_list_of_data_driven_radii, fournier_radii_for_combinations
 
-from configs.construct import get_support_assumption
-from configs.handlers import parse_arguments
+from plotting.utils_plot import set_style, convert_to_sci_notation
 
+set_style()
 
-class MinMaxNormalizer:
-    def __init__(self, eps=1e-8):
-        self.eps = eps
-        self.registered = False
-
-    def fit(self, X):
-        self.min = X.min(dim=0).values
-        self.max = X.max(dim=0).values
-        self.registered = True
-        return self
-
-    def __call__(self, X):
-        assert self.registered
-        scale = (self.max - self.min).clamp_min(self.eps)
-        return (X - self.min) / scale - 0.5
-
-class EmpiricalDistribution:
-    def __init__(self, X, transform=None):
-        self.X = X
-        self.transform = transform
-
-    def sample(self, n): # Sampling without replacement
-        idx = torch.randperm(len(self.X))[:n]
-        X = self.X[idx]
-        return self.transform(X) if self.transform else X
-    
-    def __len__(self):
-        return len(self.X)
-
-def load_uci_data(args) -> EmpiricalDistribution:
-    if args.distribution == "UCI-Turbine":
-        df = fetch_ucirepo(id=551).data.features
-        df.pop('year')
-
-        features = torch.from_numpy(df.to_numpy()).float()
-
-        transform = MinMaxNormalizer().fit(features)
-        dist = EmpiricalDistribution(features, transform=transform)
-    elif args.distribution == "UCI-MiniBooNE":
-        # data = fetch_ucirepo(id=199)
-        raise NotImplementedError
-    else:   
-        raise ValueError(f"Unknown UCI dataset: {args.distribution}")
-    
-    return dist
 
 def main(args):
-    support_assumption = get_support_assumption(**vars(args))
+    N_options = [1000, 5000, 7500, 10000, 25000]
 
-    dist = load_uci_data(args)
-    if len(dist) < args.num_samples + args.num_samples_training:
-        raise ValueError(f"Not enough samples in the dataset: {len(dist)} < {args.num_samples + args.num_samples_training}")
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500]
+    if args.method != 'joint_diagonal_milp':
+        M_options += [1000]
     
-    samples = dist.sample(args.num_samples + args.num_samples_training)
-    partition_samples = samples[:args.num_samples_training]
-    quantization_samples = samples[args.num_samples_training:]
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    partition = BoundedVoronoiPartition.from_samples(support=support_assumption, samples=partition_samples, M=args.num_clusters)
-    
-    quantization = UncertainQuantization(partition=partition, samples=quantization_samples, beta=args.beta)
+    combinations = [(num_samples_training_from_num_samples(N), N, M) for N in N_options for M in M_options]
 
-    # Compute bounds
-    fournier_bound = fournier_radius(
-        support=partition.support, 
-        nsamples=args.num_samples + args.num_samples_training,
-        wasserstein_order=args.wasserstein_order,
-        beta=args.beta
-    )
-    
-    data_driven_output = DataDrivenRadius(
-        quantization=quantization, 
-        solver= get_solver(method=args.method),
-        wasserstein_order=args.wasserstein_order,
-    )
+    data = load_list_of_data_driven_radii(args, combinations, random_seed_options)
 
-    print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
-          f"\t Fournier: {fournier_bound:.4f} \n"
-          f"\t Ours : {data_driven_output.radius:.4f} \n"
+    fig, ax = plt.subplots(figsize=(8, 4))  # TODO change back to 6, 4
+
+    cmap = plt.cm.coolwarm
+    colors = [cmap(i / (len(N_options) - 1)) for i in range(len(N_options))]
+    for N, color in zip(N_options, colors):
+        data_slice = data._slice(N_train=num_samples_training_from_num_samples(N), N=N)
+        if data_slice.keys() == []:
+            continue
+
+        M_options_plot = torch.as_tensor([key[2] for key in data_slice.keys()])
+        idx = M_options_plot.argsort()
+
+        ax.plot(M_options_plot[idx], data_slice.mean_radius[idx], label=rf"${convert_to_sci_notation(N)}$", color=color, marker="o")
+        ax.fill_between(
+            M_options_plot[idx],
+            data_slice.mean_radius[idx] - data_slice.std_radius[idx],
+            data_slice.mean_radius[idx] + data_slice.std_radius[idx],
+            color=color,
+            alpha=0.2,
         )
+
+    handles, _ = ax.get_legend_handles_labels()
+
+    fournier_data = fournier_radii_for_combinations(
+        args, 
+        combinations=[(args.num_samples, int(M)) for M in M_options_plot]
+    )
+    M_options_fornier_plots = torch.as_tensor([key[2] for key in fournier_data.keys(N=args.num_samples, N_train=args.num_samples_training)])
+    idx_fournier = M_options_fornier_plots.argsort()
+
+    ax.plot(M_options_fornier_plots[idx_fournier], fournier_data.radius[idx_fournier], color='grey', linestyle="--")
+
+    ax.set_xlabel(r"Support size $M$")
+    if args.distribution == 'UCI-Turbine':
+        ax.set_ylabel(r"$\mathbb{W}_2$")
+
+    ax.grid(True, linestyle="--", alpha=0.4)
+
+    fournier_legend = Line2D([], [], color="grey", linestyle="--", label=rf"[13] ($N=10^4$)")
+    divider = Line2D([], [], linestyle="none", label=r"$\rule{2cm}{0.4pt}$")
+    if args.distribution == 'UCI-Turbine':
+        ax.legend(
+            handles=handles + [divider, fournier_legend],
+            title=r"$N$",
+            loc="center right",
+            bbox_to_anchor=(1.02, 0.5),
+            bbox_transform=fig.transFigure,
+            frameon=False
+        )
+    plt.tight_layout()
+    fig.subplots_adjust(right=0.7)
+
+
+    if args.save:
+        file_name = f"inflection_incl_fournier_W{args.wasserstein_order}_{args.distribution.lower()}_dims_{args.num_dims}_setting_{args.setting}_{args.method}"
+        folder = os.path.dirname(os.path.dirname(args.figures_dir)) # USE figures_dir! results_dir is solely for data
+        plt.savefig(os.path.join(folder, f"{file_name}.pdf"))  
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':
     args = parse_arguments(
-        random_seed=0,
-        distribution="UCI-Turbine",
-        num_dims=11,
+        distribution="UCI-Turbine",  # PLACEHOLDE
+        num_dims=11,  # PLACEHOLDE
         setting=0,
-        num_samples=1000,
-        num_samples_training=1000,
-        num_clusters=20,
         wasserstein_order=2,
+        num_samples=10_000,
         beta=1e-6,
         method='triangle_inequality_vertex',
-        save=False,
+        plot=True,
+        save=True
     )
- 
 
-    main(args)
+    settings = [
+        ("UCI-Turbine", 11),
+        # ("UCI-MiniBooNE", 50),
+    ]
+
+    for distribution, num_dims in settings:
+        args.distribution = distribution
+        args.num_dims = num_dims
+        args = process_args(args)
+        main(args)
+

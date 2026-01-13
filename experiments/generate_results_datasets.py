@@ -2,13 +2,8 @@ import torch
 
 from configs.handlers import parse_arguments, pickle_dump
 from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
+from experiments.generate_samples import SIZE
 
-
-SIZE = {
-    "UCI-Turbine": 36_733,
-    "UCI-MiniBooNE": 130_064,
-    "OCTMNIST": 97_477,
-}
 
 if __name__ == '__main__':
     args = parse_arguments(

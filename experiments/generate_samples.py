@@ -24,7 +24,7 @@ if __name__ == '__main__':
         plot=False,
     )
 
-    for seed in range(9):
+    for seed in [9]:
         args.random_seed = seed
         args = process_args(args)
         distribution = get_distribution(**vars(args))

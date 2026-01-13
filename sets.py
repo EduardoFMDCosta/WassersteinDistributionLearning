@@ -96,21 +96,32 @@ class BoundedVoronoiPartition:
 
         if nsamples > M:
             kmeans_torch = KMeans(n_clusters=M)
-            # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            device = torch.device("cpu")
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device.type == "cuda":
+                import faiss
+                import numpy as np
 
-                with torch.no_grad():
-                    if hasattr(kmeans_torch, "to"):
-                        kmeans_torch = kmeans_torch.to(device)
+                # FAISS expects float32 on CPU
+                X_np = samples.detach().cpu().numpy().astype(np.float32)   # (N, D)
 
-                    samples_gpu = samples.to(device=device, dtype=torch.float16).contiguous()
-                    cluster_result = kmeans_torch(samples_gpu.unsqueeze(0))   # (1, N, D)
-                    cluster_locs = cluster_result.centers.squeeze(0).float().cpu()
-                    labels  = cluster_result.labels.squeeze(0).cpu()
-                
-                del cluster_result, samples_gpu
-                torch.cuda.empty_cache()
+                # build + run GPU k-means
+                kmeans = faiss.Kmeans(
+                    d=X_np.shape[1],
+                    k=M,
+                    niter=20,            # match your torch default if needed
+                    verbose=False,
+                    gpu=True
+                )
+
+                kmeans.train(X_np)
+
+                # outputs (CPU numpy)
+                centroids_np = kmeans.centroids                    # (M, D)
+                _, labels_np = kmeans.index.search(X_np, 1)        # (N, 1)
+
+                # convert to torch tensors (CPU)
+                cluster_locs = torch.from_numpy(centroids_np)      # float32, (M, D)
+                labels       = torch.from_numpy(labels_np[:, 0])   # int64, (N,)
 
             else: # CPU fallback
                 with torch.no_grad():

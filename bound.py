@@ -78,7 +78,8 @@ def fournier_radius(
             51: 1.95,
             75: 1.96,
             100: 1.98,
-            500: 2.00
+            500: 2.00,
+            784: 2.00 # TODO conservative estimate
         }
 
         # See Table 1 in Fournier, 2023 (https://hal.science/hal-03768963/)
@@ -111,7 +112,8 @@ def fournier_radius(
             51: 1.95,
             75: 1.96,
             100: 1.98,
-            500: 2.00
+            500: 2.00, 
+            784: 2.00 # TODO conservative estimate
         }
 
         # See Table 2 in Fournier, 2023 (https://hal.science/hal-03768963/)

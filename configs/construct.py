@@ -103,9 +103,38 @@ class MinMaxNormalizer:
         self.eps = eps
         self.registered = False
 
-    def fit(self, X):
-        self.min = X.min(dim=0).values
-        self.max = X.max(dim=0).values
+    def fit(
+        self,
+        X: torch.Tensor,
+        min: float | torch.Tensor | None = None,
+        max: float | torch.Tensor | None = None,
+    ):
+        """
+        Parameters
+        ----------
+        X : torch.Tensor, shape (N, d)
+            Data used only if min or max is None.
+        min : float or Tensor of shape (d,), optional
+        max : float or Tensor of shape (d,), optional
+        """
+
+        if min is None:
+            self.min = X.min(dim=0).values
+        else:
+            self.min = torch.as_tensor(min, device=X.device, dtype=X.dtype)
+            if self.min.ndim == 0:
+                self.min = self.min.expand(X.shape[1])
+
+        if max is None:
+            self.max = X.max(dim=0).values
+        else:
+            self.max = torch.as_tensor(max, device=X.device, dtype=X.dtype)
+            if self.max.ndim == 0:
+                self.max = self.max.expand(X.shape[1])
+
+        if self.min.shape != self.max.shape:
+            raise ValueError("min and max must have the same shape")
+
         self.registered = True
         return self
 
@@ -235,7 +264,7 @@ def construct_uci_miniboone(base_dir: str, **kwargs) -> EmpiricalDistribution:
 def construct_octmnist(**kwargs) -> EmpiricalDistribution:
     ds = medmnist.OCTMNIST(split='train', download=True)
     features = torch.from_numpy(ds.imgs).float().flatten(start_dim=1)
-    transform = MinMaxNormalizer().fit(features)
+    transform = MinMaxNormalizer().fit(features, min=0., max=255.)
     return EmpiricalDistribution(features, transform=transform)
 
 def get_distribution(distribution, **kwargs):

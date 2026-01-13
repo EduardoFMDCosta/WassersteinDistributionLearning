@@ -268,6 +268,9 @@ if __name__ == '__main__':
 
     num_samples_options = [1000, 5000]
     num_clusters_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000]
+    if 'MNIST' in args.distribution:
+        num_clusters_options = [5, 20, 30, 40, 50, 75, 100]
+
 
     partitions = get_dict_of_partitions(
         args=args,

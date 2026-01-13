@@ -19,9 +19,7 @@ echo "------------------------------------------------- method = ${method} -----
 for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
-echo "-- UCI-MiniBooNE --"
-    echo "dim = 50, setting = 0"
-    python -m experiments.generate_results_datasets --distribution UCI-MiniBooNE --num_dims 50 --setting 0 --wasserstein_order "$rho" --method "$method"  --random_seed "$seed"
+python -m experiments.generate_results_datasets --distribution OCTMNIST --num_dims 784 --setting 0 --wasserstein_order "$rho" --method "$method"  --random_seed "$seed"
 
 done
 done

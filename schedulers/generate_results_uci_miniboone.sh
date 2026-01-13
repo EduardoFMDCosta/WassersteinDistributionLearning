@@ -16,17 +16,13 @@ echo "-------------------------------------------- Random seed = ${seed} -------
 for method in triangle_inequality_vertex; do
 echo "------------------------------------------------- method = ${method} -----------------------------------------------------"
 
-for num_samples_training in 1000 5000; do
-echo "---------------- num training samples: ${num_samples_training} -------------------"
-
 for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
 echo "-- UCI-MiniBooNE --"
     echo "dim = 50, setting = 0"
-    python -m experiments.generate_results --distribution UCI-MiniBooNE --num_dims 50 --setting 0 --wasserstein_order "$rho" --method "$method"  --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_results_datasets --distribution UCI-MiniBooNE --num_dims 50 --setting 0 --wasserstein_order "$rho" --method "$method"  --random_seed "$seed"
 
-done        
 done
 done
 done

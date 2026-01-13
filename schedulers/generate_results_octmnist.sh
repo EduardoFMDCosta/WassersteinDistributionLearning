@@ -13,15 +13,13 @@ export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 for seed in 0 1 2 3 4 5 6 7 8 9; do
 echo "-------------------------------------------- Random seed = ${seed} -----------------------------------------------"
 
-for method in joint_diagonal_milp; do
+for method in triangle_inequality_vertex; do
 echo "------------------------------------------------- method = ${method} -----------------------------------------------------"
 
 for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
-echo "-- UCI-MiniBooNE --"
-    echo "dim = 50, setting = 0"
-    python -m experiments.generate_results_datasets --distribution UCI-MiniBooNE --num_dims 50 --setting 0 --wasserstein_order "$rho" --method "$method"  --random_seed "$seed"
+python -m experiments.generate_results_datasets --distribution OCTMNIST --num_dims 784 --setting 0 --wasserstein_order "$rho" --method "$method"  --random_seed "$seed"
 
 done
 done

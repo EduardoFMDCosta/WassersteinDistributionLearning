@@ -98,17 +98,19 @@ class BoundedVoronoiPartition:
             kmeans_torch = KMeans(n_clusters=M)
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if device.type == "cuda":
-                samples_gpu = samples.to(device=device, dtype=torch.float16, non_blocking=True).contiguous()
-
-                if hasattr(kmeans_torch, "to"):
-                    kmeans_torch = kmeans_torch.to(device)
 
                 with torch.no_grad():
-                    cluster_result = kmeans_torch(samples_gpu.unsqueeze(0))  # (1, N, D)
+                    if hasattr(kmeans_torch, "to"):
+                        kmeans_torch = kmeans_torch.to(device)
 
-                # bring results back to CPU for the rest of your pipeline
-                cluster_locs = cluster_result.centers.squeeze(0).to("cpu", dtype=torch.float32)
-                labels = cluster_result.labels.squeeze(0).to("cpu")  # keep as integer if possible
+                    samples_gpu = samples.to(device=device, dtype=torch.float16).contiguous()
+                    cluster_result = kmeans_torch(samples_gpu.unsqueeze(0))   # (1, N, D)
+                    cluster_locs = cluster_result.centers.squeeze(0).float().cpu()
+                    labels  = cluster_result.labels.squeeze(0).cpu()
+                
+                del cluster_result, samples_gpu
+                torch.cuda.empty_cache()
+
             else: # CPU fallback
                 with torch.no_grad():
                     cluster_result = kmeans_torch(samples.unsqueeze(0).float())   # (1, N, D)

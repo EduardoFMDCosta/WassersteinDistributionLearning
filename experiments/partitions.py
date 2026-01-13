@@ -216,6 +216,9 @@ def get_dict_of_partitions(
             if (N, M) not in combinations:
                 requested_partitions.append((N, M), stored_partitions.at((N, M)))
 
+    if 'MNIST' in args.distribution or 'UCI-' in args.distribution:
+        requested_partitions.attach_samples(None)
+
     return requested_partitions
 
 

@@ -95,6 +95,7 @@ if __name__ == '__main__':
     settings = [
         ("UCI-Turbine", 11),
         ("UCI-MiniBooNE", 50),
+        ("OCTMNIST", 784),
     ]
 
     rows = []

@@ -2,7 +2,6 @@ import torch
 
 from configs.handlers import parse_arguments, pickle_dump
 from experiments.utils import data_driven_radii_for_combinations, fournier_radii_for_combinations
-from experiments.generate_samples import SIZE
 
 
 if __name__ == '__main__':
@@ -18,18 +17,24 @@ if __name__ == '__main__':
         save=True,
     )
 
-    N_options = [SIZE[args.distribution] - args.num_samples_training]
-    
-    M_options = [5, 20, 30, 40, 50, 75, 100]
+    # We assume num_samples_training = num_samples
+    # N_options = [10000]
+    # M_options = [1000]
 
-    if args.method == 'triangle_inequality_vertex':
-        M_options += [500, 1000]
+    if args.num_samples_training == 5000:
+        N_options = [5000, 7500, 10000, 100000, 1000000]
+    elif args.num_samples_training == 1000:
+        N_options = [1000, 2500]
+    else:
+        raise ValueError("Unsupported num_samples_training")
+    
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
     
 
     data_driven_radii, time_logger = data_driven_radii_for_combinations(
         args, 
         combinations=[(args.num_samples_training, N, M) for N in N_options for M in M_options], 
-        time_limit=60*10,
+        time_limit=60*60,
         generate_partition_if_missing=False,
         return_all_available_combinations=True
     )

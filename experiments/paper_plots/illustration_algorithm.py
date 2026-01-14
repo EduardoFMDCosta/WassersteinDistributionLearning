@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, FancyArrowPatch
 
 from configs.handlers import parse_arguments, load_json, process_args
-from experiments.utils import quantizations_for_combinations, load_samples
+from experiments.utils import quantizations_for_combinations, load_quantization_samples
 from experiments.partitions import get_dict_of_partitions
 import plotting.plot as plot
 from plotting.utils_plot import set_style
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     else:
         samples_partition = samples_partition[:args.num_samples_training]
 
-    samples_quantization = load_samples(args, args.num_samples, generate_samples_if_missing=False)[:args.num_samples]
+    samples_quantization = load_quantization_samples(args, args.num_samples, generate_samples_if_missing=False)[:args.num_samples]
     
 
     # fig, ax = plt.subplots(ncols=5, nrows=1, figsize=(5 * 5, 6 * 1))

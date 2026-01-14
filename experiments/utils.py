@@ -12,7 +12,7 @@ from sets import BoundedVoronoiPartition
 
 from configs.handlers import pickle_load, pickle_dump, process_args
 from configs.construct import get_support_assumption, get_distribution
-from experiments.partitions import get_dict_of_partitions, load_samples
+from experiments.partitions import get_dict_of_partitions
 from experiments.datastructures import ListOfTimeLogger, TimeLogger, DataDrivenRadii, FournierRadii, EmpiricalRadii, Quantizations, _GridDict, ListOfDataDrivenRadii, ListOfEmpiricalRadii
 
 
@@ -158,15 +158,31 @@ def load_data(
     return data
 
 
-def load_quantization(args, partition: BoundedVoronoiPartition, N: int) -> UncertainQuantization:
-    if 'UCI-' in args.distribution or 'MNIST' in args.distribution:
-        generate_samples_if_missing = False
+def load_quantization_samples(args, N: int, generate_samples_if_missing: bool = True) -> torch.Tensor:
+    if os.path.exists(args.quantization_samples_file):
+        stored_samples = pickle_load(args.quantization_samples_file)
+    elif generate_samples_if_missing:
+        # print(f"generating samples to be stored at {args.quantization_samples_file}.")
+        stored_samples = torch.empty((0, args.num_dims))
     else:
-        generate_samples_if_missing = True
+        raise ValueError(f"Quantization samples file not found at {args.quantization_samples_file}.")
 
+    if stored_samples.shape[0] < N and not generate_samples_if_missing:
+        raise ValueError(f"Not enough samples stored ({stored_samples.shape[0]}) to load {N} samples.")
+    elif stored_samples.shape[0] < N:
+        print(f"Generating additional samples {N - stored_samples.shape[0]} to reach {N} samples.")
+        distribution = get_distribution(**vars(args))
+        samples = torch.cat((stored_samples, distribution.sample((N - stored_samples.shape[0],))))
+        pickle_dump(samples, args.quantization_samples_file)
+    else:
+        samples = stored_samples[:N]
+    return samples
+
+
+def load_quantization(args, partition: BoundedVoronoiPartition, N: int) -> UncertainQuantization:
     return UncertainQuantization(
         partition=partition, 
-        samples=load_samples(args, N=N, to_construct_quantization=True, generate_samples_if_missing=generate_samples_if_missing),
+        samples=load_quantization_samples(args, N=N),
         beta=args.beta
     )
 

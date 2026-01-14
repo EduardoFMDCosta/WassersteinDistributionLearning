@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 
 from configs.handlers import parse_arguments
-from experiments.utils import quantizations_for_combinations, load_samples
+from experiments.utils import quantizations_for_combinations, load_quantization_samples
 import plotting.plot as plot
 from plotting.utils_plot import set_style
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     
     fig, ax = plt.subplots(figsize=(5., 5,))
 
-    samples = load_samples(args, args.num_samples, generate_samples_if_missing=False)
+    samples = load_quantization_samples(args, args.num_samples, generate_samples_if_missing=False)
 
     ax = plot.plot_quantization(ax=ax, quantization=quantization, samples=samples)
 

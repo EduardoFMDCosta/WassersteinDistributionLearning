@@ -91,7 +91,6 @@ def process_args(args):
     random_seed_tag = '' if args.random_seed == 0 else f'_seed={args.random_seed}'
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    args.base_dir = base_dir
     args.results_dir = os.path.join(base_dir, "results", f"W{args.wasserstein_order}", args.distribution.lower(), f"dims_{args.num_dims}", f"setting_{args.setting}")
     args.figures_dir = os.path.join(base_dir, "figures", args.distribution.lower(), f"dims_{args.num_dims}_setting_{args.setting}")
     args.tables_dir = os.path.join(base_dir, "tables")
@@ -102,7 +101,6 @@ def process_args(args):
 
     args.partitions_file = os.path.join(base_dir, "partitions", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
     args.quantization_samples_file = os.path.join(base_dir, "samples", args.distribution.lower(), f"dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
-    args.partition_samples_file = os.path.join(base_dir, "samples", args.distribution.lower(), f"partition_dims={args.num_dims}_setting={args.setting}{random_seed_tag}.pickle")
 
     args.partitions_timing_file = args.partitions_file.replace(".pickle", "_timing.pickle")
     args.data_driven_radii_timing_file = args.data_driven_radii_file.replace(".pickle", "_timing.pickle")

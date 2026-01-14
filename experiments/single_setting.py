@@ -8,22 +8,24 @@ from solvers import get_solver
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from experiments.partitions import get_partition
-from experiments.utils import load_quantization, load_samples
+from experiments.utils import load_quantization, load_quantization_samples
 
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="UCI-Turbine",
-        num_dims=11,
+        distribution="Gaussian",
+        num_dims=2,
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
-        num_clusters=10,
-        wasserstein_order=2,
+        num_clusters=20,
+        wasserstein_order=1,
         beta=1e-6,
-        method='triangle_inequality_vertex',
-        save=False,
+        method='full_search',
         plot=False,
+        save=False,
+        compute_discrete_bound=False, 
+        compute_moment_bound=True
     )
     
     solver = get_solver(method=args.method)
@@ -36,7 +38,7 @@ if __name__ == '__main__':
 
     # Plot samples and clusterized distribution
     if args.plot:
-        samples_quantization = load_samples(args, N=args.num_samples)
+        samples_quantization = load_quantization_samples(args, N=args.num_samples)
         plot_quantization(
             quantization=quantization, 
             samples=samples_quantization,

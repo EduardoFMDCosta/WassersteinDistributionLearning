@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from configs.handlers import parse_arguments, load_json, process_args
-from experiments.utils import quantizations_for_combinations, load_samples
+from experiments.utils import quantizations_for_combinations, load_quantization_samples
 import plotting.plot as plot
 
 
@@ -21,7 +21,7 @@ def main(args, M_options, N_options, plot_samples = True):
         fig, ax = plt.subplots(ncols=len(M_options), nrows=len(N_options), figsize=(5. * len(M_options), 6 * len(N_options)), squeeze=False)
         for i, N in enumerate(N_options):
             if plot_samples:
-                samples = load_samples(args, N, generate_samples_if_missing=False)
+                samples = load_quantization_samples(args, N, generate_samples_if_missing=False)
             else:
                 samples = None
 

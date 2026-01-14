@@ -134,7 +134,7 @@ class ListOfDataDrivenRadii:
         sets = [set(elem.keys(N_train=N_train, N=N, M=M)) for elem in self.data]
         return list(set.intersection(*sets))
 
-    def _slice(self: "ListOfDataDrivenRadii", N_train: Optional[int] = None,  N: Optional[int] = None, M: Optional[int] = None) -> "ListOfDataDrivenRadii":
+    def _slice(self: "ListOfDataDrivenRadii", N_train: Optional[Union[int, List]] = None,  N: Optional[Union[int, List]] = None, M: Optional[Union[List, int]] = None) -> "ListOfDataDrivenRadii":
         new_data = [elem._slice(N_train=N_train, N=N, M=M) for elem in self.data]
         return self.__class__(new_data)
 

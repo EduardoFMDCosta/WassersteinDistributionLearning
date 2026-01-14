@@ -22,7 +22,11 @@ if __name__ == '__main__':
     # M_options = [1000]
 
     if args.num_samples_training == 5000:
-        N_options = [5000, 7500, 10000, 100000, 1000000]
+        if "UCI-" in args.distribution:
+            N_options = [5000, 7500, 10000, 25000]
+        else:
+            N_options = [5000, 7500, 10000, 100000, 1000000]
+            
     elif args.num_samples_training == 1000:
         N_options = [1000, 2500]
     else:

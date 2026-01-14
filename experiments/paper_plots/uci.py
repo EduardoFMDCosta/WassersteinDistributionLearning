@@ -79,17 +79,58 @@ def inflection_analysis(args) -> dict:
     )
 
 
+def main(args) -> dict:
+    N = args.num_samples
+    M_options = [5, 20, 30, 40, 50, 75, 100, 150, 200, 500, 1000]
+    random_seed_options = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    combinations = [(num_samples_training_from_num_samples(N), N, M) for M in M_options]
+
+    # joint_diagonal_milp
+    args.method = 'joint_diagonal_milp'
+    args = process_args(args)
+    data_milp = load_list_of_data_driven_radii(args, combinations, random_seed_options)
+    M_options_milp = torch.as_tensor([key[2] for key in data_milp.keys()])
+    idx_milp = M_options_milp.argsort()
+
+    # triangle_inequality_vertex
+    args.method = 'triangle_inequality_vertex'
+    args = process_args(args)
+    data_triangle = load_list_of_data_driven_radii(args, combinations, random_seed_options)
+    data_triangle = data_triangle._slice(M=M_options_milp.tolist())
+    M_options_triangle = torch.as_tensor([key[2] for key in data_triangle.keys()])
+    idx_triangle = M_options_triangle.argsort()
+
+    if not torch.equal(M_options_triangle[idx_triangle], M_options_milp[idx_milp]):
+        raise ValueError
+
+    fournier_data = fournier_radii_for_combinations(args, combinations=[(args.num_samples, int(M)) for M in M_options_milp])
+    M_options_fournier = torch.as_tensor([key[2] for key in fournier_data.keys(N=args.num_samples, N_train=args.num_samples_training)])
+    idx_fournier = M_options_fournier.argsort()    
+
+    idx_best = data_milp.mean_radius[idx_milp].argmin()
+
+    return dict(
+        mean_milp=data_milp.mean_radius[idx_milp][idx_best].item(),
+        std_milp=data_milp.std_radius[idx_milp][idx_best].item(),
+        mean_triangle=data_triangle.mean_radius[idx_triangle][idx_best].item(),
+        std_triangle=data_triangle.std_radius[idx_triangle][idx_best].item(),
+        M=M_options_milp[idx_milp][idx_best].item(),
+        fournier=fournier_data.radius[idx_fournier][idx_best].item()
+    )
+
+
 if __name__ == '__main__':
     args = parse_arguments(
-        distribution="UCI-Turbine",  # PLACEHOLDE
-        num_dims=11,  # PLACEHOLDE
+        distribution="UCI-Turbine",  # PLACEHOLDER
+        num_dims=11,  # PLACEHOLDER
         setting=0,
         wasserstein_order=2,
         num_samples=10_000,
         beta=1e-6,
-        method='triangle_inequality_vertex',   # 'triangle_inequality_vertex' or 'joint_diagonal_milp'
+        method='joint_diagonal_milp', # PLACEHOLDER
         plot=True,
-        save=True
+        save=True,
     )
 
     settings = [
@@ -103,8 +144,9 @@ if __name__ == '__main__':
         args.distribution = distribution
         args.num_samples = SIZE[distribution] - args.num_samples_training
         args.num_dims = num_dims
+
         args = process_args(args)
-        row = inflection_analysis(args)
+        row = main(args)
         row["distribution"] = distribution
         row["num_dims"] = num_dims
         row["N"] = args.num_samples

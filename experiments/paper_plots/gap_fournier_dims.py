@@ -11,7 +11,7 @@ set_style()
 
 
 def main(args):
-    N_options = [1000, 5000, 10000, 100000, 1000000]
+    N_options = [5000, 10000, 100000, 1000000]
     dimensions = [2, 10, 25, 50, 75, 100]
     M_options = [5, 20, 30, 40, 50, 75]
 
@@ -75,7 +75,7 @@ def main(args):
 
     ax.set_xlabel(r"Dimension $d$")
     ax.grid(True, linestyle="--", alpha=0.4)
-    if args.method == 'joint_diagonal_milp':
+    if args.method == 'triangle_inequality_vertex' and args.distribution == 'Uniform':
         ax.legend(title=r"$N$")
         ax.set_ylabel("Ours / Fournier")
     plt.tight_layout()

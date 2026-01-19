@@ -10,7 +10,12 @@ from plotting.utils_plot import set_style, convert_to_sci_notation
 
 set_style()
 
-def main(args, M_setting: str):
+YLIM = {
+        2: dict(small=100, large=250),
+        100: dict(small=8, large=200),
+    }
+
+def plot_absolute_values(args, M_setting: str):
     N_options = [1000, 5000, 10000, 100000, 1000000]
     if M_setting == 'small' and method == 'joint_diagonal_milp':
         M_options = [5, 20, 30, 40, 50, 75, 100, 150]
@@ -53,16 +58,11 @@ def main(args, M_setting: str):
 
     ax_radii.set_ylim(bottom=0)
 
-    if M_setting == 'small' and method == 'joint_diagonal_milp':
-        ax_radii.set_ylim(top=8)
-    elif M_setting == 'small' and method == 'triangle_inequality_vertex':
-        ax_radii.set_ylim(top=8)
-    elif M_setting == 'large' and method == 'joint_diagonal_milp':
-        ax_radii.set_ylim(top=200)
-    elif M_setting == 'large' and method == 'triangle_inequality_vertex':
-        ax_radii.set_ylim(top=200)
-    else:
-        raise ValueError(f"Unknown M_setting: {M_setting}")
+    if args.num_dims in YLIM:
+        if M_setting == 'small':
+            ax_radii.set_ylim(top=YLIM[args.num_dims]['small'])
+        elif M_setting == 'large':
+            ax_radii.set_ylim(top=YLIM[args.num_dims]['large'])
 
     ax_radii.set_xlabel(r"Support size $M$")
     if M_setting == 'small' and method == 'joint_diagonal_milp':
@@ -116,8 +116,10 @@ if __name__ == '__main__':
     )
 
     settings = [
+        ("Gaussian", 2, 'joint_diagonal_milp', 'small'),
+        ("Gaussian", 2, 'triangle_inequality_vertex', 'small'),
+        ("Gaussian", 2, 'triangle_inequality_vertex', 'large'),
         ("Gaussian", 100, 'joint_diagonal_milp', 'small'),
-        # ("Gaussian", 100, 'joint_diagonal_milp', 'large'),
         ("Gaussian", 100, 'triangle_inequality_vertex', 'small'),
         ("Gaussian", 100, 'triangle_inequality_vertex', 'large'),
     ]
@@ -127,4 +129,4 @@ if __name__ == '__main__':
         args.distribution = distribution
         args.num_dims = num_dims
         args = process_args(args)
-        main(args, M_setting)
+        plot_absolute_values(args, M_setting)

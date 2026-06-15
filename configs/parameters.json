@@ -132,7 +132,7 @@
           }
       }
   },
-  "Gaussian": {
+  "TruncatedGaussian": {
       "num_dims": {
           "2": {
               "settings": {
@@ -285,7 +285,7 @@
 
       }
   },
-  "GaussianMixture": {
+  "TruncatedGaussianMixture": {
       "num_dims": {
           "2": {
               "settings": {

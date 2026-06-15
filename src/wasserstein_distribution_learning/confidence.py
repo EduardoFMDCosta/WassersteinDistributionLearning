@@ -1,4 +1,3 @@
-import math
 import torch
 from scipy.stats import beta as scipy_beta
 
@@ -21,7 +20,7 @@ class Confidence:
     def _get_upper_proba(self) -> torch.Tensor:
         pass
 
-    
+
 
 class ClopperPearsonConfidence(Confidence):
     def __init__(self, beta: float, n_set: torch.Tensor, n: int):

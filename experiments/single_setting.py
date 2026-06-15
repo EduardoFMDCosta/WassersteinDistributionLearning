@@ -1,12 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 
-from wasserstein_distribution_learning import (
-    WassersteinDistributionLearning,
-    BoundedVoronoiPartition,
-    HyperRectanglePartition,
-    fournier_radius,
-)
+from wasserstein_distribution_learning import WassersteinDistributionLearning
 
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
@@ -31,26 +26,24 @@ if __name__ == '__main__':
     support = get_support_assumption(**vars(args))
     distribution = get_distribution(**vars(args))
 
-    PartitionClass = (
-        HyperRectanglePartition if args.partition_type == 'hyperrectangle'
-        else BoundedVoronoiPartition
-    )
-
     pretraining_samples = distribution.sample((args.num_samples_training,))
     samples = distribution.sample((args.num_samples,))
+
+    # Convert HyperRectangle → (2, d) tensor expected by the API
+    support_tensor = (
+        torch.stack([support.lower, support.upper]) if support is not None else None
+    )
 
     wdl = WassersteinDistributionLearning(
         pretraining_samples=pretraining_samples,
         samples=samples,
         beta=args.beta,
-        support=support,
-        LearningClass=args.LearningClass,
-        PartitionClass=PartitionClass,
+        support=support_tensor,
+        learning_type=args.learning_type,
+        partition_type=args.partition_type,
         num_clusters=args.num_clusters,
         method=args.method,
         wasserstein_order=args.wasserstein_order,
-        compute_moment_bound=args.compute_moment_bound,
-        compute_discrete_bound=args.compute_discrete_bound,
     )
 
     if args.plot:
@@ -61,15 +54,8 @@ if __name__ == '__main__':
         )
         plt.show()
 
-    fournier_bound = fournier_radius(
-        support=support,
-        nsamples=args.num_samples + args.num_samples_training,
-        wasserstein_order=args.wasserstein_order,
-        beta=args.beta,
-    )
-
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples}")
-    print(f"\t Fournier: {fournier_bound:.4f}")
+    print(f"\t Fournier: {wdl.fournier_radius:.4f}")
     print(f"\t Ours (radius): {wdl.ambiguity_set.radius:.4f}")
     if wdl.complement_interval is not None:
         print(f"\t Complement interval: [{wdl.complement_interval.lower:.4f}, {wdl.complement_interval.upper:.4f}]")

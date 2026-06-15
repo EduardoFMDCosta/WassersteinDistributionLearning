@@ -6,8 +6,21 @@ import torch
 from .sets import HyperRectangle, BoundedVoronoiPartition, HyperRectanglePartition, Partition
 from .quantization import Quantization, FullLearningQuantization, ConditionalLearningQuantization
 from .confidence import ClopperPearsonConfidence
-from .bound import DataDrivenRadius
+from .bound import DataDrivenRadius, fournier_radius as _fournier_radius
 from .solvers import get_solver
+
+
+_LEARNING_TYPE_MAP = {
+    'full':               FullLearningQuantization,
+    'full_learning':      FullLearningQuantization,       # handlers.py alias
+    'conditional':        ConditionalLearningQuantization,
+    'conditional_learning': ConditionalLearningQuantization,  # handlers.py alias
+}
+
+_PARTITION_TYPE_MAP = {
+    'voronoi':        BoundedVoronoiPartition,
+    'hyperrectangle': HyperRectanglePartition,
+}
 
 
 @dataclass
@@ -46,15 +59,18 @@ class WassersteinDistributionLearning:
     beta : float
         Overall confidence level.  The returned ambiguity set contains the
         true distribution with probability at least 1 − beta.
-    support : HyperRectangle, optional
-        Known (or assumed) bounded support.  Pass ``None`` to indicate an
-        unbounded support; the radius will naturally be infinite.
-    LearningClass : type
-        Either ``FullLearningQuantization`` (default) or
-        ``ConditionalLearningQuantization``.
-    PartitionClass : type
-        Either ``BoundedVoronoiPartition`` (default) or
-        ``HyperRectanglePartition``.
+    support : torch.Tensor of shape (2, d), optional
+        Known (or assumed) bounded support, given as
+        ``torch.stack([lower_bounds, upper_bounds])``.  Pass ``None`` to
+        indicate an unbounded support; the radius will naturally be infinite.
+    learning_type : {'full', 'conditional'}
+        ``'full'``: treat all N samples as unconditional observations
+        (complement mass becomes the (M+1)-th atom of the centre distribution).
+        ``'conditional'``: N_pre samples define the partition, N samples are
+        drawn conditional on lying in the bounded region; complement probability
+        is reported separately via ``complement_interval``.
+    partition_type : {'voronoi', 'hyperrectangle'}
+        Geometry used to build the partition of the support.
     num_clusters : int
         Number of bounded partition regions M.
     method : str
@@ -63,22 +79,18 @@ class WassersteinDistributionLearning:
         Wasserstein order p (1 or 2).
     ConfidenceClass : type
         Confidence interval class (default: ``ClopperPearsonConfidence``).
-    compute_moment_bound : bool
-        Whether to compute the moment term of the radius.
-    compute_discrete_bound : bool
-        Whether to compute the discrete term of the radius.
     time_limit : float, optional
         Solver time limit in seconds.
 
     Attributes
     ----------
     ambiguity_set : AmbiguitySet
-        The learned ambiguity set.
+        The learned ambiguity set (``center`` + ``radius``).
     complement_interval : ProbabilityInterval or None
-        Clopper-Pearson bounds for P(X in complement of bounded sets).
-        Always ``None`` for ``FullLearningQuantization`` (the complement is
-        the last element of the ambiguity set's centre distribution).
-        Set to a ``ProbabilityInterval`` for ``ConditionalLearningQuantization``.
+        Clopper-Pearson bounds for P(X outside bounded region).
+        ``None`` for ``learning_type='full'``; set for ``'conditional'``.
+    fournier_radius : float
+        Minimax-optimal Fournier–Guillin radius for reference.
     """
 
     def __init__(
@@ -86,24 +98,41 @@ class WassersteinDistributionLearning:
         pretraining_samples: torch.Tensor,
         samples: torch.Tensor,
         beta: float,
-        support: Optional[HyperRectangle] = None,
-        LearningClass: type = FullLearningQuantization,
-        PartitionClass: type = BoundedVoronoiPartition,
+        support: Optional[torch.Tensor] = None,
+        learning_type: str = 'full',
+        partition_type: str = 'voronoi',
         num_clusters: int = 100,
         method: str = 'triangle_inequality_vertex',
         wasserstein_order: int = 2,
         ConfidenceClass: type = ClopperPearsonConfidence,
-        compute_moment_bound: bool = True,
-        compute_discrete_bound: bool = True,
         time_limit: Optional[float] = None,
     ):
-        partition: Partition = PartitionClass.from_samples(
-            support=support,
+        # Convert support tensor (2, d) → HyperRectangle
+        if support is not None:
+            _support = HyperRectangle(lower=support[0], upper=support[1])
+        else:
+            _support = None
+
+        # Resolve type strings
+        if learning_type not in _LEARNING_TYPE_MAP:
+            raise ValueError(
+                f"learning_type must be one of {list(_LEARNING_TYPE_MAP)}, got {learning_type!r}"
+            )
+        LearningType = _LEARNING_TYPE_MAP[learning_type]
+
+        if partition_type not in _PARTITION_TYPE_MAP:
+            raise ValueError(
+                f"partition_type must be one of {list(_PARTITION_TYPE_MAP)}, got {partition_type!r}"
+            )
+        PartitionType = _PARTITION_TYPE_MAP[partition_type]
+
+        partition: Partition = PartitionType.from_samples(
+            support=_support,
             samples=pretraining_samples,
             M=num_clusters,
         )
 
-        quantization = LearningClass(
+        quantization = LearningType(
             partition=partition,
             samples=samples,
             beta=beta,
@@ -115,8 +144,6 @@ class WassersteinDistributionLearning:
             quantization=quantization,
             solver=solver,
             wasserstein_order=wasserstein_order,
-            compute_moment_bound=compute_moment_bound,
-            compute_discrete_bound=compute_discrete_bound,
             time_limit=time_limit,
         )
 
@@ -134,4 +161,12 @@ class WassersteinDistributionLearning:
             else None
         )
 
+        self.fournier_radius: float = _fournier_radius(
+            support=_support,
+            nsamples=pretraining_samples.shape[0] + samples.shape[0],
+            wasserstein_order=wasserstein_order,
+            beta=beta,
+        )
+
         self._result = result
+

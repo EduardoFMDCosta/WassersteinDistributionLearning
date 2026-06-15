@@ -1,7 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 
-from wasserstein_distribution_learning import WassersteinDistributionLearning
+from wasserstein_distribution_learning import EmpiricalPartition, AmbiguitySetLearner
 
 from configs.handlers import parse_arguments
 from configs.construct import get_support_assumption, get_distribution
@@ -35,23 +35,28 @@ if __name__ == '__main__':
         torch.stack([support.lower, support.upper]) if support is not None else None
     )
 
-    wdl = WassersteinDistributionLearning(
-        wasserstein_order=args.wasserstein_order,
+    # Step 1 — build the partition from pretraining data
+    partition = EmpiricalPartition(
         pretraining_samples=pretraining_samples,
-        samples=samples,
-        beta=args.beta,
-        support=support_tensor,
         num_clusters=args.num_clusters,
-        learning_type=args.learning_type,
+        support=support_tensor,
         partition_type=args.partition_type,
-        method=args.method,
     )
 
+    # Step 2 — learn the ambiguity set from evaluation samples
+    learner = AmbiguitySetLearner(
+        partition=partition,
+        samples=samples,
+        beta=args.beta,
+        learning_type=args.learning_type,
+        method=args.method,
+        wasserstein_order=args.wasserstein_order,
+    )
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples}")
-    print(f"\t Fournier: {wdl.fournier_radius:.4f}")
-    print(f"\t Ours (radius): {wdl.ambiguity_set.radius:.4f}")
-    if wdl.complement_interval is not None:
-        print(f"\t Complement interval: [{wdl.complement_interval.lower:.4f}, {wdl.complement_interval.upper:.4f}]")
+    print(f"\t Fournier: {learner.fournier_radius:.4f}")
+    print(f"\t Ours (radius): {learner.ambiguity_set.radius:.4f}")
+    if learner.complement_interval is not None:
+        print(f"\t Complement interval: [{learner.complement_interval.lower:.4f}, {learner.complement_interval.upper:.4f}]")
     print("Process finished.")
 

@@ -1,7 +1,7 @@
 """WassersteinDistributionLearning — data-driven Wasserstein ambiguity sets.
 
-Three levels of API
--------------------
+Two-step API
+------------
 1. **EmpiricalPartition** — build a data-driven partition from pretraining samples::
 
        ep = EmpiricalPartition(X_pre, num_clusters=50,
@@ -16,17 +16,9 @@ Three levels of API
                                      learning_type='conditional')
        learner.ambiguity_set.radius
        learner.complement_interval
-
-3. **WassersteinDistributionLearning** — full pipeline in one call::
-
-       wdl = WassersteinDistributionLearning(
-           pretraining_samples=X_pre, samples=X, beta=1e-6)
-       wdl.ambiguity_set.radius
-       wdl.fournier_radius
 """
 
 from .api import (
-    WassersteinDistributionLearning,
     EmpiricalPartition,
     AmbiguitySetLearner,
     AmbiguitySet,
@@ -38,8 +30,6 @@ from .confidence import ClopperPearsonConfidence
 from .bound import fournier_radius
 
 __all__ = [
-    # Full pipeline
-    "WassersteinDistributionLearning",
     # Step-by-step APIs
     "EmpiricalPartition",
     "AmbiguitySetLearner",

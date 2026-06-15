@@ -185,6 +185,9 @@ class AmbiguitySetLearner:
     complement_interval : ProbabilityInterval or None
         Clopper-Pearson bounds on P(X outside bounded region).
         ``None`` for ``learning_type='full'``; set for ``'conditional'``.
+    fournier_radius : float
+        Minimax-optimal Fournier–Guillin radius computed from ``samples``.
+        ``inf`` when ``support`` is unbounded.
 
     Examples
     --------
@@ -243,108 +246,13 @@ class AmbiguitySetLearner:
             if isinstance(quantization, ConditionalLearningQuantization)
             else None
         )
+        self.fournier_radius: float = _fournier_radius(
+            support=_partition.support,
+            nsamples=samples.shape[0],
+            wasserstein_order=wasserstein_order,
+            beta=beta,
+        )
         self._result = result
 
 
-# ---------------------------------------------------------------------------
-# API 3 — full pipeline
-# ---------------------------------------------------------------------------
-
-class WassersteinDistributionLearning:
-    """End-to-end data-driven Wasserstein ambiguity set learning.
-
-    Combines :class:`EmpiricalPartition` (partition step) and
-    :class:`AmbiguitySetLearner` (learning step) into a single call.
-
-    Parameters
-    ----------
-    pretraining_samples : torch.Tensor, shape (N_pre, d)
-        Samples used to build the partition (cluster centres).
-    samples : torch.Tensor, shape (N, d)
-        Samples used to estimate probability weights and compute the radius.
-    beta : float
-        Overall confidence level (1 − beta coverage guarantee).
-    support : torch.Tensor of shape (2, d), optional
-        Bounded support as ``torch.stack([lower_bounds, upper_bounds])``.
-        Pass ``None`` for unbounded support (radius will be ``inf`` for
-        ``learning_type='full'``).
-    learning_type : {'full', 'conditional'}
-        See :class:`AmbiguitySetLearner`.
-    partition_type : {'voronoi', 'hyperrectangle'}
-        See :class:`EmpiricalPartition`.
-    num_clusters : int
-        Number of bounded regions M.
-    method : str
-        Solver method name (e.g. ``'triangle_inequality_vertex'``).
-    wasserstein_order : int
-        Wasserstein order p (1 or 2).
-    ConfidenceClass : type
-        Confidence interval class (default: ``ClopperPearsonConfidence``).
-    time_limit : float, optional
-        Solver time limit in seconds.
-
-    Attributes
-    ----------
-    empirical_partition : EmpiricalPartition
-        The partition built from ``pretraining_samples``.
-    ambiguity_set : AmbiguitySet
-        The learned ambiguity set.
-    complement_interval : ProbabilityInterval or None
-        Complement probability bounds (``None`` for ``learning_type='full'``).
-    fournier_radius : float
-        Minimax-optimal Fournier–Guillin radius for reference.
-
-    Examples
-    --------
-    >>> wdl = WassersteinDistributionLearning(
-    ...     pretraining_samples=X_pre, samples=X, beta=1e-6)
-    >>> wdl.ambiguity_set.radius
-    >>> wdl.fournier_radius
-    """
-
-    def __init__(
-        self,
-        pretraining_samples: torch.Tensor,
-        samples: torch.Tensor,
-        beta: float,
-        support: Optional[torch.Tensor] = None,
-        learning_type: str = 'full',
-        partition_type: str = 'voronoi',
-        num_clusters: int = 100,
-        method: str = 'triangle_inequality_vertex',
-        wasserstein_order: int = 2,
-        ConfidenceClass: type = ClopperPearsonConfidence,
-        time_limit: Optional[float] = None,
-    ):
-        self.empirical_partition = EmpiricalPartition(
-            pretraining_samples=pretraining_samples,
-            num_clusters=num_clusters,
-            support=support,
-            partition_type=partition_type,
-        )
-
-        _learner = AmbiguitySetLearner(
-            partition=self.empirical_partition,
-            samples=samples,
-            beta=beta,
-            learning_type=learning_type,
-            method=method,
-            wasserstein_order=wasserstein_order,
-            ConfidenceClass=ConfidenceClass,
-            time_limit=time_limit,
-        )
-
-        self.ambiguity_set      = _learner.ambiguity_set
-        self.complement_interval = _learner.complement_interval
-
-        # Retrieve the HyperRectangle support (if any) for fournier_radius
-        _support = self.empirical_partition.partition.support
-        self.fournier_radius: float = _fournier_radius(
-            support=_support,
-            nsamples=pretraining_samples.shape[0] + samples.shape[0],
-            wasserstein_order=wasserstein_order,
-            beta=beta,
-        )
-
-        self._learner = _learner
 

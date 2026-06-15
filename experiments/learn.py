@@ -10,17 +10,19 @@ from configs.construct import get_support_assumption, get_distribution
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="TruncatedGaussian",
+        distribution="Gaussian",
         num_dims=2,
         setting=0,
-        num_samples=1000,
+        num_samples=5000,
         num_samples_training=1000,
-        num_clusters=10,
+        num_clusters=20,
         wasserstein_order=2,
         beta=1e-6,
-        method='triangle_inequality_vertex',
+        method='stochastic_vertice_ascent',
+        partition_type='hyperrectangle',
+        learning_type='conditional_learning',
         save=False,
-        plot=True,
+        plot=False,
     )
 
     support = get_support_assumption(**vars(args))
@@ -46,13 +48,6 @@ if __name__ == '__main__':
         wasserstein_order=args.wasserstein_order,
     )
 
-    if args.plot:
-        plot_quantization(
-            quantization=wdl.ambiguity_set.center,
-            samples=samples,
-            title=f"M={args.num_clusters}, N={args.num_samples}",
-        )
-        plt.show()
 
     print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples}")
     print(f"\t Fournier: {wdl.fournier_radius:.4f}")

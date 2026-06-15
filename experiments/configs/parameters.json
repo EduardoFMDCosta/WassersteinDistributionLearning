@@ -1,4 +1,31 @@
 {
+  "Gaussian": {
+    "num_dims": {
+      "2": {
+        "settings": {
+          "0": {
+            "mean": 0.0,
+            "variance": 0.1,
+            "support_linf_radius": null
+          }
+        }
+      }
+    }
+  },
+  "GaussianMixture": {
+    "num_dims": {
+      "2": {
+        "settings": {
+          "0": {
+            "weight": [0.5, 0.5],
+            "mean": [[-0.5, 0.0], [0.5, 0.0]],
+            "variance": [0.02, 0.02],
+            "support_linf_radius": null
+          }
+        }
+      }
+    }
+  },
   "UCI-MiniBooNE": {
     "num_dims": {
         "50": {

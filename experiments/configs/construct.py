@@ -51,6 +51,36 @@ def construct_scale(
     else:
         return torch.as_tensor(variance) ** 0.5
 
+def construct_gaussian(
+    num_dims: int,
+    mean: Union[float, List[float]],
+    variance: Union[float, List[float]],
+    **kwargs
+):
+    """Unbounded isotropic Gaussian with diagonal covariance."""
+    loc = construct_loc(num_dims=num_dims, mean=mean)
+    scale = construct_scale(num_dims=num_dims, variance=variance)
+    return torch.distributions.Independent(
+        torch.distributions.Normal(loc=loc, scale=scale), 1
+    )
+
+def construct_gaussian_mixture(
+    num_dims: int,
+    weight: List[float],
+    mean: Union[List[float], List[List[float]]],
+    variance: Union[List[float], List[List[float]]],
+    **kwargs
+):
+    """Unbounded Gaussian mixture with diagonal covariance."""
+    assert len(weight) == len(mean) == len(variance), "Inconsistent number of components."
+    mixture = torch.distributions.Categorical(probs=torch.as_tensor(weight))
+    loc   = torch.stack([construct_loc(num_dims=num_dims, mean=m) for m in mean])
+    scale = torch.stack([construct_scale(num_dims=num_dims, variance=v) for v in variance])
+    component = torch.distributions.Independent(
+        torch.distributions.Normal(loc=loc, scale=scale), 1
+    )
+    return torch.distributions.MixtureSameFamily(mixture, component)
+
 def construct_trunc_mult_norm(
     num_dims: int,
     mean: Union[float, List[float]], 
@@ -271,7 +301,11 @@ def construct_octmnist(**kwargs) -> EmpiricalDistribution:
 def get_distribution(distribution, **kwargs):
     if distribution == 'Uniform':
         return construct_uniform(**kwargs)
-    elif distribution in ('TruncatedGaussian', 'Gaussian'):
+    elif distribution == 'Gaussian':
+        return construct_gaussian(**kwargs)
+    elif distribution == 'GaussianMixture':
+        return construct_gaussian_mixture(**kwargs)
+    elif distribution == 'TruncatedGaussian':
         return construct_trunc_mult_norm(**kwargs)
     elif distribution in ('TruncatedGaussianMixture', 'GaussianMixture'):
         return construct_mixture_trunc_mult_norm(**kwargs)

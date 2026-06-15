@@ -17,12 +17,12 @@ from configs.construct import get_support_assumption, get_distribution
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution='TruncatedGaussian',
+        distribution='GaussianMixture',
         num_dims=2,
         setting=0,
         num_samples=1000,
         num_samples_training=5000,
-        num_clusters=40,
+        num_clusters=20,
         plot=False,
         save=False,
     )

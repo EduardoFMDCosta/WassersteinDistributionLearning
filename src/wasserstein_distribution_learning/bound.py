@@ -27,7 +27,23 @@ class DataDrivenRadius:
         solver.compute_moment_bound = compute_moment_bound
         solver.time_limit = time_limit
 
-        self._result = solver.solve(quantization=quantization)
+        # When support is None (unbounded), FullLearningQuantization appends an
+        # outer region with l2_radius = inf, which produces inf entries in the
+        # LP cost matrix.  Any solver will fail on that input; we catch the
+        # exception and set the radius to +inf explicitly instead.
+        try:
+            self._result = solver.solve(quantization=quantization)
+        except Exception as exc:
+            _msg = str(exc).lower()
+            if any(kw in _msg for kw in ("nan", "inf", "infeasible")):
+                from .solvers.templates import Result
+                self._result = Result(
+                    bound=torch.tensor(float('inf')),
+                    moment_bound=torch.tensor(float('inf')),
+                    discrete_bound=torch.tensor(float('inf')),
+                )
+            else:
+                raise
 
         self._lb_complement_prob = quantization.lb_complement_prob
         self._ub_complement_prob = quantization.ub_complement_prob

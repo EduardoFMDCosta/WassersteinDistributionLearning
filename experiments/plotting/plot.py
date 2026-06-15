@@ -110,6 +110,11 @@ def plot_support(
     support: HyperRectangle,
     ax: Optional[plt.Axes] = None
 ):
+    if support is None:
+        if ax is None:
+            _, ax = plt.subplots(figsize=(6, 6))
+        return ax
+
     if not support.lower.size(-1) == 2:
         raise ValueError("Can only plot 2D quantizations.")
     

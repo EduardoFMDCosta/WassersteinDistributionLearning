@@ -11,7 +11,6 @@ _LEARNING_CLASS_MAP = {
     'full_learning': FullLearningQuantization,
     'conditional_learning': ConditionalLearningQuantization,
 }
-_LEARNING_CLASS_TO_STR = {v: k for k, v in _LEARNING_CLASS_MAP.items()}
 
 dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -71,15 +70,9 @@ def parse_arguments(
     parser.add_argument('--partition_type', type=str, default=partition_type, choices=['voronoi', 'hyperrectangle'], help='Type of partition to use for quantization.')
     parser.add_argument('--learning_type', type=str, default=learning_type, choices=list(_LEARNING_CLASS_MAP.keys()), help='Learning mode: full distribution or conditional on bounded sets.')
     args = parser.parse_args()
-
     return process_args(args)
 
-def num_samples_training_from_num_samples(N: int) -> int:
-    if N < 5000:
-        return 1000
-    else:
-        return 5000
-    
+
 def process_args(args):
     if not args.method in get_solver.supported_methods + get_discrete_solver.supported_methods:
         raise ValueError(f"Method {args.method} not supported. Supported methods: {get_solver.supported_methods}")
@@ -87,7 +80,7 @@ def process_args(args):
     args.LearningClass = _LEARNING_CLASS_MAP.get(args.learning_type, FullLearningQuantization)
 
     if args.num_samples_training is None:
-        args.num_samples_training = num_samples_training_from_num_samples(args.num_samples)
+        args.num_samples_training = 1000 if args.num_samples < 5000 else 5000
 
     dynamics_params = param_handler(
         param_name="parameters",

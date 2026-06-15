@@ -27,10 +27,6 @@ class DataDrivenRadius:
         solver.compute_moment_bound = compute_moment_bound
         solver.time_limit = time_limit
 
-        # When support is None (unbounded), FullLearningQuantization appends an
-        # outer region with l2_radius = inf, which produces inf entries in the
-        # LP cost matrix.  Any solver will fail on that input; we catch the
-        # exception and set the radius to +inf explicitly instead.
         try:
             self._result = solver.solve(quantization=quantization)
         except Exception as exc:
@@ -48,10 +44,6 @@ class DataDrivenRadius:
         self._lb_complement_prob = quantization.lb_complement_prob
         self._ub_complement_prob = quantization.ub_complement_prob
 
-        # full_learning: outer_l2_radius is +inf when support is None, so
-        # sqrt(ub * inf^2) = inf naturally — no explicit infinity check needed.
-        # conditional_learning: _lower_bound is not meaningful for the
-        # conditional radius (the complement is tracked separately).
         if quantization.confidence_complement is not None:
             self._lower_bound = torch.tensor(float('nan'))
         else:
@@ -148,7 +140,7 @@ def fournier_radius(
             51: 1.95,
             75: 1.96,
             100: 1.98,
-            500: 2.00, 
+            500: 2.00,
             784: 2.00 # TODO conservative estimate
         }
 
@@ -180,7 +172,7 @@ class EmpiricalRadius:
         quantization: UncertainQuantization,
         dist: torch.distributions.Distribution,
         wasserstein_order: int,
-        num_samples: int = 1_000, # 100_000
+        num_samples: int = 1_000,
     ):
         emp_dist = dist.sample((num_samples,))
 

@@ -1,5 +1,8 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import torch
-import matplotlib.pyplot as plt
 
 from wasserstein_distribution_learning import EmpiricalPartition, AmbiguitySetLearner
 
@@ -30,7 +33,6 @@ if __name__ == '__main__':
     pretraining_samples = distribution.sample((args.num_samples_training,))
     samples = distribution.sample((args.num_samples,))
 
-    # Step 1 — build the partition from pretraining data
     partition = EmpiricalPartition(
         pretraining_samples=pretraining_samples,
         num_clusters=args.num_clusters,
@@ -38,7 +40,6 @@ if __name__ == '__main__':
         partition_type=args.partition_type,
     )
 
-    # Step 2 — learn the ambiguity set from evaluation samples
     learner = AmbiguitySetLearner(
         partition=partition,
         samples=samples,

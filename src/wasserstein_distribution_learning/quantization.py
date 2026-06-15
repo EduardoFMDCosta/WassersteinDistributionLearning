@@ -5,7 +5,6 @@ from .sets import Partition
 
 
 class Quantization:
-    """Minimal base: partitions N samples into M+1 bins and stores counts."""
 
     def __init__(self, partition: Partition, samples: torch.Tensor):
         self._partition = partition
@@ -27,7 +26,7 @@ class Quantization:
         return getattr(self._partition, name)
 
     def __len__(self) -> int:
-        return len(self._partition)  # M+1
+        return len(self._partition)
 
     @property
     def counts(self) -> torch.Tensor:
@@ -39,15 +38,9 @@ class Quantization:
 
 
 class FullLearningQuantization(Quantization):
-    """Bounds for the full (unconditional) distribution.
-
-    All N samples participate. Clopper-Pearson is applied jointly over M+1
-    regions (M bounded + 1 complement) with Bonferroni factor M+1. The solver
-    receives M+1 regions. When support is None, the outer bounding radius is
-    +inf so the resulting bounds are naturally infinite.
+    """Unconditional: all N samples used, complement is the (M+1)-th atom.
+    Clopper-Pearson applied jointly over M+1 regions with Bonferroni factor M+1.
     """
-
-    confidence_complement = None  # no separate complement interval
 
     def __init__(
         self,
@@ -85,14 +78,6 @@ class FullLearningQuantization(Quantization):
 
 
 class ConditionalLearningQuantization(Quantization):
-    """Bounds for the distribution *conditional* on lying in the bounded sets.
-
-    Only the N_cond samples inside the M bounded regions are used to build
-    the quantization of the conditional distribution. A separate CP interval
-    covers the complement using all N samples. Both CP intervals share the
-    same Bonferroni factor M+1. The solver receives M regions only (complement
-    slot stripped from all geometry tensors).
-    """
 
     def __init__(
         self,
@@ -121,12 +106,8 @@ class ConditionalLearningQuantization(Quantization):
             n=self.num_samples,
         )
 
-    # ---- Solver-facing size: M only ----
-
     def __len__(self) -> int:
-        return self._partition.region_locs.size(0)  # M
-
-    # ---- Counts / probs over the M conditional sets ----
+        return self._partition.region_locs.size(0)
 
     @property
     def counts(self) -> torch.Tensor:
@@ -135,8 +116,6 @@ class ConditionalLearningQuantization(Quantization):
     @property
     def probs(self) -> torch.Tensor:
         return self.cluster_counts.float() / self.cluster_counts.sum()
-
-    # ---- Geometry: complement slot stripped ----
 
     @property
     def locs(self) -> torch.Tensor:
@@ -168,7 +147,6 @@ class ConditionalLearningQuantization(Quantization):
         d = self._partition.l1_distance_locs_to_locs[:-1, :-1]
         return d + self._partition.l1_radii[:-1].unsqueeze(-1)
 
-    # ---- Confidence bounds ----
 
     @property
     def lower_probs(self) -> torch.Tensor:
@@ -191,6 +169,5 @@ class ConditionalLearningQuantization(Quantization):
         return self._partition.l2_radii[-1]
 
 
-# Backward-compatibility alias — all existing solver / bound code continues to work.
 UncertainQuantization = FullLearningQuantization
 

@@ -2,11 +2,6 @@ import numpy as np
 
 
 def _detect_modes(X: np.ndarray, n_max: int) -> int:
-    """Select the number of Gaussian components by BIC.
-
-    Requires scikit-learn.  Falls back to 1 mode if sklearn is unavailable
-    or if fitting fails for any k.
-    """
     try:
         from sklearn.mixture import GaussianMixture
     except ImportError:

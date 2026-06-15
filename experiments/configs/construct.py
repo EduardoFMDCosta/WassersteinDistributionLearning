@@ -3,7 +3,6 @@ import math
 import torch
 import os
 from distributions import MultivariateUniform, TruncatedMultivariateNormal, MixtureTruncatedMultivariateNormal, CategoricalFloat
-from wasserstein_distribution_learning.sets import HyperRectangle
 from ucimlrepo import fetch_ucirepo
 import medmnist
 
@@ -12,16 +11,20 @@ import pandas as pd
 
 def get_support_assumption(
     num_dims: int,
-    support_linf_radius: Optional[float] = None, 
-    support_linf_radius_assumed: Optional[float] = None, 
+    support_linf_radius: Optional[float] = None,
+    support_linf_radius_assumed: Optional[float] = None,
     **kwargs
-):
+) -> Optional[torch.Tensor]:
+    """Return the support as a (2, d) tensor ``torch.stack([lower, upper])``, or
+    ``None`` for an unbounded support."""
     if support_linf_radius_assumed is not None and not math.isinf(support_linf_radius_assumed):
-        return HyperRectangle.from_eps(x=torch.zeros(num_dims), eps=support_linf_radius_assumed)
+        eps = float(support_linf_radius_assumed)
     elif support_linf_radius is not None and not math.isinf(support_linf_radius):
-        return HyperRectangle.from_eps(x=torch.zeros(num_dims), eps=torch.as_tensor(support_linf_radius))
+        eps = float(support_linf_radius)
     else:
         return None
+    half = torch.full((num_dims,), eps)
+    return torch.stack([-half, half])
     
 def construct_uniform(
     num_dims: int,
@@ -57,7 +60,6 @@ def construct_gaussian(
     variance: Union[float, List[float]],
     **kwargs
 ):
-    """Unbounded isotropic Gaussian with diagonal covariance."""
     loc = construct_loc(num_dims=num_dims, mean=mean)
     scale = construct_scale(num_dims=num_dims, variance=variance)
     return torch.distributions.Independent(
@@ -71,7 +73,6 @@ def construct_gaussian_mixture(
     variance: Union[List[float], List[List[float]]],
     **kwargs
 ):
-    """Unbounded Gaussian mixture with diagonal covariance."""
     assert len(weight) == len(mean) == len(variance), "Inconsistent number of components."
     mixture = torch.distributions.Categorical(probs=torch.as_tensor(weight))
     loc   = torch.stack([construct_loc(num_dims=num_dims, mean=m) for m in mean])
@@ -119,7 +120,7 @@ def construct_mixture_trunc_mult_norm(
     return MixtureTruncatedMultivariateNormal(mixture_distribution=mixture_distribution, component_distribution=component_distribution)
 
 def construct_random_categorical_float(
-    support_linf_radius_assumed: float,      # TODO use support_linf_radius here?
+    support_linf_radius_assumed: float,
     support_size: int, 
     num_dims: int,
     **kwargs

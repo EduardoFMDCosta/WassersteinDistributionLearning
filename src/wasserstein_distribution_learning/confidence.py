@@ -21,7 +21,6 @@ class Confidence:
         pass
 
 
-
 class ClopperPearsonConfidence(Confidence):
     def __init__(self, beta: float, n_set: torch.Tensor, n: int):
         super().__init__(beta=beta, n_set=n_set, n=n)

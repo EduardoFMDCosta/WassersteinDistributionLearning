@@ -95,15 +95,15 @@ class WassersteinDistributionLearning:
 
     def __init__(
         self,
+        wasserstein_order: int,
         pretraining_samples: torch.Tensor,
         samples: torch.Tensor,
         beta: float,
-        support: Optional[torch.Tensor] = None,
-        learning_type: str = 'full',
+        support: Optional[torch.Tensor],
+        num_clusters: int,
+        learning_type: str = 'full_learning',
         partition_type: str = 'voronoi',
-        num_clusters: int = 100,
         method: str = 'triangle_inequality_vertex',
-        wasserstein_order: int = 2,
         ConfidenceClass: type = ClopperPearsonConfidence,
         time_limit: Optional[float] = None,
     ):

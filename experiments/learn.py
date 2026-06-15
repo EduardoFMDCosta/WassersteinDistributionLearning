@@ -37,15 +37,15 @@ if __name__ == '__main__':
     )
 
     wdl = WassersteinDistributionLearning(
+        wasserstein_order=args.wasserstein_order,
         pretraining_samples=pretraining_samples,
         samples=samples,
         beta=args.beta,
         support=support_tensor,
+        num_clusters=args.num_clusters,
         learning_type=args.learning_type,
         partition_type=args.partition_type,
-        num_clusters=args.num_clusters,
         method=args.method,
-        wasserstein_order=args.wasserstein_order,
     )
 
 

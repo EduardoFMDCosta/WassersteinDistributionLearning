@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Tuple, Optional, Union
 import torch
 from torch_kmeans import KMeans
@@ -40,76 +41,99 @@ class HyperRectangle:
         return HyperRectangle(lower, upper)
 
 
-class HyperRectanglePartition:
+class Partition(ABC):
+    """Base class for all partition types used in quantization.
+
+    A partition divides the ambient space into M + 1 regions:
+    - M bounded regions, each described by a centroid in ``region_locs`` and a
+      bounding radius in ``region_l2_radii``.
+    - 1 implicit complement (outer) region: everything not covered by the M
+      bounded regions. Its representative location is the support centre (or
+      the zero vector when ``support is None``) and its bounding radius is half
+      the support diameter (or ``inf`` when ``support is None``).
+
+    The complement set is always the **last** element of ``locs``, ``l2_radii``,
+    ``l2_distance_locs_to_region``, and related tensors, and its probability is
+    tracked explicitly in :class:`~quantization.UncertainQuantization`.
+    """
+
     def __init__(
-        self, 
-        support: 'HyperRectangle', 
+        self,
+        support: Optional['HyperRectangle'],
+        region_locs: torch.Tensor,
+        region_l2_radii: torch.Tensor,
+    ):
+        self.support = support
+        self.region_locs = region_locs
+        self.region_l2_radii = region_l2_radii
+        self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
+
+    def __len__(self) -> int:
+        return self.locs.size(0)
+
+    @property
+    def ndim(self) -> int:
+        if self.support is not None:
+            return self.support.ndim
+        return self.region_locs.size(-1)
+
+    @property
+    def locs(self) -> torch.Tensor:
+        if self.support is not None:
+            outer_loc = self.support.center.unsqueeze(0)
+        else:
+            outer_loc = torch.zeros(1, self.ndim, device=self.region_locs.device, dtype=self.region_locs.dtype)
+        return torch.cat((self.region_locs, outer_loc), dim=0)
+
+    @property
+    def l2_radii(self) -> torch.Tensor:
+        if self.support is not None:
+            outer_radius = torch.norm(self.support.width).unsqueeze(0) / 2.
+        else:
+            outer_radius = torch.tensor([torch.inf], dtype=self.region_l2_radii.dtype)
+        return torch.cat((self.region_l2_radii, outer_radius))
+
+    @property
+    def l2_distance_locs_to_region(self) -> torch.Tensor:
+        return self.l2_distance_locs_to_locs + self.l2_radii.unsqueeze(-1)
+
+    @property
+    @abstractmethod
+    def l1_radii(self) -> torch.Tensor: ...
+
+    @property
+    def l1_distance_locs_to_region(self) -> torch.Tensor:
+        return self.l1_distance_locs_to_locs + self.l1_radii.unsqueeze(-1)
+
+    @classmethod
+    @abstractmethod
+    def from_samples(cls, support, samples: torch.Tensor, M: int, **kwargs): ...
+
+
+class HyperRectanglePartition(Partition):
+    def __init__(
+        self,
+        support: 'HyperRectangle',
         region_locs: torch.Tensor,
         region_lower: torch.Tensor,
         region_upper: torch.Tensor
     ):
-        """
-        Args:
-            support: The global bounding box (HyperRectangle).
-            region_locs: Centroids of the partitioned regions (M, D).
-            region_lower: Lower bounds of the disjoint hyperrectangles (M, D).
-            region_upper: Upper bounds of the disjoint hyperrectangles (M, D).
-        """
-        self.support = support
-        self.region_locs = region_locs
         self.region_lower = region_lower
         self.region_upper = region_upper
-        
-        self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
-        self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
-        
-        # Precompute exact bounding radii
-        self._compute_radii()
 
-    def _compute_radii(self):
-        """
-        Computes the exact L2 and L1 radii for the bounding hyperrectangles.
-        The max distance from the centroid to any point in the box is the distance to the furthest vertex.
-        """
-        # Distance to corners along each dimension
-        dist_to_lower = torch.abs(self.region_lower - self.region_locs)
-        dist_to_upper = torch.abs(self.region_upper - self.region_locs)
-        
-        # Max distance per dimension
+        # Compute per-region radii before calling super (super needs region_l2_radii)
+        dist_to_lower = torch.abs(region_lower - region_locs)
+        dist_to_upper = torch.abs(region_upper - region_locs)
         max_dist_per_dim = torch.max(dist_to_lower, dist_to_upper)
-        
-        # L2 radius: sqrt(sum(max_dist_per_dim^2))
-        self.region_l2_radii = torch.sqrt(torch.sum(max_dist_per_dim ** 2, dim=-1))
-        
-        # L1 radius: sum(max_dist_per_dim)
+        region_l2_radii = torch.sqrt(torch.sum(max_dist_per_dim ** 2, dim=-1))
         self.region_l1_radii = torch.sum(max_dist_per_dim, dim=-1)
 
-    def __len__(self):
-        return self.locs.size(0)
+        super().__init__(support=support, region_locs=region_locs, region_l2_radii=region_l2_radii)
 
     @property
-    def ndim(self):
-        return self.support.ndim
-    
-    @property
-    def locs(self):
-        return torch.cat((self.region_locs, self.support.center.unsqueeze(0)), dim=0)
-
-    @property
-    def l2_radii(self):
-        return torch.cat((self.region_l2_radii, torch.norm(self.support.width).unsqueeze(0) / 2.))
-    
-    @property
-    def l2_distance_locs_to_region(self):
-        return self.l2_distance_locs_to_locs + self.l2_radii.unsqueeze(-1)
-    
-    @property
-    def l1_radii(self):
+    def l1_radii(self) -> torch.Tensor:
         return torch.cat((self.region_l1_radii, torch.sum(self.support.width).unsqueeze(0) / 2.))
-    
-    @property
-    def l1_distance_locs_to_region(self):
-        return self.l1_distance_locs_to_locs + self.l1_radii.unsqueeze(-1)
 
     def contains(self, points: torch.Tensor) -> torch.Tensor:
         """
@@ -236,55 +260,18 @@ class HyperRectanglePartition:
         )
 
 
-class BoundedVoronoiPartition:
+class BoundedVoronoiPartition(Partition):
     def __init__(
         self, 
         support: Optional[HyperRectangle], 
         region_locs: torch.Tensor,
         region_l2_radii: torch.Tensor
     ):
-        self.support = support
-        self.region_locs = region_locs
-        self.region_l2_radii = region_l2_radii
-        self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
-        self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
-    
-    def __len__(self):
-        return self.locs.size(0)
+        super().__init__(support=support, region_locs=region_locs, region_l2_radii=region_l2_radii)
 
     @property
-    def ndim(self):
-        if self.support is not None:
-            return self.support.ndim
-        return self.region_locs.size(-1)
-
-    @property
-    def locs(self):
-        if self.support is not None:
-            outer_loc = self.support.center.unsqueeze(0)
-        else:
-            outer_loc = torch.zeros(1, self.ndim, device=self.region_locs.device, dtype=self.region_locs.dtype)
-        return torch.cat((self.region_locs, outer_loc), dim=0)
-
-    @property
-    def l2_radii(self):
-        if self.support is not None:
-            outer_radius = torch.norm(self.support.width).unsqueeze(0) / 2.
-        else:
-            outer_radius = torch.tensor([torch.inf], dtype=self.region_l2_radii.dtype)
-        return torch.cat((self.region_l2_radii, outer_radius))
-
-    @property
-    def l2_distance_locs_to_region(self):
-        return self.l2_distance_locs_to_locs + self.l2_radii.unsqueeze(-1)
-    
-    @property
-    def l1_radii(self):
+    def l1_radii(self) -> torch.Tensor:
         return (2**0.5) * self.l2_radii
-    
-    @property
-    def l1_distance_locs_to_region(self):
-        return self.l1_distance_locs_to_locs + self.l1_radii.unsqueeze(-1)
 
     @classmethod
     def from_samples(

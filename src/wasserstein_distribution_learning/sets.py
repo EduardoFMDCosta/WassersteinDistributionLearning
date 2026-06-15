@@ -44,7 +44,6 @@ class HyperRectangle:
 
 
 class Partition(ABC):
-
     def __init__(
         self,
         support: Optional['HyperRectangle'],

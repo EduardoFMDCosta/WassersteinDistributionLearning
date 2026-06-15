@@ -5,7 +5,6 @@ from .sets import Partition
 
 
 class Quantization:
-
     def __init__(self, partition: Partition, samples: torch.Tensor):
         self._partition = partition
         self.num_samples = samples.size(0)

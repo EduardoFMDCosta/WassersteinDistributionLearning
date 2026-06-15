@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 import torch
 from torch_kmeans import KMeans
 
@@ -40,19 +40,50 @@ class HyperRectangle:
         return HyperRectangle(lower, upper)
 
 
-class BoundedVoronoiPartition:
+class HyperRectanglePartition:
     def __init__(
         self, 
-        support: HyperRectangle, 
+        support: 'HyperRectangle', 
         region_locs: torch.Tensor,
-        region_l2_radii: torch.Tensor  # TODO provide either l2 or l1 (based on what is used in .from_samples)
+        region_lower: torch.Tensor,
+        region_upper: torch.Tensor
     ):
+        """
+        Args:
+            support: The global bounding box (HyperRectangle).
+            region_locs: Centroids of the partitioned regions (M, D).
+            region_lower: Lower bounds of the disjoint hyperrectangles (M, D).
+            region_upper: Upper bounds of the disjoint hyperrectangles (M, D).
+        """
         self.support = support
         self.region_locs = region_locs
-        self.region_l2_radii = region_l2_radii
+        self.region_lower = region_lower
+        self.region_upper = region_upper
+        
         self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
         self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
-    
+        
+        # Precompute exact bounding radii
+        self._compute_radii()
+
+    def _compute_radii(self):
+        """
+        Computes the exact L2 and L1 radii for the bounding hyperrectangles.
+        The max distance from the centroid to any point in the box is the distance to the furthest vertex.
+        """
+        # Distance to corners along each dimension
+        dist_to_lower = torch.abs(self.region_lower - self.region_locs)
+        dist_to_upper = torch.abs(self.region_upper - self.region_locs)
+        
+        # Max distance per dimension
+        max_dist_per_dim = torch.max(dist_to_lower, dist_to_upper)
+        
+        # L2 radius: sqrt(sum(max_dist_per_dim^2))
+        self.region_l2_radii = torch.sqrt(torch.sum(max_dist_per_dim ** 2, dim=-1))
+        
+        # L1 radius: sum(max_dist_per_dim)
+        self.region_l1_radii = torch.sum(max_dist_per_dim, dim=-1)
+
     def __len__(self):
         return self.locs.size(0)
 
@@ -66,8 +97,183 @@ class BoundedVoronoiPartition:
 
     @property
     def l2_radii(self):
-        return torch.cat((self.region_l2_radii, torch.norm(self.support.width).unsqueeze(0) / 2. ))
+        return torch.cat((self.region_l2_radii, torch.norm(self.support.width).unsqueeze(0) / 2.))
     
+    @property
+    def l2_distance_locs_to_region(self):
+        return self.l2_distance_locs_to_locs + self.l2_radii.unsqueeze(-1)
+    
+    @property
+    def l1_radii(self):
+        return torch.cat((self.region_l1_radii, torch.sum(self.support.width).unsqueeze(0) / 2.))
+    
+    @property
+    def l1_distance_locs_to_region(self):
+        return self.l1_distance_locs_to_locs + self.l1_radii.unsqueeze(-1)
+
+    def contains(self, points: torch.Tensor) -> torch.Tensor:
+        """
+        Checks which region a set of new points belongs to.
+        Returns an (N, M) boolean tensor.
+        """
+        # points: (N, D), lower: (M, D), upper: (M, D)
+        # Reshape for broadcasting -> points: (N, 1, D)
+        points_expanded = points.unsqueeze(1)
+        
+        # Check bounds: (N, M, D)
+        in_bounds = (points_expanded >= self.region_lower) & (points_expanded <= self.region_upper)
+        
+        # Must be in bounds for all dimensions: (N, M)
+        return torch.all(in_bounds, dim=-1)
+
+    @classmethod
+    def from_samples(
+            cls,
+            support: Optional['HyperRectangle'], 
+            samples: torch.Tensor, 
+            M: int, 
+            radius_scale_factor: float = 1.5
+        ):
+        assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
+        nsamples, ndim = samples.shape
+
+        # 1. Handle unknown support
+        if support is None:
+            # Assuming HyperRectangle takes lower and upper as init arguments
+            global_lower = samples.min(dim=0).values
+            global_upper = samples.max(dim=0).values
+            support = HyperRectangle(lower=global_lower, upper=global_upper)
+            
+        assert support.ndim == ndim, "Support dimension must match sample features"
+
+        # 2. Perform Clustering (Reusing your K-Means logic)
+        if nsamples > M:
+            kmeans_torch = KMeans(n_clusters=M)
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            if device.type == "cuda":
+                X_np = samples.detach().cpu().numpy().astype(np.float32)
+                kmeans = faiss.Kmeans(d=ndim, k=M, niter=20, verbose=False, gpu=True)
+                kmeans.train(X_np)
+                
+                centroids_np = kmeans.centroids
+                _, labels_np = kmeans.index.search(X_np, 1)
+
+                cluster_locs = torch.from_numpy(centroids_np).to(samples.device)
+                labels = torch.from_numpy(labels_np[:, 0]).to(samples.device)
+            else:
+                with torch.no_grad():
+                    cluster_result = kmeans_torch(samples.unsqueeze(0).float())
+                cluster_locs = cluster_result.centers.squeeze(0).float()
+                labels = cluster_result.labels.squeeze(0)
+        else:
+            M = nsamples
+            cluster_locs = samples.clone()
+            labels = torch.arange(M, device=samples.device)
+
+        # 3. Construct Initial Tight Bounding Boxes
+        lower = torch.zeros((M, ndim), device=samples.device)
+        upper = torch.zeros((M, ndim), device=samples.device)
+        
+        for i in range(M):
+            mask = (labels == i)
+            if mask.sum() > 0:
+                lower[i] = samples[mask].min(dim=0).values
+                upper[i] = samples[mask].max(dim=0).values
+            else:
+                lower[i] = cluster_locs[i].clone()
+                upper[i] = cluster_locs[i].clone()
+
+        # 4. Enforce Disjointness (Heuristic Overlap Resolution)
+        # We iterate pairwise. If two boxes overlap, we split them along the dimension
+        # where their centroids are furthest apart, creating a strict boundary.
+        max_iters = M * M  # Safeguard against infinite loops
+        for _ in range(max_iters):
+            has_overlap = False
+            for i in range(M):
+                for j in range(i + 1, M):
+                    # Check intersection bounding box
+                    overlap_lower = torch.max(lower[i], lower[j])
+                    overlap_upper = torch.min(upper[i], upper[j])
+                    
+                    # If overlap_lower < overlap_upper in ALL dimensions, an overlap exists
+                    if torch.all(overlap_lower < overlap_upper):
+                        has_overlap = True
+                        
+                        # Find the dimension where centroids are furthest apart to perform the cut
+                        dist = torch.abs(cluster_locs[i] - cluster_locs[j])
+                        split_dim = torch.argmax(dist).item()
+                        
+                        # Define the boundary halfway between the two centroids along the split dimension
+                        split_val = (cluster_locs[i, split_dim] + cluster_locs[j, split_dim]) / 2.0
+                        
+                        # Shrink the bounding boxes to respect the new boundary
+                        if cluster_locs[i, split_dim] < cluster_locs[j, split_dim]:
+                            upper[i, split_dim] = min(upper[i, split_dim].item(), split_val)
+                            lower[j, split_dim] = max(lower[j, split_dim].item(), split_val)
+                        else:
+                            lower[i, split_dim] = max(lower[i, split_dim].item(), split_val)
+                            upper[j, split_dim] = min(upper[j, split_dim].item(), split_val)
+            
+            if not has_overlap:
+                break
+
+        # 5. Apply scale factor and clamp to support limits
+        if radius_scale_factor != 1.0:
+            centers = (lower + upper) / 2.0
+            half_widths = ((upper - lower) / 2.0) * radius_scale_factor
+            lower = centers - half_widths
+            upper = centers + half_widths
+
+        # Clamp bounding boxes strictly inside the support
+        lower = torch.max(lower, support.lower.to(samples.device))
+        upper = torch.min(upper, support.upper.to(samples.device))
+
+        return cls(
+            support=support,
+            region_locs=cluster_locs,
+            region_lower=lower,
+            region_upper=upper
+        )
+
+
+class BoundedVoronoiPartition:
+    def __init__(
+        self, 
+        support: Optional[HyperRectangle], 
+        region_locs: torch.Tensor,
+        region_l2_radii: torch.Tensor
+    ):
+        self.support = support
+        self.region_locs = region_locs
+        self.region_l2_radii = region_l2_radii
+        self.l2_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=2)
+        self.l1_distance_locs_to_locs = torch.cdist(self.locs, self.locs, p=1)
+    
+    def __len__(self):
+        return self.locs.size(0)
+
+    @property
+    def ndim(self):
+        if self.support is not None:
+            return self.support.ndim
+        return self.region_locs.size(-1)
+
+    @property
+    def locs(self):
+        if self.support is not None:
+            outer_loc = self.support.center.unsqueeze(0)
+        else:
+            outer_loc = torch.zeros(1, self.ndim, device=self.region_locs.device, dtype=self.region_locs.dtype)
+        return torch.cat((self.region_locs, outer_loc), dim=0)
+
+    @property
+    def l2_radii(self):
+        if self.support is not None:
+            outer_radius = torch.norm(self.support.width).unsqueeze(0) / 2.
+        else:
+            outer_radius = torch.tensor([torch.inf], dtype=self.region_l2_radii.dtype)
+        return torch.cat((self.region_l2_radii, outer_radius))
+
     @property
     def l2_distance_locs_to_region(self):
         return self.l2_distance_locs_to_locs + self.l2_radii.unsqueeze(-1)
@@ -83,14 +289,15 @@ class BoundedVoronoiPartition:
     @classmethod
     def from_samples(
             cls,
-            support: HyperRectangle, 
+            support: Optional[HyperRectangle],
             samples: torch.Tensor, 
             M: int, 
             radius_scale_factor: float = 1.5, 
             use_voronoi_radii: bool = False
         ):
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
-        assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
+        if support is not None:
+            assert support.ndim == samples.shape[-1], "Support dimension must match sample features"
 
         nsamples = samples.size(0)
 
@@ -146,7 +353,8 @@ class BoundedVoronoiPartition:
             l2_radii = torch.full((M,), torch.inf)
 
         l2_radii.clamp_(max=radius_scale_factor * max_sample_distances)
-        l2_radii.clamp_(max=torch.norm(support.width * 0.5).item())
+        if support is not None:
+            l2_radii.clamp_(max=torch.norm(support.width * 0.5).item())
 
         if not use_voronoi_radii:
             num_neigh = max(int(M*0.05), min(5, M))

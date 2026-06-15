@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     settings = [
         ('Uniform', 1, 'triangle_inequality_vertex'), ('Uniform', 1, 'joint_diagonal_milp'),
-        ('Gaussian', 2, 'triangle_inequality_vertex'), ('Gaussian', 2, 'joint_diagonal_milp')
+        ('TruncatedGaussian', 2, 'triangle_inequality_vertex'), ('TruncatedGaussian', 2, 'joint_diagonal_milp')
     ]
 
     for distribution, wasserstein_order, method in settings:

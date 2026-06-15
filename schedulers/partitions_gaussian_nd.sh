@@ -15,17 +15,17 @@ echo "START"
 
 for seed in 0 1 2 3 4 5 6 7 8 9; do
 echo "---------------- Random seed = ${seed} -------------------"
-python -m experiments.partitions --distribution Gaussian --num_dims 2 --setting 1 --random_seed "$seed"
+python -m experiments.partitions --distribution TruncatedGaussian --num_dims 2 --setting 1 --random_seed "$seed"
 
-python -m experiments.partitions --distribution Gaussian --num_dims 10 --setting 01 --random_seed "$seed"
+python -m experiments.partitions --distribution TruncatedGaussian --num_dims 10 --setting 01 --random_seed "$seed"
 
-python -m experiments.partitions --distribution Gaussian --num_dims 25 --setting 1 --random_seed "$seed"
+python -m experiments.partitions --distribution TruncatedGaussian --num_dims 25 --setting 1 --random_seed "$seed"
 
-python -m experiments.partitions --distribution Gaussian --num_dims 50 --setting 1 --random_seed "$seed"
+python -m experiments.partitions --distribution TruncatedGaussian --num_dims 50 --setting 1 --random_seed "$seed"
 
-python -m experiments.partitions --distribution Gaussian --num_dims 75 --setting 1 --random_seed "$seed"
+python -m experiments.partitions --distribution TruncatedGaussian --num_dims 75 --setting 1 --random_seed "$seed"
 
-python -m experiments.partitions --distribution Gaussian --num_dims 100 --setting 1 --random_seed "$seed"
+python -m experiments.partitions --distribution TruncatedGaussian --num_dims 100 --setting 1 --random_seed "$seed"
 
 done
 

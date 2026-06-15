@@ -20,61 +20,61 @@ echo "---------------- num training samples: ${num_samples_training} -----------
 for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
-echo "-- Gaussian --"
+echo "-- TruncatedGaussian --"
     echo "dim = 1, setting = -1"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 2 --setting -1 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 2 --setting -1 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 1"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 2 --setting 1 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 2 --setting 1 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 2"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 2 --setting 2 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 2 --setting 2 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 3"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 2 --setting 3 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 2 --setting 3 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 1, setting = 4"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 2 --setting 4 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 2 --setting 4 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 1"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 1 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 1 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 2"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 2 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 2 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 3"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 3 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 3 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 4"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 4 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 4 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 5"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 5 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 5 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 6"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 6 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 6 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 10, setting = 0"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 10 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 10 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 25, setting = 0"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 25 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 25 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 50, setting = 0"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 50 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 50 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 75, setting = 0"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 75 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 75 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
     echo "dim = 100, setting = 0"
-    python -m experiments.generate_fournier --distribution Gaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed" 
+    python -m experiments.generate_fournier --distribution TruncatedGaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --num_samples_training "$num_samples_training" --random_seed "$seed" 
 
-echo "-- GaussianMixture --"
+echo "-- TruncatedGaussianMixture --"
     echo "dim = 2, setting = 0"
-    python -m experiments.generate_fournier --distribution GaussianMixture --num_dims 2 --setting 0 --wasserstein_order "$rho"  --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_fournier --distribution TruncatedGaussianMixture --num_dims 2 --setting 0 --wasserstein_order "$rho"  --num_samples_training "$num_samples_training" --random_seed "$seed"
 
     echo "dim = 3, setting = 0"
-    python -m experiments.generate_fournier --distribution GaussianMixture --num_dims 3 --setting 0 --wasserstein_order "$rho"  --num_samples_training "$num_samples_training" --random_seed "$seed"
+    python -m experiments.generate_fournier --distribution TruncatedGaussianMixture --num_dims 3 --setting 0 --wasserstein_order "$rho"  --num_samples_training "$num_samples_training" --random_seed "$seed"
 
 done        
 

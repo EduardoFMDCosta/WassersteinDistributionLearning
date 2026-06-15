@@ -18,7 +18,7 @@ plt.rcParams.update({
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="Gaussian",
+        distribution="TruncatedGaussian",
         num_dims=2,
         setting=0,
         num_samples_training=1000,

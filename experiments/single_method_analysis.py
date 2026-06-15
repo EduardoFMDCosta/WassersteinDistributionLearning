@@ -48,7 +48,7 @@ def main(args, M_options, N_options, random_seed_options = [0]):
 
 if __name__ == '__main__':
     args = parse_arguments( # Only parse arguments once, updated afterwards
-        distribution="Gaussian", # PLACEHOLDER
+        distribution="TruncatedGaussian", # PLACEHOLDER
         num_dims=2, # PLACEHOLDER
         setting=0,  # PLACEHOLDER
         method='joint_diagonal_milp',
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     params = load_json("parameters")
     settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
-    settings = [elem for elem in settings if elem[0] == 'Gaussian']
+    settings = [elem for elem in settings if elem[0] == 'TruncatedGaussian']
 
     settings = [('Uniform', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
     for (distribution, num_dims, setting), wasserstein_order in itertools.product(settings, [1]):

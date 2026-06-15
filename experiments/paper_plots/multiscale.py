@@ -78,7 +78,7 @@ def main(args):
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="Gaussian",
+        distribution="TruncatedGaussian",
         num_dims=2, # PLACEHOLDER
         setting=0,
         wasserstein_order=2,

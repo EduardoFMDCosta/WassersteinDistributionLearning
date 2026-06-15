@@ -7,7 +7,7 @@ from experiments.utils import data_driven_radii_for_combinations, fournier_radii
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=1,
-        distribution="GaussianMixture",
+        distribution="TruncatedGaussianMixture",
         num_dims=3,
         setting=0,
         beta=1e-6,

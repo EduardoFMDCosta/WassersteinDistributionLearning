@@ -197,7 +197,7 @@ if __name__ == "__main__":
     settings = [
         ("Uniform", 1),
         ("Uniform", 2),
-        ("Gaussian", 2),
+        ("TruncatedGaussian", 2),
     ]
 
     for distribution, wasserstein_order in settings:

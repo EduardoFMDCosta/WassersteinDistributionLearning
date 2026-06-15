@@ -71,7 +71,7 @@ def main(args, M_options, N_options, method_to_compare, random_seed_options = [0
 if __name__ == '__main__':
     for method_to_compare in ['fournier', 'triangle_inequality_vertex']:
         args = parse_arguments( # Only parse arguments once, updated afterwards
-            distribution="Gaussian", # PLACEHOLDER
+            distribution="TruncatedGaussian", # PLACEHOLDER
             num_dims=2, # PLACEHOLDER
             setting=0,  # PLACEHOLDER
             method='joint_diagonal_milp',

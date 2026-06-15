@@ -114,7 +114,7 @@ def main(args, M_options, N_options, plot_samples = True):
 if __name__ == '__main__':
     args = parse_arguments( # Only parse arguments once, updated afterwards
         random_seed=0,
-        distribution='Gaussian', # PLACEHOLDER
+        distribution='TruncatedGaussian', # PLACEHOLDER
         num_dims=2, # PLACEHOLDER
         setting=0, # PLACEHOLDER
         num_samples=10_000,
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     params = load_json("parameters")
     settings = [(d, int(n), int(s)) for d in params.keys() for n in params[d]["num_dims"].keys() for s in params[d]["num_dims"][n]["settings"].keys()]
 
-    settings = [('Uniform', 2, 0), ('Uniform', 2, 1), ('GaussianMixture', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
+    settings = [('Uniform', 2, 0), ('Uniform', 2, 1), ('TruncatedGaussianMixture', 2, 0)]  # TEMPORARY LIMITATION FOR DEBUGGING
     for distribution, num_dims, setting in settings:
         args.distribution = distribution
         args.num_dims = num_dims

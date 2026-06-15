@@ -13,7 +13,7 @@ set_style()
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution='GaussianMixture',
+        distribution='TruncatedGaussianMixture',
         num_dims=2,
         setting=0,
         num_samples=10_000,

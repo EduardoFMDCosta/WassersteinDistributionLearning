@@ -24,7 +24,7 @@ It shows that...
 def lower_bound_eps2(num_clusters):
     args = parse_arguments(
         random_seed=0,
-        distribution="Gaussian",
+        distribution="TruncatedGaussian",
         num_dims=2,
         setting=0,
         num_samples_training=1000,

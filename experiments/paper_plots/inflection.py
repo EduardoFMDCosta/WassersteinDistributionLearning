@@ -62,7 +62,7 @@ def main(args):
 
 if __name__ == '__main__':
     args = parse_arguments(
-        distribution="GaussianMixture",
+        distribution="TruncatedGaussianMixture",
         num_dims=3,
         setting=0,
         wasserstein_order=2,

@@ -106,7 +106,7 @@ def plot_absolute_values(args, M_setting: str):
 
 if __name__ == '__main__':
     args = parse_arguments(
-        distribution="GaussianMixture",
+        distribution="TruncatedGaussianMixture",
         num_dims=3,
         setting=0,
         wasserstein_order=2,
@@ -116,12 +116,12 @@ if __name__ == '__main__':
     )
 
     settings = [
-        ("Gaussian", 2, 'joint_diagonal_milp', 'small'),
-        ("Gaussian", 2, 'triangle_inequality_vertex', 'small'),
-        ("Gaussian", 2, 'triangle_inequality_vertex', 'large'),
-        ("Gaussian", 100, 'joint_diagonal_milp', 'small'),
-        ("Gaussian", 100, 'triangle_inequality_vertex', 'small'),
-        ("Gaussian", 100, 'triangle_inequality_vertex', 'large'),
+        ("TruncatedGaussian", 2, 'joint_diagonal_milp', 'small'),
+        ("TruncatedGaussian", 2, 'triangle_inequality_vertex', 'small'),
+        ("TruncatedGaussian", 2, 'triangle_inequality_vertex', 'large'),
+        ("TruncatedGaussian", 100, 'joint_diagonal_milp', 'small'),
+        ("TruncatedGaussian", 100, 'triangle_inequality_vertex', 'small'),
+        ("TruncatedGaussian", 100, 'triangle_inequality_vertex', 'large'),
     ]
 
     for distribution, num_dims, method, M_setting in settings:

@@ -23,9 +23,9 @@ echo "---------------- num training samples: ${num_samples_training} -----------
 for rho in 2; do
 echo "---------------- W${rho} -------------------"
 
-echo "-- Gaussian --"
+echo "-- TruncatedGaussian --"
     echo "dim = 100, setting = 0"
-    python -m experiments.generate_results_highM --distribution Gaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
+    python -m experiments.generate_results_highM --distribution TruncatedGaussian --num_dims 100 --setting 0 --wasserstein_order "$rho" --method "$method" --num_samples_training "$num_samples_training" --random_seed "$seed"  
 
 done        
 done

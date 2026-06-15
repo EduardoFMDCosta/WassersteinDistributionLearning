@@ -17,7 +17,7 @@ class DataDrivenRadius:
     def __init__(
             self,
             wasserstein_order: int,
-            quantization: UncertainQuantization, 
+            quantization: UncertainQuantization,
             solver: Solver,
             compute_discrete_bound: bool = True,
             compute_moment_bound: bool = True,
@@ -42,10 +42,7 @@ class DataDrivenRadius:
             else:
                 raise
 
-        self.complement_interval = ProbabilityInterval(
-            lower=quantization.lb_complement_prob,
-            upper=quantization.ub_complement_prob,
-        )
+        self.complement_interval = quantization.complement_interval
 
     @property
     def moment_bound(self) -> torch.Tensor:

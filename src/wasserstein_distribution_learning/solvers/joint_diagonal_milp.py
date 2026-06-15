@@ -111,15 +111,15 @@ class JointDiagonalMilp(Solver):
             objective, w_opt = solve_milp_cvxpy(
                 cost=locs_to_region_cost,
                 empirical_distribution=quantization.probs,
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs
+                lower=quantization.interval.lower,
+                upper=quantization.interval.upper,
             )
         else:
             objective, w_opt = solve_milp_gurobi(
                 cost=locs_to_region_cost,
                 empirical_distribution=quantization.probs,
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs,
+                lower=quantization.interval.lower,
+                upper=quantization.interval.upper,
                 time_limit=self.time_limit,
             )
 

@@ -165,16 +165,16 @@ class JointOptimizationMilp(Solver):
                 inside_region_cost=inside_region_cost,
                 cross_location_cost=cross_location_cost,
                 empirical_distribution=quantization.probs,
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs
+                lower=quantization.interval.lower,
+                upper=quantization.interval.upper,
             )
         else:
             total_value, w_opt, diag_term_value, transport_term_value = solve_milp_gurobi(
                 inside_region_cost=inside_region_cost,
                 cross_location_cost=cross_location_cost,
                 empirical_distribution=quantization.probs,
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs,
+                lower=quantization.interval.lower,
+                upper=quantization.interval.upper,
                 time_limit=self.time_limit,
             )
 

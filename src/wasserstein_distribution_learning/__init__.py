@@ -1,7 +1,7 @@
 from .api import EmpiricalPartition, AmbiguitySetLearner
 from .dataclasses import AmbiguitySet, ProbabilityInterval
 from .sets import HyperRectangle, BoundedVoronoiPartition, HyperRectanglePartition
-from .quantization import FullLearningQuantization, ConditionalLearningQuantization
+from .quantization import Quantization, UncertainQuantization
 from .confidence import ClopperPearsonConfidence
 from .bound import fournier_radius
 
@@ -13,8 +13,8 @@ __all__ = [
     "HyperRectangle",
     "BoundedVoronoiPartition",
     "HyperRectanglePartition",
-    "FullLearningQuantization",
-    "ConditionalLearningQuantization",
+    "Quantization",
+    "UncertainQuantization",
     "ClopperPearsonConfidence",
     "fournier_radius",
 ]

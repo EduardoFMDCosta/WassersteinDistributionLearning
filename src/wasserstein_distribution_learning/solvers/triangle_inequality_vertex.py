@@ -92,7 +92,7 @@ def identify_sets(vertex: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor
     return sorted(I), sorted(J), free[0]
 
 def compute_bound_given_vertex(
-        quantization: UncertainQuantization,
+    quantization: UncertainQuantization,
         vertex: torch.Tensor,
         wasserstein_order: int,
         tol: float,
@@ -101,7 +101,12 @@ def compute_bound_given_vertex(
 ):
     cost_matrix = quantization.l2_distance_locs_to_region.pow(wasserstein_order)
 
-    I_base, J_base, free_idx = identify_sets(vertex=vertex, lower=quantization.lower_probs, upper=quantization.upper_probs, tol=tol)
+    I_base, J_base, free_idx = identify_sets(
+        vertex=vertex,
+        lower=quantization.interval.lower,
+        upper=quantization.interval.upper,
+        tol=tol,
+    )
 
     # Run the LP twice, once assuming free belongs to I, once to J
     best_obj = -float('inf')
@@ -122,15 +127,15 @@ def compute_bound_given_vertex(
         if not use_gurobi:
             result = lifted_lp_from_vertex_cvxpy(cost=cost_matrix,
                                                  p=vertex,
-                                                 lower=quantization.lower_probs,
-                                                 upper=quantization.upper_probs,
+                                                 lower=quantization.interval.lower,
+                                                 upper=quantization.interval.upper,
                                                  I=I,
                                                  J=J)
         else:
             result = lifted_lp_from_vertex_gurobi(cost=cost_matrix,
                                                   p=vertex,
-                                                  lower=quantization.lower_probs,
-                                                  upper=quantization.upper_probs,
+                                                  lower=quantization.interval.lower,
+                                                  upper=quantization.interval.upper,
                                                   I=I,
                                                   J=J,
                                                   time_limit=time_limit)
@@ -142,7 +147,7 @@ def compute_bound_given_vertex(
     return {"bound": torch.as_tensor(best_obj)}
 
 def compute_worst_to_vertex(
-        quantization: UncertainQuantization,
+    quantization: UncertainQuantization,
         initial_vertex: torch.Tensor,
         wasserstein_order: int,
         num_iterations: int,
@@ -165,7 +170,7 @@ def compute_worst_to_vertex(
 
         if num_iterations > 1:
             # Heuristic to generate candidate vertex
-            vertex = sample_vertex(lower=quantization.lower_probs, upper=quantization.upper_probs)
+            vertex = sample_vertex(lower=quantization.interval.lower, upper=quantization.interval.upper)
 
     return torch.as_tensor(best_obj).pow(1 / wasserstein_order)
 
@@ -189,7 +194,11 @@ class TriangleInequalityFromVertex(Solver):
     ) -> Result: # TODO to be improved, sequential formulation inconcenient for setting parameters
 
         # Get nearest vertex to empirical
-        vertex = euclidean_projection_to_vertex(w=quantization.probs, lower=quantization.lower_probs, upper=quantization.upper_probs)
+        vertex = euclidean_projection_to_vertex(
+            w=quantization.probs,
+            lower=quantization.interval.lower,
+            upper=quantization.interval.upper,
+        )
 
         return self.solve_for_vertex(quantization=quantization, vertex=vertex)
 
@@ -234,8 +243,8 @@ class TriangleInequalityFromVertexBySVA(TriangleInequalityFromVertex):
         
         vertex = self.sva.solve(    
             cost=quantization.l2_distance_locs_to_region.pow(self.wasserstein_order),
-            lower=quantization.lower_probs,
-            upper=quantization.upper_probs,
+            lower=quantization.interval.lower,
+            upper=quantization.interval.upper,
             empirical_marginal=quantization.probs
         ).w_opt
         return self.solve_for_vertex(quantization=quantization, vertex=vertex)

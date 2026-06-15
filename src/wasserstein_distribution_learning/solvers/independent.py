@@ -21,7 +21,11 @@ class IndependentSolver(Solver):
     ) -> Result:
 
         if self.compute_moment_bound:
-            moment_bound, _ = o_maximization(quantization.l2_radii.pow(self.wasserstein_order), quantization.lower_probs, quantization.upper_probs)
+            moment_bound, _ = o_maximization(
+                quantization.l2_radii.pow(self.wasserstein_order),
+                quantization.interval.lower,
+                quantization.interval.upper,
+            )
             moment_bound = moment_bound.pow(1 / self.wasserstein_order)
         else:
             moment_bound = torch.tensor(torch.nan)
@@ -31,8 +35,8 @@ class IndependentSolver(Solver):
 
             discrete_bound = self.discrete_solver.solve(
                 cost=cost_matrix.detach(),
-                lower=quantization.lower_probs,
-                upper=quantization.upper_probs,
+                lower=quantization.interval.lower,
+                upper=quantization.interval.upper,
                 empirical_marginal=quantization.probs 
             ).bound
         else:

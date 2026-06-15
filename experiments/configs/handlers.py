@@ -5,12 +5,6 @@ import os
 import torch
 
 from wasserstein_distribution_learning.solvers import get_solver, get_discrete_solver
-from wasserstein_distribution_learning.quantization import FullLearningQuantization, ConditionalLearningQuantization
-
-_LEARNING_CLASS_MAP = {
-    'full_learning': FullLearningQuantization,
-    'conditional_learning': ConditionalLearningQuantization,
-}
 
 dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,7 +44,7 @@ def parse_arguments(
     compute_moment_bound: bool = True, 
     compute_discrete_bound: bool = True,
     partition_type: str = 'voronoi',
-    learning_type: str = 'full_learning',
+    conditional: bool = False,
 ):
     parser = argparse.ArgumentParser(description='Setup experiments.')
     parser.add_argument('--random_seed', type=int, default=random_seed, help='Random seed for reproducibility.')
@@ -68,7 +62,7 @@ def parse_arguments(
     parser.add_argument('--compute_moment_bound', type=bool, default=compute_moment_bound, help='Compute moment-term of data-driven radius.')
     parser.add_argument('--compute_discrete_bound', type=bool, default=compute_discrete_bound, help='Compute discrete-term of data-driven radius.')
     parser.add_argument('--partition_type', type=str, default=partition_type, choices=['voronoi', 'hyperrectangle'], help='Type of partition to use for quantization.')
-    parser.add_argument('--learning_type', type=str, default=learning_type, choices=list(_LEARNING_CLASS_MAP.keys()), help='Learning mode: full distribution or conditional on bounded sets.')
+    parser.add_argument('--conditional', type=bool, default=conditional, help='If True, learn conditional distribution on bounded regions only.')
     args = parser.parse_args()
     return process_args(args)
 
@@ -76,8 +70,6 @@ def parse_arguments(
 def process_args(args):
     if not args.method in get_solver.supported_methods + get_discrete_solver.supported_methods:
         raise ValueError(f"Method {args.method} not supported. Supported methods: {get_solver.supported_methods}")
-
-    args.LearningClass = _LEARNING_CLASS_MAP.get(args.learning_type, FullLearningQuantization)
 
     if args.num_samples_training is None:
         args.num_samples_training = 1000 if args.num_samples < 5000 else 5000

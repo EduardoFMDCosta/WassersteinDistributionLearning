@@ -20,8 +20,8 @@ class NoTriangleIneq(Solver):
     ) -> Result:
         
         cost = quantization.l2_distance_locs_to_region.pow(self.wasserstein_order)
-        lower = quantization.lower_probs
-        upper = quantization.upper_probs
+        lower = quantization.interval.lower
+        upper = quantization.interval.upper
         empirical_marginal = quantization.probs
 
         n = cost.size(0)

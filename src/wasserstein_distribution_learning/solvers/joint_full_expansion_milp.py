@@ -28,10 +28,19 @@ class JointFullExpansionMilp(Solver):
         
         sum_of_power_rho = self.joint_optim_milp_solver.solve(quantization=quantization).bound.pow(self.wasserstein_order) / factor # we need to adjust for the factor penalty
 
-        moment, _ = o_maximization(cost=inside_region_cost, lower=quantization.lower_probs, upper=quantization.upper_probs)
+        moment, _ = o_maximization(
+            cost=inside_region_cost,
+            lower=quantization.interval.lower,
+            upper=quantization.interval.upper,
+        )
         moment = moment.pow(1 / self.wasserstein_order)
 
-        discrete = self.diagonal_constrained_tp_solver.solve(cost=cross_location_cost, lower=quantization.lower_probs, upper=quantization.upper_probs, empirical_marginal=quantization.probs).bound
+        discrete = self.diagonal_constrained_tp_solver.solve(
+            cost=cross_location_cost,
+            lower=quantization.interval.lower,
+            upper=quantization.interval.upper,
+            empirical_marginal=quantization.probs,
+        ).bound
 
         obj = (sum_of_power_rho + 2 * moment * discrete).pow(1 / self.wasserstein_order)
         return Result(bound=obj)

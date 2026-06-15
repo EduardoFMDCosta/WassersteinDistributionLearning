@@ -19,7 +19,7 @@ if __name__ == '__main__':
         beta=1e-6,
         method='stochastic_vertice_ascent',
         partition_type='hyperrectangle',
-        learning_type='conditional_learning',
+        conditional=True,
         save=False,
         plot=False,
     )
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         partition=partition,
         samples=samples,
         beta=args.beta,
-        learning_type=args.learning_type,
+        conditional=args.conditional,
         method=args.method,
         wasserstein_order=args.wasserstein_order,
     )

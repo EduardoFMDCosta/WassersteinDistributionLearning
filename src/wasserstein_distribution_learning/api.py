@@ -3,19 +3,12 @@ from typing import Optional, Union
 import torch
 
 from .sets import HyperRectangle, BoundedVoronoiPartition, HyperRectanglePartition, Partition
-from .quantization import Quantization, FullLearningQuantization, ConditionalLearningQuantization
+from .quantization import Quantization, UncertainQuantization
 from .confidence import ClopperPearsonConfidence
 from .bound import DataDrivenRadius, fournier_radius as _fournier_radius
 from .dataclasses import ProbabilityInterval, AmbiguitySet
 from .solvers import get_solver
 
-
-_LEARNING_TYPE_MAP = {
-    'full':               FullLearningQuantization,
-    'full_learning':      FullLearningQuantization,
-    'conditional':        ConditionalLearningQuantization,
-    'conditional_learning': ConditionalLearningQuantization,
-}
 
 _PARTITION_TYPE_MAP = {
     'voronoi':        BoundedVoronoiPartition,
@@ -55,21 +48,19 @@ class AmbiguitySetLearner:
         partition: Union['EmpiricalPartition', Partition],
         samples: torch.Tensor,
         beta: float,
-        learning_type: str = 'full',
+        conditional: bool = False,
         method: str = 'triangle_inequality_vertex',
         wasserstein_order: int = 2,
         ConfidenceClass: type = ClopperPearsonConfidence,
         time_limit: Optional[float] = None,
     ):
         _partition = partition.partition if isinstance(partition, EmpiricalPartition) else partition
-        if learning_type not in _LEARNING_TYPE_MAP:
-            raise ValueError(f"learning_type must be one of {list(_LEARNING_TYPE_MAP)}, got {learning_type!r}")
-        LearningType = _LEARNING_TYPE_MAP[learning_type]
 
-        quantization = LearningType(
+        quantization = UncertainQuantization(
             partition=_partition,
             samples=samples,
             beta=beta,
+            conditional=conditional,
             ConfidenceClass=ConfidenceClass,
         )
 

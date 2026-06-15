@@ -8,7 +8,7 @@ Learns a data-driven **Wasserstein ambiguity ball** around a discrete centre dis
 src/wasserstein_distribution_learning/
   api.py           — public API (EmpiricalPartition, AmbiguitySetLearner)
   sets.py          — HyperRectangle, Partition ABC, BoundedVoronoiPartition, HyperRectanglePartition
-  quantization.py  — Quantization, FullLearningQuantization, ConditionalLearningQuantization
+  quantization.py  — Quantization (single class with full/conditional mode)
   confidence.py    — ClopperPearsonConfidence
   bound.py         — DataDrivenRadius, fournier_radius
   utils.py         — _detect_modes (GMM BIC selection)
@@ -38,7 +38,7 @@ learner = AmbiguitySetLearner(
     partition,             # EmpiricalPartition or raw Partition
     samples,               # (N, d) tensor
     beta=1e-6,
-    learning_type='full',  # 'full' / 'full_learning' or 'conditional' / 'conditional_learning'
+  conditional=False,     # False: full distribution (M+1 atoms), True: conditional (M atoms)
     method='triangle_inequality_vertex',
     wasserstein_order=2,
 )
@@ -54,9 +54,9 @@ learner = AmbiguitySetLearner(
 - **HyperRectanglePartition**: GMM-seeded BSP. Steps: (1) BIC selects #modes, (2) tight bbox per mode, (3) greedy median-split on max-variance dim until M boxes. Regions are disjoint by construction. Centroids = mean of contained samples.
 
 ## Quantization modes
-- **FullLearningQuantization**: M+1 regions (M bounded + complement), Bonferroni over all. Solver sees M+1 atoms. Use for bounded support.
-- **ConditionalLearningQuantization**: Solver sees M atoms only. Complement tracked via separate CP interval. Use for unbounded support (Gaussian etc.).
-- `UncertainQuantization` is an alias for `FullLearningQuantization`.
+- **Quantization(conditional=False)**: M+1 regions (M bounded + complement), Bonferroni over all. Solver sees M+1 atoms. Use for bounded support.
+- **Quantization(conditional=True)**: Solver sees M atoms only. Complement tracked via separate CP interval. Use for unbounded support (Gaussian etc.).
+- Probability bounds are exposed via `quantization.interval` (`ProbabilityInterval`) and complement bounds via `quantization.complement_probability_interval`.
 
 ## Solvers
 `get_solver(method=...)` returns a `Solver`. Continuous-space methods live in `solvers/`; discrete solvers are wrapped by `IndependentSolver`. Key method: `triangle_inequality_vertex` (default, fast). MILP variants require gurobipy (pinned to 12.0.3).
@@ -69,7 +69,7 @@ Wraps solver call. Catches NaN/Inf/infeasible exceptions and returns `Result(bou
 
 ## Key invariants
 - The complement region is always the **last** element of all geometry tensors (`locs`, `l2_radii`, distance matrices).
-- `len(partition)` = M+1; `len(ConditionalLearningQuantization)` = M.
+- `len(partition)` = M+1; `len(quantization)` is M+1 in full mode and M in conditional mode.
 - `support` inside `Partition` is a `HyperRectangle` object; the public API accepts `torch.stack([lower, upper])` and converts internally.
 
 ## Running examples (from project root)

@@ -1,14 +1,16 @@
 import torch
 import matplotlib.pyplot as plt
 
-from quantization import UncertainQuantization
-from bound import DataDrivenRadius, fournier_radius
-from solvers import get_solver
+from wasserstein_distribution_learning import (
+    WassersteinDistributionLearning,
+    BoundedVoronoiPartition,
+    HyperRectanglePartition,
+    fournier_radius,
+)
 
 from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
-from experiments.partitions import get_partition
-from experiments.utils import load_quantization, load_samples
+from configs.construct import get_support_assumption, get_distribution
 
 if __name__ == '__main__':
     args = parse_arguments(
@@ -25,44 +27,51 @@ if __name__ == '__main__':
         save=False,
         plot=False,
     )
-    
-    solver = get_solver(method=args.method)
 
-    # Generate Partitioning
-    partition = get_partition(args=args, num_samples=args.num_samples_training, num_clusters=args.num_clusters)
+    support = get_support_assumption(**vars(args))
+    distribution = get_distribution(**vars(args))
 
-    # Generate Quantization
-    quantization = load_quantization(args=args, partition=partition, N=args.num_samples)
+    PartitionClass = (
+        HyperRectanglePartition if args.partition_type == 'hyperrectangle'
+        else BoundedVoronoiPartition
+    )
 
-    # Plot samples and clusterized distribution
+    pretraining_samples = distribution.sample((args.num_samples_training,))
+    samples = distribution.sample((args.num_samples,))
+
+    wdl = WassersteinDistributionLearning(
+        pretraining_samples=pretraining_samples,
+        samples=samples,
+        beta=args.beta,
+        support=support,
+        LearningClass=args.LearningClass,
+        PartitionClass=PartitionClass,
+        num_clusters=args.num_clusters,
+        method=args.method,
+        wasserstein_order=args.wasserstein_order,
+        compute_moment_bound=args.compute_moment_bound,
+        compute_discrete_bound=args.compute_discrete_bound,
+    )
+
     if args.plot:
-        samples_quantization = load_samples(args, N=args.num_samples)
         plot_quantization(
-            quantization=quantization, 
-            samples=samples_quantization,
-            title=f"M={args.num_clusters}, N={args.num_samples}"
+            quantization=wdl.ambiguity_set.center,
+            samples=samples,
+            title=f"M={args.num_clusters}, N={args.num_samples}",
         )
         plt.show()
 
-    # Compute bounds
     fournier_bound = fournier_radius(
-        support=partition.support, 
+        support=support,
         nsamples=args.num_samples + args.num_samples_training,
         wasserstein_order=args.wasserstein_order,
-        beta=args.beta
-    )
-    data_driven_output = DataDrivenRadius(
-        quantization=quantization, 
-        solver=solver,
-        wasserstein_order=args.wasserstein_order,
-        compute_discrete_bound=args.compute_discrete_bound, 
-        compute_moment_bound=args.compute_moment_bound
+        beta=args.beta,
     )
 
-    print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples} \n"
-          f"\t Fournier: {fournier_bound:.4f} \n"
-          f"\t Ours : {data_driven_output.radius:.4f} \n"
-        )
-
+    print(f"Number of clusters (M) / num_samples (N): {args.num_clusters} / {args.num_samples}")
+    print(f"\t Fournier: {fournier_bound:.4f}")
+    print(f"\t Ours (radius): {wdl.ambiguity_set.radius:.4f}")
+    if wdl.complement_interval is not None:
+        print(f"\t Complement interval: [{wdl.complement_interval.lower:.4f}, {wdl.complement_interval.upper:.4f}]")
     print("Process finished.")
 

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wasserstein-distribution-learning"
+version = "0.1.0"
+description = "Data-driven Wasserstein ambiguity sets from samples"
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0",
+    "torch-kmeans>=0.2",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "POT>=0.9",
+    "cvxpy>=1.3",
+    "stable-trunc-gaussian>=1.3",
+    "tqdm>=4.60",
+]
+
+[project.optional-dependencies]
+milp = ["gurobipy>=10"]
+dev  = ["matplotlib", "seaborn", "medmnist", "ucimlrepo", "pandas"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

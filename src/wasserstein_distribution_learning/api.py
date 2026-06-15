@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 
@@ -12,9 +12,9 @@ from .solvers import get_solver
 
 _LEARNING_TYPE_MAP = {
     'full':               FullLearningQuantization,
-    'full_learning':      FullLearningQuantization,       # handlers.py alias
+    'full_learning':      FullLearningQuantization,
     'conditional':        ConditionalLearningQuantization,
-    'conditional_learning': ConditionalLearningQuantization,  # handlers.py alias
+    'conditional_learning': ConditionalLearningQuantization,
 }
 
 _PARTITION_TYPE_MAP = {
@@ -46,33 +46,129 @@ class AmbiguitySet:
     radius: torch.Tensor
 
 
-class WassersteinDistributionLearning:
-    """Data-driven Wasserstein ambiguity set learning.
+# ---------------------------------------------------------------------------
+# API 1 — partition step
+# ---------------------------------------------------------------------------
+
+class EmpiricalPartition:
+    """Build a data-driven partition of the sample space from pretraining data.
+
+    This is the *geometry* step: given a cloud of pretraining samples it
+    produces M bounded regions that tile the relevant part of the space.
+    The result can be inspected on its own, or passed directly to
+    :class:`AmbiguitySetLearner` to learn a Wasserstein ambiguity set from a
+    separate set of evaluation samples.
 
     Parameters
     ----------
     pretraining_samples : torch.Tensor, shape (N_pre, d)
-        Samples used to build the partition (cluster centres).
+        Samples used to determine the partition geometry (cluster centres and
+        region extents).  These are *not* used for probability estimation.
+    num_clusters : int
+        Number of bounded regions M.
+    support : torch.Tensor of shape (2, d), optional
+        Known bounded support given as
+        ``torch.stack([lower_bounds, upper_bounds])``.
+        Pass ``None`` for an unbounded (or unknown) support.
+    partition_type : {'voronoi', 'hyperrectangle'}
+        Geometry of the regions.
+        ``'voronoi'`` uses K-means centres with bounded Voronoi cells.
+        ``'hyperrectangle'`` uses a GMM-seeded binary space partition into
+        axis-aligned boxes.
+
+    Attributes
+    ----------
+    partition : Partition
+        The underlying partition object (``BoundedVoronoiPartition`` or
+        ``HyperRectanglePartition``).  Pass this to
+        :class:`AmbiguitySetLearner` when you want to handle the two steps
+        separately.
+    locs : torch.Tensor, shape (M, d)
+        Centroid of each bounded region.
+    num_regions : int
+        Number of bounded regions M.
+
+    Examples
+    --------
+    >>> ep = EmpiricalPartition(X_pre, num_clusters=50,
+    ...                         support=torch.stack([lo, hi]))
+    >>> ep.locs          # (50, d) centroid tensor
+    >>> ep.num_regions   # 50
+    >>> # pass to the learner:
+    >>> learner = AmbiguitySetLearner(ep, samples=X, beta=1e-6)
+    """
+
+    def __init__(
+        self,
+        pretraining_samples: torch.Tensor,
+        num_clusters: int = 100,
+        support: Optional[torch.Tensor] = None,
+        partition_type: str = 'voronoi',
+    ):
+        if support is not None:
+            _support = HyperRectangle(lower=support[0], upper=support[1])
+        else:
+            _support = None
+
+        if partition_type not in _PARTITION_TYPE_MAP:
+            raise ValueError(
+                f"partition_type must be one of {list(_PARTITION_TYPE_MAP)}, "
+                f"got {partition_type!r}"
+            )
+        PartitionType = _PARTITION_TYPE_MAP[partition_type]
+
+        self.partition: Partition = PartitionType.from_samples(
+            support=_support,
+            samples=pretraining_samples,
+            M=num_clusters,
+        )
+
+    @property
+    def locs(self) -> torch.Tensor:
+        """Centroid of each bounded region, shape (M, d)."""
+        return self.partition.region_locs
+
+    @property
+    def num_regions(self) -> int:
+        """Number of bounded regions M."""
+        return self.partition.region_locs.shape[0]
+
+
+# ---------------------------------------------------------------------------
+# API 2 — learning step
+# ---------------------------------------------------------------------------
+
+class AmbiguitySetLearner:
+    """Learn a data-driven Wasserstein ambiguity set from samples given a partition.
+
+    This is the *statistical* step: given a pre-built partition and a set of
+    evaluation samples it estimates empirical probabilities with Clopper-Pearson
+    confidence intervals and then solves the optimisation problem that yields the
+    data-driven Wasserstein radius.
+
+    The partition can come from :class:`EmpiricalPartition` (pass the instance
+    directly, not ``instance.partition``) or be any :class:`Partition` object
+    supplied by the user.
+
+    Parameters
+    ----------
+    partition : EmpiricalPartition or Partition
+        The partition that defines the geometry.  If an
+        :class:`EmpiricalPartition` is passed its ``partition`` attribute is
+        used automatically.
     samples : torch.Tensor, shape (N, d)
-        Samples used to estimate the probability weights and compute the
-        data-driven radius.
+        Evaluation samples used to estimate probability weights and compute
+        the data-driven radius.
     beta : float
         Overall confidence level.  The returned ambiguity set contains the
         true distribution with probability at least 1 − beta.
-    support : torch.Tensor of shape (2, d), optional
-        Known (or assumed) bounded support, given as
-        ``torch.stack([lower_bounds, upper_bounds])``.  Pass ``None`` to
-        indicate an unbounded support; the radius will naturally be infinite.
     learning_type : {'full', 'conditional'}
-        ``'full'``: treat all N samples as unconditional observations
-        (complement mass becomes the (M+1)-th atom of the centre distribution).
-        ``'conditional'``: N_pre samples define the partition, N samples are
-        drawn conditional on lying in the bounded region; complement probability
-        is reported separately via ``complement_interval``.
-    partition_type : {'voronoi', 'hyperrectangle'}
-        Geometry used to build the partition of the support.
-    num_clusters : int
-        Number of bounded partition regions M.
+        ``'full'``: all N samples are treated as unconditional observations;
+        the complement mass becomes the (M+1)-th atom of the centre
+        distribution (appropriate for bounded support).
+        ``'conditional'``: samples are treated as conditional on lying in the
+        bounded regions; complement probability is reported separately via
+        ``complement_interval`` (appropriate for unbounded support).
     method : str
         Solver method name (e.g. ``'triangle_inequality_vertex'``).
     wasserstein_order : int
@@ -85,55 +181,43 @@ class WassersteinDistributionLearning:
     Attributes
     ----------
     ambiguity_set : AmbiguitySet
-        The learned ambiguity set (``center`` + ``radius``).
+        The learned ambiguity set (``center`` discrete distribution + ``radius``).
     complement_interval : ProbabilityInterval or None
-        Clopper-Pearson bounds for P(X outside bounded region).
+        Clopper-Pearson bounds on P(X outside bounded region).
         ``None`` for ``learning_type='full'``; set for ``'conditional'``.
-    fournier_radius : float
-        Minimax-optimal Fournier–Guillin radius for reference.
+
+    Examples
+    --------
+    >>> ep = EmpiricalPartition(X_pre, num_clusters=50)
+    >>> learner = AmbiguitySetLearner(ep, samples=X, beta=1e-6,
+    ...                               learning_type='conditional')
+    >>> learner.ambiguity_set.radius
+    >>> learner.complement_interval
     """
 
     def __init__(
         self,
-        wasserstein_order: int,
-        pretraining_samples: torch.Tensor,
+        partition: Union['EmpiricalPartition', Partition],
         samples: torch.Tensor,
         beta: float,
-        support: Optional[torch.Tensor],
-        num_clusters: int,
-        learning_type: str = 'full_learning',
-        partition_type: str = 'voronoi',
+        learning_type: str = 'full',
         method: str = 'triangle_inequality_vertex',
+        wasserstein_order: int = 2,
         ConfidenceClass: type = ClopperPearsonConfidence,
         time_limit: Optional[float] = None,
     ):
-        # Convert support tensor (2, d) → HyperRectangle
-        if support is not None:
-            _support = HyperRectangle(lower=support[0], upper=support[1])
-        else:
-            _support = None
+        # Accept either an EmpiricalPartition wrapper or a raw Partition
+        _partition = partition.partition if isinstance(partition, EmpiricalPartition) else partition
 
-        # Resolve type strings
         if learning_type not in _LEARNING_TYPE_MAP:
             raise ValueError(
-                f"learning_type must be one of {list(_LEARNING_TYPE_MAP)}, got {learning_type!r}"
+                f"learning_type must be one of {list(_LEARNING_TYPE_MAP)}, "
+                f"got {learning_type!r}"
             )
         LearningType = _LEARNING_TYPE_MAP[learning_type]
 
-        if partition_type not in _PARTITION_TYPE_MAP:
-            raise ValueError(
-                f"partition_type must be one of {list(_PARTITION_TYPE_MAP)}, got {partition_type!r}"
-            )
-        PartitionType = _PARTITION_TYPE_MAP[partition_type]
-
-        partition: Partition = PartitionType.from_samples(
-            support=_support,
-            samples=pretraining_samples,
-            M=num_clusters,
-        )
-
         quantization = LearningType(
-            partition=partition,
+            partition=_partition,
             samples=samples,
             beta=beta,
             ConfidenceClass=ConfidenceClass,
@@ -151,7 +235,6 @@ class WassersteinDistributionLearning:
             center=quantization,
             radius=result.radius,
         )
-
         self.complement_interval = (
             ProbabilityInterval(
                 lower=result.lb_complement_prob,
@@ -160,7 +243,102 @@ class WassersteinDistributionLearning:
             if isinstance(quantization, ConditionalLearningQuantization)
             else None
         )
+        self._result = result
 
+
+# ---------------------------------------------------------------------------
+# API 3 — full pipeline
+# ---------------------------------------------------------------------------
+
+class WassersteinDistributionLearning:
+    """End-to-end data-driven Wasserstein ambiguity set learning.
+
+    Combines :class:`EmpiricalPartition` (partition step) and
+    :class:`AmbiguitySetLearner` (learning step) into a single call.
+
+    Parameters
+    ----------
+    pretraining_samples : torch.Tensor, shape (N_pre, d)
+        Samples used to build the partition (cluster centres).
+    samples : torch.Tensor, shape (N, d)
+        Samples used to estimate probability weights and compute the radius.
+    beta : float
+        Overall confidence level (1 − beta coverage guarantee).
+    support : torch.Tensor of shape (2, d), optional
+        Bounded support as ``torch.stack([lower_bounds, upper_bounds])``.
+        Pass ``None`` for unbounded support (radius will be ``inf`` for
+        ``learning_type='full'``).
+    learning_type : {'full', 'conditional'}
+        See :class:`AmbiguitySetLearner`.
+    partition_type : {'voronoi', 'hyperrectangle'}
+        See :class:`EmpiricalPartition`.
+    num_clusters : int
+        Number of bounded regions M.
+    method : str
+        Solver method name (e.g. ``'triangle_inequality_vertex'``).
+    wasserstein_order : int
+        Wasserstein order p (1 or 2).
+    ConfidenceClass : type
+        Confidence interval class (default: ``ClopperPearsonConfidence``).
+    time_limit : float, optional
+        Solver time limit in seconds.
+
+    Attributes
+    ----------
+    empirical_partition : EmpiricalPartition
+        The partition built from ``pretraining_samples``.
+    ambiguity_set : AmbiguitySet
+        The learned ambiguity set.
+    complement_interval : ProbabilityInterval or None
+        Complement probability bounds (``None`` for ``learning_type='full'``).
+    fournier_radius : float
+        Minimax-optimal Fournier–Guillin radius for reference.
+
+    Examples
+    --------
+    >>> wdl = WassersteinDistributionLearning(
+    ...     pretraining_samples=X_pre, samples=X, beta=1e-6)
+    >>> wdl.ambiguity_set.radius
+    >>> wdl.fournier_radius
+    """
+
+    def __init__(
+        self,
+        pretraining_samples: torch.Tensor,
+        samples: torch.Tensor,
+        beta: float,
+        support: Optional[torch.Tensor] = None,
+        learning_type: str = 'full',
+        partition_type: str = 'voronoi',
+        num_clusters: int = 100,
+        method: str = 'triangle_inequality_vertex',
+        wasserstein_order: int = 2,
+        ConfidenceClass: type = ClopperPearsonConfidence,
+        time_limit: Optional[float] = None,
+    ):
+        self.empirical_partition = EmpiricalPartition(
+            pretraining_samples=pretraining_samples,
+            num_clusters=num_clusters,
+            support=support,
+            partition_type=partition_type,
+        )
+
+        _learner = AmbiguitySetLearner(
+            partition=self.empirical_partition,
+            samples=samples,
+            beta=beta,
+            learning_type=learning_type,
+            method=method,
+            wasserstein_order=wasserstein_order,
+            ConfidenceClass=ConfidenceClass,
+            time_limit=time_limit,
+        )
+
+        self.ambiguity_set      = _learner.ambiguity_set
+        self.complement_interval = _learner.complement_interval
+
+        # Retrieve the HyperRectangle support (if any) for fournier_radius
+        _support = self.empirical_partition.partition.support
         self.fournier_radius: float = _fournier_radius(
             support=_support,
             nsamples=pretraining_samples.shape[0] + samples.shape[0],
@@ -168,5 +346,5 @@ class WassersteinDistributionLearning:
             beta=beta,
         )
 
-        self._result = result
+        self._learner = _learner
 

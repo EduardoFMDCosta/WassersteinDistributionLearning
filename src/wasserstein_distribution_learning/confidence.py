@@ -21,37 +21,7 @@ class Confidence:
     def _get_upper_proba(self) -> torch.Tensor:
         pass
 
-class DuchiConfidence(Confidence):
-    def __init__(self, beta: float, n_set: torch.Tensor, n: int):
-        super().__init__(beta=beta, n_set=n_set, n=n)
-
-    def _get_epsilon(self):
-        #See Proposition 2 in Duchi, 2025 (https://arxiv.org/pdf/2503.00220)
-
-        first_term = 4/3 * math.log(1/self.beta) / self.n
-        second_term = first_term ** 2 + 2 * (1 - self.empirical_proba) * self.empirical_proba * math.log(1/self.beta) / self.n
-        return first_term + torch.sqrt(second_term)
-
-    def _get_lower_proba(self):
-        return torch.clamp(self.empirical_proba - self._get_epsilon(), min=0.0)
-
-    def _get_upper_proba(self):
-        return torch.clamp(self.empirical_proba + self._get_epsilon(), max=1.0)
-
-
-class HoeffdingConfidence(Confidence):
-    def __init__(self, beta: float, n_set: torch.Tensor, n: int):
-        super().__init__(beta=beta, n_set=n_set, n=n)
-
-    def _get_epsilon(self):
-        return (math.log(2 / self.beta) / (2 * self.n)) ** 0.5
-
-    def _get_lower_proba(self):
-        return torch.clamp(self.empirical_proba - self._get_epsilon(), min=0.0)
-
-    def _get_upper_proba(self):
-        return torch.clamp(self.empirical_proba + self._get_epsilon(), max=1.0)
-
+    
 
 class ClopperPearsonConfidence(Confidence):
     def __init__(self, beta: float, n_set: torch.Tensor, n: int):

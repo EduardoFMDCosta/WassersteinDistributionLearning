@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Tuple, Optional, Union
+import heapq
 import torch
 from torch_kmeans import KMeans
 
 import numpy as np
 from scipy.spatial import Voronoi
 from scipy.spatial.distance import pdist
+
+from .utils import _detect_modes
 
 
 class HyperRectangle:
@@ -153,110 +156,135 @@ class HyperRectanglePartition(Partition):
     @classmethod
     def from_samples(
             cls,
-            support: Optional['HyperRectangle'], 
-            samples: torch.Tensor, 
-            M: int, 
-            radius_scale_factor: float = 1.5
+            support: Optional['HyperRectangle'],
+            samples: torch.Tensor,
+            M: int,
+            n_modes_max: int = 5,
+            **kwargs
         ):
+        """Build a disjoint hyper-rectangle partition via GMM-seeded BSP.
+
+        Algorithm
+        ---------
+        1. Fit a GMM for k = 1 … min(n_modes_max, M) and pick k* by BIC.
+        2. Assign every sample to its most-likely component; build one tight
+           bounding box per component.  These are guaranteed to be disjoint
+           because they start as bounding boxes of *disjoint* sample subsets.
+        3. Iteratively split the box that contains the *most* samples (greedy
+           max-heap).  Each split:
+             - chooses the dimension with the highest sample variance in the box
+               (most informative split direction);
+             - cuts at the *median* sample value along that dimension
+               (guarantees the two children share the samples as evenly as
+               possible, avoiding degenerate empty-child situations).
+           The two children are axis-aligned halves of the parent, so they are
+           disjoint by construction — no intersection checks needed.
+        4. Stop when the total number of boxes reaches M (or when no box can be
+           split further).
+        5. Centroids are set to the mean of samples inside each final box.
+        """
         assert len(samples.shape) == 2, "Samples must be a 2D tensor (num_samples, num_features)"
         nsamples, ndim = samples.shape
+        M = min(M, nsamples)
 
-        # 1. Handle unknown support
+        # --- 0. Support ---
         if support is None:
-            # Assuming HyperRectangle takes lower and upper as init arguments
-            global_lower = samples.min(dim=0).values
-            global_upper = samples.max(dim=0).values
-            support = HyperRectangle(lower=global_lower, upper=global_upper)
-            
+            support = HyperRectangle(
+                lower=samples.min(dim=0).values,
+                upper=samples.max(dim=0).values,
+            )
         assert support.ndim == ndim, "Support dimension must match sample features"
 
-        # 2. Perform Clustering (Reusing your K-Means logic)
-        if nsamples > M:
-            kmeans_torch = KMeans(n_clusters=M)
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            if device.type == "cuda":
-                X_np = samples.detach().cpu().numpy().astype(np.float32)
-                kmeans = faiss.Kmeans(d=ndim, k=M, niter=20, verbose=False, gpu=True)
-                kmeans.train(X_np)
-                
-                centroids_np = kmeans.centroids
-                _, labels_np = kmeans.index.search(X_np, 1)
+        # --- 1. Mode detection via GMM + BIC ---
+        n_modes = _detect_modes(
+            samples.detach().cpu().numpy().astype(np.float64),
+            n_max=min(n_modes_max, M),
+        )
 
-                cluster_locs = torch.from_numpy(centroids_np).to(samples.device)
-                labels = torch.from_numpy(labels_np[:, 0]).to(samples.device)
-            else:
-                with torch.no_grad():
-                    cluster_result = kmeans_torch(samples.unsqueeze(0).float())
-                cluster_locs = cluster_result.centers.squeeze(0).float()
-                labels = cluster_result.labels.squeeze(0)
+        # --- 2. Initial boxes: one per GMM component ---
+        if n_modes > 1:
+            try:
+                from sklearn.mixture import GaussianMixture
+                mode_labels = GaussianMixture(
+                    n_components=n_modes, random_state=0
+                ).fit_predict(samples.detach().cpu().numpy())
+                mode_labels = torch.from_numpy(mode_labels).to(samples.device)
+            except Exception:
+                n_modes = 1
+                mode_labels = torch.zeros(nsamples, dtype=torch.long, device=samples.device)
         else:
-            M = nsamples
-            cluster_locs = samples.clone()
-            labels = torch.arange(M, device=samples.device)
+            mode_labels = torch.zeros(nsamples, dtype=torch.long, device=samples.device)
 
-        # 3. Construct Initial Tight Bounding Boxes
-        lower = torch.zeros((M, ndim), device=samples.device)
-        upper = torch.zeros((M, ndim), device=samples.device)
-        
-        for i in range(M):
-            mask = (labels == i)
-            if mask.sum() > 0:
-                lower[i] = samples[mask].min(dim=0).values
-                upper[i] = samples[mask].max(dim=0).values
-            else:
-                lower[i] = cluster_locs[i].clone()
-                upper[i] = cluster_locs[i].clone()
+        # Build one tight bounding box per non-empty mode.
+        # Bounding boxes of disjoint sample subsets are already disjoint.
+        # heap entries: (-n_samples_in_box, unique_id, lo, hi, idx_tensor)
+        # unique_id breaks ties so heapq never compares tensors.
+        heap: list = []
+        uid = 0
+        all_idx = torch.arange(nsamples, device=samples.device)
+        for k in range(n_modes):
+            idx = all_idx[mode_labels == k]
+            if len(idx) == 0:
+                continue
+            pts = samples[idx]
+            heapq.heappush(heap, (-len(idx), uid, pts.min(0).values, pts.max(0).values, idx))
+            uid += 1
 
-        # 4. Enforce Disjointness (Heuristic Overlap Resolution)
-        # We iterate pairwise. If two boxes overlap, we split them along the dimension
-        # where their centroids are furthest apart, creating a strict boundary.
-        max_iters = M * M  # Safeguard against infinite loops
-        for _ in range(max_iters):
-            has_overlap = False
-            for i in range(M):
-                for j in range(i + 1, M):
-                    # Check intersection bounding box
-                    overlap_lower = torch.max(lower[i], lower[j])
-                    overlap_upper = torch.min(upper[i], upper[j])
-                    
-                    # If overlap_lower < overlap_upper in ALL dimensions, an overlap exists
-                    if torch.all(overlap_lower < overlap_upper):
-                        has_overlap = True
-                        
-                        # Find the dimension where centroids are furthest apart to perform the cut
-                        dist = torch.abs(cluster_locs[i] - cluster_locs[j])
-                        split_dim = torch.argmax(dist).item()
-                        
-                        # Define the boundary halfway between the two centroids along the split dimension
-                        split_val = (cluster_locs[i, split_dim] + cluster_locs[j, split_dim]) / 2.0
-                        
-                        # Shrink the bounding boxes to respect the new boundary
-                        if cluster_locs[i, split_dim] < cluster_locs[j, split_dim]:
-                            upper[i, split_dim] = min(upper[i, split_dim].item(), split_val)
-                            lower[j, split_dim] = max(lower[j, split_dim].item(), split_val)
-                        else:
-                            lower[i, split_dim] = max(lower[i, split_dim].item(), split_val)
-                            upper[j, split_dim] = min(upper[j, split_dim].item(), split_val)
-            
-            if not has_overlap:
+        # --- 3. BSP: split until M boxes ---
+        while len(heap) < M:
+            neg_n, _, lo, hi, idx = heapq.heappop(heap)
+            pts = samples[idx]
+
+            if len(idx) < 2:
+                # Box has only one sample; can't split — put back and stop.
+                heapq.heappush(heap, (neg_n, uid, lo, hi, idx))
+                uid += 1
                 break
 
-        # 5. Apply scale factor and clamp to support limits
-        if radius_scale_factor != 1.0:
-            centers = (lower + upper) / 2.0
-            half_widths = ((upper - lower) / 2.0) * radius_scale_factor
-            lower = centers - half_widths
-            upper = centers + half_widths
+            # Split dimension: highest variance among samples in this box.
+            d = int(pts.var(dim=0).argmax().item())
 
-        # Clamp bounding boxes strictly inside the support
-        lower = torch.max(lower, support.lower.to(samples.device))
-        upper = torch.min(upper, support.upper.to(samples.device))
+            # Split value: median → each child gets roughly half the samples.
+            split_val = float(pts[:, d].median().item())
+
+            left_mask  = pts[:, d] <= split_val
+            right_mask = ~left_mask
+
+            # Guard: if all samples fall on one side (e.g. all identical in d),
+            # skip this box — it can't be split meaningfully.
+            if not left_mask.any() or not right_mask.any():
+                heapq.heappush(heap, (neg_n, uid, lo, hi, idx))
+                uid += 1
+                break
+
+            for mask in (left_mask, right_mask):
+                child_idx = idx[mask]
+                child_pts = samples[child_idx]
+                heapq.heappush(
+                    heap,
+                    (-len(child_idx), uid,
+                     child_pts.min(0).values,
+                     child_pts.max(0).values,
+                     child_idx)
+                )
+                uid += 1
+
+        # --- 4. Extract final boxes ---
+        n_boxes = len(heap)
+        cluster_locs = torch.zeros(n_boxes, ndim, device=samples.device, dtype=samples.dtype)
+        lower        = torch.zeros(n_boxes, ndim, device=samples.device, dtype=samples.dtype)
+        upper        = torch.zeros(n_boxes, ndim, device=samples.device, dtype=samples.dtype)
+
+        for k, (_, _, lo, hi, idx) in enumerate(heap):
+            cluster_locs[k] = samples[idx].mean(dim=0)  # centroid = mean of box samples
+            lower[k]        = lo
+            upper[k]        = hi
 
         return cls(
             support=support,
             region_locs=cluster_locs,
             region_lower=lower,
-            region_upper=upper
+            region_upper=upper,
         )
 
 

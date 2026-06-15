@@ -18,7 +18,7 @@ Typical usage
 from .api import WassersteinDistributionLearning, AmbiguitySet, ProbabilityInterval
 from .sets import HyperRectangle, BoundedVoronoiPartition, HyperRectanglePartition
 from .quantization import FullLearningQuantization, ConditionalLearningQuantization
-from .confidence import ClopperPearsonConfidence, HoeffdingConfidence, DuchiConfidence
+from .confidence import ClopperPearsonConfidence
 from .bound import fournier_radius
 
 __all__ = [
@@ -31,7 +31,5 @@ __all__ = [
     "FullLearningQuantization",
     "ConditionalLearningQuantization",
     "ClopperPearsonConfidence",
-    "HoeffdingConfidence",
-    "DuchiConfidence",
     "fournier_radius",
 ]

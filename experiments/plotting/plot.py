@@ -7,7 +7,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import ScalarFormatter
 
 from wasserstein_distribution_learning.quantization import Quantization
-from wasserstein_distribution_learning.sets import BoundedVoronoiPartition, HyperRectangle
+from wasserstein_distribution_learning.sets import BoundedVoronoiPartition, HyperRectanglePartition, HyperRectangle
 from wasserstein_distribution_learning.confidence import Confidence
 import plotting.utils_plot as utils_plot  # noqa: E402 (experiments/ on sys.path)
 
@@ -146,6 +146,15 @@ def plot_partition(
             max_diameters=partition.region_l2_radii * 2,
             ax=ax,
             face_alpha=0.15
+        )
+
+    # Plot HyperRectangle cells
+    if isinstance(partition, HyperRectanglePartition):
+        ax = utils_plot.plot_hyperrectangle_partition_2d(
+            region_lower=partition.region_lower,
+            region_upper=partition.region_upper,
+            ax=ax,
+            face_alpha=0.3,
         )
 
     if plot_locs:

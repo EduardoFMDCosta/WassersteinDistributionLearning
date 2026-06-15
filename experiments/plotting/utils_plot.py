@@ -126,6 +126,55 @@ def plot_clipped_voronoi_2d(
         plt.tight_layout()
     return ax
 
+
+def plot_hyperrectangle_partition_2d(
+    region_lower: torch.Tensor,
+    region_upper: torch.Tensor,
+    face_alpha: float = 0.15,
+    edge_width: float = 1.0,
+    ax=None,
+):
+    """
+    Plot a 2D hyper-rectangle partition, one coloured rectangle per region.
+
+    Parameters
+    ----------
+    region_lower : torch.Tensor, shape (M, 2)
+    region_upper : torch.Tensor, shape (M, 2)
+    """
+    from matplotlib.patches import Rectangle
+    from matplotlib.cm import get_cmap
+
+    M = region_lower.shape[0]
+    cmap = get_cmap("tab20", M)
+
+    created_ax = False
+    if ax is None:
+        import matplotlib.pyplot as _plt
+        _, ax = _plt.subplots(figsize=(6, 6))
+        created_ax = True
+
+    lower_np = region_lower.detach().cpu().numpy()
+    upper_np = region_upper.detach().cpu().numpy()
+
+    for i in range(M):
+        xy = lower_np[i]
+        w  = upper_np[i, 0] - lower_np[i, 0]
+        h  = upper_np[i, 1] - lower_np[i, 1]
+        color = cmap(i)
+        rect = Rectangle(xy, w, h,
+                         linewidth=edge_width,
+                         edgecolor="k",
+                         facecolor=color,
+                         alpha=face_alpha)
+        ax.add_patch(rect)
+
+    ax.set_aspect("equal", adjustable="box")
+    if created_ax:
+        import matplotlib.pyplot as _plt
+        _plt.tight_layout()
+    return ax
+
 def set_style():
     plt.rcParams.update({
         "text.usetex": True,

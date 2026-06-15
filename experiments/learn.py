@@ -10,8 +10,8 @@ from configs.construct import get_support_assumption, get_distribution
 if __name__ == '__main__':
     args = parse_arguments(
         random_seed=0,
-        distribution="UCI-Turbine",
-        num_dims=11,
+        distribution="TruncatedGaussian",
+        num_dims=2,
         setting=0,
         num_samples=1000,
         num_samples_training=1000,
@@ -20,7 +20,7 @@ if __name__ == '__main__':
         beta=1e-6,
         method='triangle_inequality_vertex',
         save=False,
-        plot=False,
+        plot=True,
     )
 
     support = get_support_assumption(**vars(args))

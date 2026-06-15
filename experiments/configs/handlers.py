@@ -53,9 +53,8 @@ def parse_arguments(
     compute_moment_bound: bool = True, 
     compute_discrete_bound: bool = True,
     partition_type: str = 'voronoi',
-    LearningClass: type = FullLearningQuantization
+    learning_type: str = 'full_learning',
 ):
-    learning_type_default = _LEARNING_CLASS_TO_STR.get(LearningClass, 'full_learning')
     parser = argparse.ArgumentParser(description='Setup experiments.')
     parser.add_argument('--random_seed', type=int, default=random_seed, help='Random seed for reproducibility.')
     parser.add_argument('--distribution', type=str, default=distribution, help='Distribution to generate samples.')
@@ -72,7 +71,7 @@ def parse_arguments(
     parser.add_argument('--compute_moment_bound', type=bool, default=compute_moment_bound, help='Compute moment-term of data-driven radius.')
     parser.add_argument('--compute_discrete_bound', type=bool, default=compute_discrete_bound, help='Compute discrete-term of data-driven radius.')
     parser.add_argument('--partition_type', type=str, default=partition_type, choices=['voronoi', 'hyperrectangle'], help='Type of partition to use for quantization.')
-    parser.add_argument('--learning_type', type=str, default=learning_type_default, choices=list(_LEARNING_CLASS_MAP.keys()), help='Learning mode: full distribution or conditional on bounded sets.')
+    parser.add_argument('--learning_type', type=str, default=learning_type, choices=list(_LEARNING_CLASS_MAP.keys()), help='Learning mode: full distribution or conditional on bounded sets.')
     args = parser.parse_args()
 
     return process_args(args)

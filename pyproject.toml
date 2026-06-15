@@ -20,7 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 milp = ["gurobipy>=10"]
-dev  = ["matplotlib", "seaborn", "medmnist", "ucimlrepo", "pandas"]
+dev  = ["matplotlib", "seaborn", "medmnist", "ucimlrepo", "pandas", "scikit-learn"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

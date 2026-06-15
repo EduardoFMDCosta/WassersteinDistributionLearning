@@ -10,3 +10,4 @@ tables/
 samples/
 logging/
 data/
+*.egg-info/

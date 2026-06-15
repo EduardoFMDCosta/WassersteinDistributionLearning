@@ -120,7 +120,11 @@ class HyperRectanglePartition(Partition):
 
     @property
     def l1_radii(self) -> torch.Tensor:
-        return torch.cat((self.region_l1_radii, torch.sum(self.support.width).unsqueeze(0) / 2.))
+        if self.support is not None:
+            outer_l1_radius = torch.sum(self.support.width).unsqueeze(0) / 2.
+        else:
+            outer_l1_radius = torch.tensor([torch.inf], dtype=self.region_l1_radii.dtype)
+        return torch.cat((self.region_l1_radii, outer_l1_radius))
 
     def contains(self, points: torch.Tensor) -> torch.Tensor:
         return torch.all((points.unsqueeze(1) >= self.region_lower) & (points.unsqueeze(1) <= self.region_upper), dim=-1)
@@ -138,12 +142,11 @@ class HyperRectanglePartition(Partition):
         nsamples, ndim = samples.shape
         M = min(M, nsamples)
 
-        if support is None:
-            support = HyperRectangle(
-                lower=samples.min(dim=0).values,
-                upper=samples.max(dim=0).values,
-            )
-        assert support.ndim == ndim
+        bsp_bound = support if support is not None else HyperRectangle(
+            lower=samples.min(dim=0).values,
+            upper=samples.max(dim=0).values,
+        )
+        assert bsp_bound.ndim == ndim
 
         n_modes = _detect_modes(
             samples.detach().cpu().numpy().astype(np.float64),

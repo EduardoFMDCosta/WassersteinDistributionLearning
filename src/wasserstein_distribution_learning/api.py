@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Optional, Union
 
 import torch
@@ -7,6 +6,7 @@ from .sets import HyperRectangle, BoundedVoronoiPartition, HyperRectanglePartiti
 from .quantization import Quantization, FullLearningQuantization, ConditionalLearningQuantization
 from .confidence import ClopperPearsonConfidence
 from .bound import DataDrivenRadius, fournier_radius as _fournier_radius
+from .dataclasses import ProbabilityInterval, AmbiguitySet
 from .solvers import get_solver
 
 
@@ -21,19 +21,6 @@ _PARTITION_TYPE_MAP = {
     'voronoi':        BoundedVoronoiPartition,
     'hyperrectangle': HyperRectanglePartition,
 }
-
-
-@dataclass
-class ProbabilityInterval:
-    """Clopper-Pearson probability interval [lower, upper] for the complement set."""
-    lower: torch.Tensor
-    upper: torch.Tensor
-
-
-@dataclass
-class AmbiguitySet:
-    center: Quantization
-    radius: torch.Tensor
 
 
 class EmpiricalPartition:
@@ -98,14 +85,7 @@ class AmbiguitySetLearner:
             center=quantization,
             radius=result.radius,
         )
-        self.complement_interval = (
-            ProbabilityInterval(
-                lower=result.lb_complement_prob,
-                upper=result.ub_complement_prob,
-            )
-            if isinstance(quantization, ConditionalLearningQuantization)
-            else None
-        )
+        self.complement_interval = result.complement_interval
         self.fournier_radius: float = _fournier_radius(
             support=_partition.support,
             nsamples=samples.shape[0],

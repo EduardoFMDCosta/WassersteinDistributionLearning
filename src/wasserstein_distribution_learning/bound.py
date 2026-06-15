@@ -6,6 +6,7 @@ import ot
 from .sets import HyperRectangle
 from .quantization import UncertainQuantization
 from .solvers import Solver, Result
+from .dataclasses import ProbabilityInterval
 
 
 class DataDrivenRadius:
@@ -14,10 +15,10 @@ class DataDrivenRadius:
     _discrete_bound = torch.tensor(torch.nan)
 
     def __init__(
-            self, 
+            self,
+            wasserstein_order: int,
             quantization: UncertainQuantization, 
             solver: Solver,
-            wasserstein_order: int,
             compute_discrete_bound: bool = True,
             compute_moment_bound: bool = True,
             time_limit: Optional[float] = None
@@ -41,13 +42,10 @@ class DataDrivenRadius:
             else:
                 raise
 
-        self._lb_complement_prob = quantization.lb_complement_prob
-        self._ub_complement_prob = quantization.ub_complement_prob
-
-        if quantization.confidence_complement is not None:
-            self._lower_bound = torch.tensor(float('nan'))
-        else:
-            self._lower_bound = (self._ub_complement_prob * quantization.outer_l2_radius.pow(2)).sqrt()
+        self.complement_interval = ProbabilityInterval(
+            lower=quantization.lb_complement_prob,
+            upper=quantization.ub_complement_prob,
+        )
 
     @property
     def moment_bound(self) -> torch.Tensor:
@@ -61,23 +59,12 @@ class DataDrivenRadius:
     def radius(self) -> torch.Tensor:
         return self._result.bound
     
-    @property
-    def lower_bound(self):
-        return self._lower_bound
-
-    @property
-    def lb_complement_prob(self) -> torch.Tensor:
-        return self._lb_complement_prob
-
-    @property
-    def ub_complement_prob(self) -> torch.Tensor:
-        return self._ub_complement_prob
 
 
 def fournier_radius(
+    wasserstein_order: int,
     support: Optional[HyperRectangle],
     nsamples: int,
-    wasserstein_order: int,
     beta: float
 ) -> float:
     if support is None:
@@ -107,7 +94,7 @@ def fournier_radius(
             75: 1.96,
             100: 1.98,
             500: 2.00,
-            784: 2.00 # TODO conservative estimate
+            784: 2.00
         }
 
         # See Table 1 in Fournier, 2023 (https://hal.science/hal-03768963/)
@@ -141,7 +128,7 @@ def fournier_radius(
             75: 1.96,
             100: 1.98,
             500: 2.00,
-            784: 2.00 # TODO conservative estimate
+            784: 2.00
         }
 
         # See Table 2 in Fournier, 2023 (https://hal.science/hal-03768963/)
@@ -169,9 +156,9 @@ def fournier_radius(
 class EmpiricalRadius:
     def __init__(
         self,
+        wasserstein_order: int,
         quantization: UncertainQuantization,
         dist: torch.distributions.Distribution,
-        wasserstein_order: int,
         num_samples: int = 1_000,
     ):
         emp_dist = dist.sample((num_samples,))

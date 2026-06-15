@@ -134,7 +134,6 @@ class HyperRectanglePartition(Partition):
             n_modes_max: int = 5,
             **kwargs
         ):
-        """GMM-seeded binary space partition into M disjoint hyper-rectangles."""
         assert len(samples.shape) == 2
         nsamples, ndim = samples.shape
         M = min(M, nsamples)

@@ -1,9 +1,5 @@
-from .api import (
-    EmpiricalPartition,
-    AmbiguitySetLearner,
-    AmbiguitySet,
-    ProbabilityInterval,
-)
+from .api import EmpiricalPartition, AmbiguitySetLearner
+from .dataclasses import AmbiguitySet, ProbabilityInterval
 from .sets import HyperRectangle, BoundedVoronoiPartition, HyperRectanglePartition
 from .quantization import FullLearningQuantization, ConditionalLearningQuantization
 from .confidence import ClopperPearsonConfidence

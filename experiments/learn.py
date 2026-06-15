@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 from wasserstein_distribution_learning import WassersteinDistributionLearning
 
-from plotting.plot import plot_quantization
 from configs.handlers import parse_arguments
 from configs.construct import get_support_assumption, get_distribution
 
@@ -13,9 +12,9 @@ if __name__ == '__main__':
         distribution="Gaussian",
         num_dims=2,
         setting=0,
-        num_samples=5000,
+        num_samples=1000,
         num_samples_training=1000,
-        num_clusters=20,
+        num_clusters=10,
         wasserstein_order=2,
         beta=1e-6,
         method='stochastic_vertice_ascent',

@@ -143,10 +143,9 @@ def plot_hyperrectangle_partition_2d(
     region_upper : torch.Tensor, shape (M, 2)
     """
     from matplotlib.patches import Rectangle
-    from matplotlib.cm import get_cmap
 
     M = region_lower.shape[0]
-    cmap = get_cmap("tab20", M)
+    cmap = plt.get_cmap("tab20", M)
 
     created_ax = False
     if ax is None:
